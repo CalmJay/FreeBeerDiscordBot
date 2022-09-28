@@ -14,8 +14,12 @@ using Google.Apis.Services;
 using Google.Apis.Util.Store;
 using System.Collections.Generic;
 using System.Threading;
+using System.Net.Http;
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
+using PlayerData;
 
 namespace FreeBeerBot
 {
@@ -25,7 +29,7 @@ namespace FreeBeerBot
         //string SpreadsheetId = "1HFGJk3lAIMrMMBg3PlyPZrX0ooJ_O86brWYrSWdf9Gk"; //TEST SHEET
         string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET
         private const string GoogleCredentialsFileName = "credentials.json";
-
+        string sFreeBeerGuildAPIID = "9ndyGFTPT0mYwPOPDXDmSQ";
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
         public bool enableGoogleApi = true;
@@ -81,7 +85,7 @@ namespace FreeBeerBot
             int lengthOfCommand = -1;
 
             //filtering messages begin here
-            if (!message.Content.StartsWith('$')) //This is your prefix
+            if (!message.Content.StartsWith('!')) //This is your prefix
                 return Task.CompletedTask;
 
             if (message.Author.IsBot) //This ignores all commands from bots
@@ -98,6 +102,9 @@ namespace FreeBeerBot
             {
                 case "hello":
                     message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
+                    break;
+                case "regear":
+                    message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
                     break;
 
             }
@@ -127,18 +134,25 @@ namespace FreeBeerBot
             var guildCommand = new SlashCommandBuilder();
 
             // Note: Names have to be all lowercase and match the regular expression ^[\w-]{3,32}$
-            guildCommand
-                .WithName("list-roles")
-                .WithDescription("List all roles of a user")
-                .AddOption("user", ApplicationCommandOptionType.User, "The users whos roles you want to be listed", isRequired: true);
+            //guildCommand
+            //    .WithName("list-roles")
+            //    .WithDescription("List all roles of a user")
+            //    .AddOption("user", ApplicationCommandOptionType.User, "The users whos roles you want to be listed", isRequired: true);
 
-            guildCommand
-                .WithName("blacklist")
-                .WithDescription("Blacklist an asshole")
-                .AddOption("player", ApplicationCommandOptionType.String, "Name of player blacklisting", isRequired: true);
-                //.AddOption("reason", ApplicationCommandOptionType.String, "Short description on why person is being blacklisted", isRequired: false);
+            //guildCommand
+            //    .WithName("blacklist")
+            //    .WithDescription("Blacklist an asshole")
+            //    .AddOption("player", ApplicationCommandOptionType.String, "Name of player blacklisting", isRequired: true);
 
+            //guildCommand //SEE ABOUT ADDING slash bulk commands  https://discordnet.dev/guides/int_basics/application-commands/slash-commands/bulk-overwrite-of-global-slash-commands.html
+            //    .WithName("register")
+            //    .WithDescription("Verify if the player is not on the blacklist and meets recruitment requirements")
+            //    .AddOption("player", ApplicationCommandOptionType.String, "Name of player", isRequired: false);
 
+            guildCommand 
+                .WithName("regear")
+                .WithDescription("Submit a regear")
+                .AddOption("killnumber", ApplicationCommandOptionType.Integer, "Killboard ID", isRequired: true);
 
             // Descriptions can have a max length of 100.
             //guildCommand.WithDescription("When chest is filled the bot will send a message to the player their regear is done");
@@ -178,10 +192,18 @@ namespace FreeBeerBot
                     await HandleListRoleCommand(command);
                     break;
                 case "blacklist":
-                    //Console.WriteLine("BLACKLIST ENABLED");
-
                     BlacklistPlayer(command);
-
+                    break;
+                case "register":
+                    
+                    AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
+                    await GetAlbionEventInfo(command);
+                    Console.Write("Registering player");
+                    break;
+                case "regear":
+                    AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
+                    await Task.Run(() => { RegearSubmission(command); });
+                    Console.Write("Regear complete");
                     break;
             }
         }
@@ -214,10 +236,10 @@ namespace FreeBeerBot
 
             await WriteAsync(serviceValues, guildUser.ToString(), "THIS IS A TEST STRING.");
 
-
+        
             await command.Channel.SendMessageAsync(guildUser.ToString() + " has been blacklisted");
-
-
+            
+            
         }
 
 
@@ -275,8 +297,11 @@ namespace FreeBeerBot
             }
         }
 
-        private const string ReadRange = "Free Beer BlackList!A2:G";
-        private const string WriteRange = "Free Beer BlackList!A2:G";
+        //private const string ReadRange = "Copy of Free Beer BlackList!A2:G2";
+        //private const string WriteRange = "Copy of Free Beer BlackList!A2:G2";
+
+        public string ReadRange { get; set; }
+        public string WriteRange { get; set; }
 
         private static SheetsService GetSheetsService()
         {
@@ -290,9 +315,9 @@ namespace FreeBeerBot
                 return new SheetsService(serviceInitializer);
             }
         }
-        private async Task ReadAsync(SpreadsheetsResource.ValuesResource valuesResource)
+        private async Task ReadAsync(SpreadsheetsResource.ValuesResource valuesResource, string sReadrange)
         {
-            var response = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
+            var response = await valuesResource.Get(SpreadsheetId, sReadrange).ExecuteAsync();
             var values = response.Values;
             if (values == null || !values.Any())
             {
@@ -304,6 +329,7 @@ namespace FreeBeerBot
 
             foreach (var row in values.Skip(1))
             {
+
                 var res = string.Join(" ", row.Select(r => r.ToString()));
                 Console.WriteLine(res);
             }
@@ -312,11 +338,113 @@ namespace FreeBeerBot
 
         private async Task WriteAsync(SpreadsheetsResource.ValuesResource valuesResource, string a_SocketGuildUser, string a_sReason)
         {
-            var valueRange = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
-            var update = valuesResource.Update(valueRange, SpreadsheetId, WriteRange);
-            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-            var response = await update.ExecuteAsync();
-            Console.WriteLine($"Updated rows: { response.UpdatedRows}");
+            ////writing to spreadsheet
+            //var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
+            //var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange); 
+            //update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+
+            var col1 = 2;
+            var col2 = 2;
+            ReadRange = $"Copy of Free Beer BlackList!A{col1}";
+            WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
+
+            ValueRange GetResponse = null;
+            IList<IList<object>> values = null;
+            int valuesCount = 0;
+            //var GetResponse = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
+            //var values = GetResponse.Values;
+
+            while (true)
+            {
+                GetResponse = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
+                values = GetResponse.Values;
+
+                if (values == null || !values.Any())
+                {
+                    break;
+                }
+
+                //var testValue = GetResponse.Values.First();
+                //valuesCount = values.Count;
+
+                col1++;
+                col2++;
+
+                ReadRange = $"Copy of Free Beer BlackList!A{col1}";
+                WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
+
+                
+            }
+
+            if (values == null || !values.Any())
+            {
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
+                var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange);
+                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+                var updateresponse = await update.ExecuteAsync();
+
+            }
+
+            //var response = await update.ExecuteAsync();
+            // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
+        }
+
+        private async Task WriteToSheetAsync(SpreadsheetsResource.ValuesResource valuesResource, string sSpreadSheetName, string a_SocketGuildUser, string a_sReason)
+        {
+
+        }
+
+
+
+
+
+
+        public async void RegearSubmission(SocketSlashCommand command)
+        {
+            var eventData = await GetAlbionEventInfo(command);
+
+
+
+            PostRegear(command);
+            Console.WriteLine("something");
+
+            
+        }
+
+        public async Task<PlayerDataHandler.Rootobject> GetAlbionEventInfo (SocketSlashCommand command)
+        {
+
+            string playerData = null;
+            //SEND IN ALBION EVENT ID
+            //TEST ID 569198599
+            //CASEY PLAYER ID A8YOx_EpS7SRvlSvC9nzTw
+            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"events/{command.Data.Options.First().Value}"))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    playerData = await response.Content.ReadAsStringAsync();
+                }
+                else
+                {
+                    throw new Exception(response.ReasonPhrase);
+                }
+            }
+            PlayerDataHandler.Rootobject eventData = new PlayerDataHandler.Rootobject();
+            eventData = JsonConvert.DeserializeObject<PlayerDataHandler.Rootobject>(playerData);
+
+            return eventData;
+        }
+
+        public async Task PostRegear(SocketSlashCommand command)
+        {
+           // DiscordSocketClient _client = new DiscordSocketClient(); // 2
+            ulong id = 1014912611004989491; // 3
+            var chnl = _client.GetChannel(id) as IMessageChannel; // 4
+            await chnl.SendMessageAsync("Announcement!"); // 5
+
+            
+
+
         }
 
     }
