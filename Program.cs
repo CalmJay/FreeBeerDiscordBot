@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Net;
 using Discord.WebSocket;
+using Discord.Commands;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -29,7 +30,7 @@ namespace FreeBeerBot
         //string SpreadsheetId = "1HFGJk3lAIMrMMBg3PlyPZrX0ooJ_O86brWYrSWdf9Gk"; //TEST SHEET
         string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET
         private const string GoogleCredentialsFileName = "credentials.json";
-        string sFreeBeerGuildAPIID = "9ndyGFTPT0mYwPOPDXDmSQ";
+        //string sFreeBeerGuildAPIID = "9ndyGFTPT0mYwPOPDXDmSQ";
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
         public bool enableGoogleApi = true;
@@ -40,8 +41,6 @@ namespace FreeBeerBot
         => new Program().MainAsync().GetAwaiter().GetResult();
         
         private DiscordSocketClient _client;
-
-
 
         public async Task MainAsync()
         {
@@ -394,18 +393,13 @@ namespace FreeBeerBot
 
         }
 
-
-
-
-
-
         public async void RegearSubmission(SocketSlashCommand command)
         {
             var eventData = await GetAlbionEventInfo(command);
 
 
 
-            PostRegear(command);
+            PostRegear(command, eventData);
             Console.WriteLine("something");
 
             
@@ -429,22 +423,38 @@ namespace FreeBeerBot
                     throw new Exception(response.ReasonPhrase);
                 }
             }
-            PlayerDataHandler.Rootobject eventData = new PlayerDataHandler.Rootobject();
-            eventData = JsonConvert.DeserializeObject<PlayerDataHandler.Rootobject>(playerData);
+            //PlayerDataHandler.Rootobject eventData = new PlayerDataHandler.Rootobject();
+            var eventData = JsonConvert.DeserializeObject<PlayerDataHandler.Rootobject>(playerData);
 
             return eventData;
         }
 
-        public async Task PostRegear(SocketSlashCommand command)
+        [Command("regear")]
+        public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
         {
-           // DiscordSocketClient _client = new DiscordSocketClient(); // 2
-            ulong id = 1014912611004989491; // 3
+            //ulong id = 1014912611004989491; // 3 "specific channel"
+            ulong id = 603281980951494670; // 3 "private channel"
             var chnl = _client.GetChannel(id) as IMessageChannel; // 4
-            await chnl.SendMessageAsync("Announcement!"); // 5
+
+            var head = "https://render.albiononline.com/v1/item/T8_HEAD_PLATE_SET2.png?count=1&quality=3";
+            var weapon = "https://render.albiononline.com/v1/item/T5_2H_RAM_KEEPER@3.png?count=1&quality=3";
+            var cape = "https://render.albiononline.com/v1/item/T4_CAPEITEM_FW_MARTLOCK@3.png?count=1&quality=3";
+            var armor = "https://render.albiononline.com/v1/item/T8_ARMOR_PLATE_SET3.png?count=1&quality=3";
+            var boots = "https://render.albiononline.com/v1/item/T8_SHOES_LEATHER_SET2.png?count=1&quality=3";
+
+            var embed = new EmbedBuilder()
+            .WithTitle($"{command.Data.Name} Regear")
+            .AddField("Discord user ", command.User.Username, true)
+            .AddField("Victim", eventData.Victim.Name)
+            //.WithImageUrl(GearImageRenderSerivce(command))
+            .WithImageUrl("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png")
+            .WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}");
+
+
+            await chnl.SendMessageAsync("Regear Submission from....", false, embed.Build()); // 5
+
 
             
-
-
         }
 
     }
