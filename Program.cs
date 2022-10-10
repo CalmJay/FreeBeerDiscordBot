@@ -1,26 +1,34 @@
-﻿using Discord;
+﻿using Aspose.Imaging;
+using Aspose.Imaging.FileFormats.Jpeg;
+using Aspose.Imaging.ImageOptions;
+using Aspose.Imaging.Sources;
+using Aspose.Words;
+using CoreHtmlToImage;
+using Discord;
+using Discord.Commands;
 using Discord.Net;
 using Discord.WebSocket;
-using Discord.Commands;
-using Newtonsoft.Json;
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
-using Google.Apis.Services;
 using Google.Apis.Util.Store;
-using System.Collections.Generic;
-using System.Threading;
-using System.Net.Http;
-
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
+using GroupDocs.Merger;
+using GroupDocs.Merger.Domain;
+using GroupDocs.Merger.Domain.Options;
+using Newtonsoft.Json;
 using PlayerData;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using Image = Aspose.Imaging.Image;
+using Rectangle = Aspose.Imaging.Rectangle;
+using Size = Aspose.Imaging.Size;
 
 namespace FreeBeerBot
 {
@@ -39,7 +47,7 @@ namespace FreeBeerBot
 
         public static void Main(string[] args)
         => new Program().MainAsync().GetAwaiter().GetResult();
-        
+
         private DiscordSocketClient _client;
 
         public async Task MainAsync()
@@ -58,7 +66,7 @@ namespace FreeBeerBot
             // var token = Environment.GetEnvironmentVariable("NameOfYourEnvironmentVariable");
             // var token = File.ReadAllText("token.txt");
             // var token = JsonConvert.DeserializeObject<AConfigurationClass>(File.ReadAllText("config.json")).Token;
-            
+
 
 
             await _client.LoginAsync(TokenType.Bot, token);
@@ -70,7 +78,7 @@ namespace FreeBeerBot
 
         }
 
-        
+
         private Task Log(LogMessage msg)
         {
             Console.WriteLine(msg.ToString());
@@ -97,7 +105,7 @@ namespace FreeBeerBot
 
             command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
 
-            switch(command)
+            switch (command)
             {
                 case "hello":
                     message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
@@ -148,7 +156,7 @@ namespace FreeBeerBot
             //    .WithDescription("Verify if the player is not on the blacklist and meets recruitment requirements")
             //    .AddOption("player", ApplicationCommandOptionType.String, "Name of player", isRequired: false);
 
-            guildCommand 
+            guildCommand
                 .WithName("regear")
                 .WithDescription("Submit a regear")
                 .AddOption("killnumber", ApplicationCommandOptionType.Integer, "Killboard ID", isRequired: true);
@@ -194,7 +202,7 @@ namespace FreeBeerBot
                     BlacklistPlayer(command);
                     break;
                 case "register":
-                    
+
                     AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
                     await GetAlbionEventInfo(command);
                     Console.Write("Registering player");
@@ -235,10 +243,10 @@ namespace FreeBeerBot
 
             await WriteAsync(serviceValues, guildUser.ToString(), "THIS IS A TEST STRING.");
 
-        
+
             await command.Channel.SendMessageAsync(guildUser.ToString() + " has been blacklisted");
-            
-            
+
+
         }
 
 
@@ -254,7 +262,7 @@ namespace FreeBeerBot
                     /* The file token.json stores the user's access and refresh tokens, and is created
                      automatically when the authorization flow completes for the first time. */
                     string credPath = "token.json";
-                    credential = GoogleWebAuthorizationBroker.AuthorizeAsync(GoogleClientSecrets.FromStream(stream).Secrets,Scopes,"user",CancellationToken.None,new FileDataStore(credPath, true)).Result;
+                    credential = GoogleWebAuthorizationBroker.AuthorizeAsync(GoogleClientSecrets.FromStream(stream).Secrets, Scopes, "user", CancellationToken.None, new FileDataStore(credPath, true)).Result;
                     Console.WriteLine("Credential file saved to: " + credPath);
                 }
 
@@ -266,7 +274,7 @@ namespace FreeBeerBot
                 });
 
                 // Define request parameters.
-                
+
                 String range = "Free Beer blackList!A2:G";
                 SpreadsheetsResource.ValuesResource.GetRequest request =
                     service.Spreadsheets.Values.Get(SpreadsheetId, range);
@@ -372,7 +380,7 @@ namespace FreeBeerBot
                 ReadRange = $"Copy of Free Beer BlackList!A{col1}";
                 WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
 
-                
+
             }
 
             if (values == null || !values.Any())
@@ -402,10 +410,10 @@ namespace FreeBeerBot
             PostRegear(command, eventData);
             Console.WriteLine("something");
 
-            
+
         }
 
-        public async Task<PlayerDataHandler.Rootobject> GetAlbionEventInfo (SocketSlashCommand command)
+        public async Task<PlayerDataHandler.Rootobject> GetAlbionEventInfo(SocketSlashCommand command)
         {
 
             string playerData = null;
@@ -442,19 +450,71 @@ namespace FreeBeerBot
             var armor = "https://render.albiononline.com/v1/item/T8_ARMOR_PLATE_SET3.png?count=1&quality=3";
             var boots = "https://render.albiononline.com/v1/item/T8_SHOES_LEATHER_SET2.png?count=1&quality=3";
 
-            var embed = new EmbedBuilder()
-            .WithTitle($"{command.Data.Name} Regear")
-            .AddField("Discord user ", command.User.Username, true)
-            .AddField("Victim", eventData.Victim.Name)
-            //.WithImageUrl(GearImageRenderSerivce(command))
-            .WithImageUrl("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png")
-            .WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}");
+            try
+            {
+                
+                var img1 = $"<div style='width: auto'><img style='display: inline;width:100px;height:100px' src='{head}'/>";
+                var img2 = $"<img style='display: inline;width:100px;height:100px' src='{weapon}'/>";
+                var img3 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
+                var img4 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
+                var img5 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : 10000$</div></div>";
+                var converter = new HtmlConverter();
+                var html = img1+ img2 + img3 + img4 + img5;
+                var bytes = converter.FromHtmlString(html);
+
+                using (System.IO.MemoryStream imgStream = new System.IO.MemoryStream(bytes))
+                {
+                    var embed = new EmbedBuilder()
+                                    .WithTitle($"{command.Data.Name} Regear")
+                                    .AddField("Discord user ", command.User.Username, true)
+                                    .AddField("Victim", eventData.Victim.Name)
+
+                                    //.WithImageUrl(GearImageRenderSerivce(command))
+                                    //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
+                                    .WithImageUrl($"attachment://image.jpg")
+                                    .WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}");
+
+                    await chnl.SendFileAsync(imgStream, "image.jpg", "Regear Submission from....", false, embed.Build()); // 5
+                    //await chnl.SendMessageAsync("Regear Submission from....", false, embed.Build()); // 5
+                    //build.WithThumbnailUrl("attachment://anyImageName.png"); //or build.WithImageUrl("")
+                    //await Context.Channel.SendFileAsync(imgStream, "anyImageName.png", "", false, build.Build());
+                }
+
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
 
 
-            await chnl.SendMessageAsync("Regear Submission from....", false, embed.Build()); // 5
 
 
-            
+        }
+        public static Bitmap Combine(string[] files)
+        {
+            //read all images into memory
+            List<System.Drawing.Bitmap> images = new List<System.Drawing.Bitmap>();
+            System.Drawing.Bitmap finalImage = null;
+
+            int width = 0;
+            int height = 0;
+
+            foreach (string image in files)
+            {
+                //create a Bitmap from the file and add it to the list
+                System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(image);
+
+                //update the size of the final bitmap
+                width += bitmap.Width;
+                height = bitmap.Height > height ? bitmap.Height : height;
+
+                images.Add(bitmap);
+            }
+
+            //create a bitmap to hold the combined image
+            finalImage = new System.Drawing.Bitmap(width, height);
+            return finalImage;
         }
 
     }
