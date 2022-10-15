@@ -6,6 +6,7 @@ using Aspose.Words;
 using CoreHtmlToImage;
 using Discord;
 using Discord.Commands;
+using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
 using Google.Apis.Auth.OAuth2;
@@ -16,7 +17,9 @@ using Google.Apis.Util.Store;
 using GroupDocs.Merger;
 using GroupDocs.Merger.Domain;
 using GroupDocs.Merger.Domain.Options;
+using MarketData;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using PlayerData;
 using System;
 using System.Collections.Generic;
@@ -29,6 +32,8 @@ using System.Threading.Tasks;
 using Image = Aspose.Imaging.Image;
 using Rectangle = Aspose.Imaging.Rectangle;
 using Size = Aspose.Imaging.Size;
+using System.Text.Json;
+using Color = Discord.Color;
 
 namespace FreeBeerBot
 {
@@ -116,17 +121,6 @@ namespace FreeBeerBot
 
             }
 
-            //Commands begin here
-            //if (command.Equals("hello"))
-            //{
-            //    message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
-            //}
-            //else if (command.Equals("age"))
-            //{
-            //    message.Channel.SendMessageAsync($@"Your account was created at {message.Author.CreatedAt.DateTime.Date}");
-            //}
-
-
             return Task.CompletedTask;
         }
 
@@ -160,31 +154,22 @@ namespace FreeBeerBot
                 .WithName("regear")
                 .WithDescription("Submit a regear")
                 .AddOption("killnumber", ApplicationCommandOptionType.Integer, "Killboard ID", isRequired: true);
+            await guild.CreateApplicationCommandAsync(guildCommand.Build());
 
-            // Descriptions can have a max length of 100.
-            //guildCommand.WithDescription("When chest is filled the bot will send a message to the player their regear is done");
-
-            // Let's do our global command
-            //var globalCommand = new SlashCommandBuilder();
-            //globalCommand.WithName("first-global-command");
-            //globalCommand.WithDescription("This is my first global slash command");
+            guildCommand = new SlashCommandBuilder();
+            guildCommand
+                .WithName("get-recent-deaths")
+                .WithDescription("View 10 recent deaths");
+            await guild.CreateApplicationCommandAsync(guildCommand.Build());
 
             try
             {
-                // Now that we have our builder, we can call the CreateApplicationCommandAsync method to make our slash command.
-                // await guild.CreateApplicationCommandAsync(guildCommand.Build());
-                await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
-                // With global commands we don't need the guild.
-                // await _client.CreateGlobalApplicationCommandAsync(globalCommand.Build());
-                // Using the ready event is a simple implementation for the sake of the example. Suitable for testing and development.
-                // For a production bot, it is recommended to only run the CreateGlobalApplicationCommandAsync() once for each command.
+                //await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
+               // await guild.CreateApplicationCommandAsync(guildCommand.Build());
             }
             catch (ApplicationCommandException exception)
             {
-                // If our command was invalid, we should catch an ApplicationCommandException. This exception contains the path of the error as well as the error message. You can serialize the Error field in the exception to get a visual of where your error is.
                 var json = JsonConvert.SerializeObject(exception.Errors, Formatting.Indented);
-
-                // You can send this error somewhere or just print it to the console, for this example we're just going to print it.
                 Console.WriteLine(json);
             }
         }
@@ -202,7 +187,6 @@ namespace FreeBeerBot
                     BlacklistPlayer(command);
                     break;
                 case "register":
-
                     AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
                     await GetAlbionEventInfo(command);
                     Console.Write("Registering player");
@@ -211,6 +195,11 @@ namespace FreeBeerBot
                     AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
                     await Task.Run(() => { RegearSubmission(command); });
                     Console.Write("Regear complete");
+                    break;
+                case "get-recent-deaths":
+                    AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
+                    await Task.Run(() => { GetRecentDeaths(command); });
+                    
                     break;
             }
         }
@@ -246,9 +235,7 @@ namespace FreeBeerBot
 
             await command.Channel.SendMessageAsync(guildUser.ToString() + " has been blacklisted");
 
-
         }
-
 
         public void ConnectToGoogleAPI()
         {
@@ -303,9 +290,6 @@ namespace FreeBeerBot
                 Console.WriteLine(e.Message);
             }
         }
-
-        //private const string ReadRange = "Copy of Free Beer BlackList!A2:G2";
-        //private const string WriteRange = "Copy of Free Beer BlackList!A2:G2";
 
         public string ReadRange { get; set; }
         public string WriteRange { get; set; }
@@ -396,30 +380,59 @@ namespace FreeBeerBot
             // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
         }
 
-        private async Task WriteToSheetAsync(SpreadsheetsResource.ValuesResource valuesResource, string sSpreadSheetName, string a_SocketGuildUser, string a_sReason)
+        [Command("get-recent-deaths")]
+        public async void GetRecentDeaths(SocketSlashCommand command)
         {
+            string playerData = null;
+            string playerAlbionId = "aTTj2Vm9QJ24nGrAsHVqFQ";
+            int deathDisplayCounter = 1;
+            int visibleDeathsShown = 5; //can add up to 10 deaths
 
+            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"players/{playerAlbionId}/deaths"))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    playerData = await response.Content.ReadAsStringAsync();
+                    var parsedObjects = JArray.Parse(playerData);
+                    //TODO: Add killer and date of death
+
+                    var searchDeaths = parsedObjects.Children<JObject>()
+                        .Select(jo => (int)jo["EventId"])
+                        .ToList();
+
+                    var embed = new EmbedBuilder()
+                    .WithTitle("Recent Deaths")
+                    .WithColor(new Color(238, 62, 75));
+
+                    for (int i = 0; i < searchDeaths.Count; i++)
+                    {
+                        if (i <= visibleDeathsShown)
+                        {
+                            embed.AddField($"Death{deathDisplayCounter}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                            deathDisplayCounter++;
+                        }
+                    }
+                        await command.Channel.SendMessageAsync(null,false, embed.Build());
+                }
+                else
+                {
+                    throw new Exception(response.ReasonPhrase);
+                }
+            }           
         }
 
         public async void RegearSubmission(SocketSlashCommand command)
         {
             var eventData = await GetAlbionEventInfo(command);
 
-
-
             PostRegear(command, eventData);
             Console.WriteLine("something");
-
-
         }
 
         public async Task<PlayerDataHandler.Rootobject> GetAlbionEventInfo(SocketSlashCommand command)
         {
-
             string playerData = null;
-            //SEND IN ALBION EVENT ID
-            //TEST ID 569198599
-            //CASEY PLAYER ID A8YOx_EpS7SRvlSvC9nzTw
+
             using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"events/{command.Data.Options.First().Value}"))
             {
                 if (response.IsSuccessStatusCode)
@@ -431,8 +444,42 @@ namespace FreeBeerBot
                     throw new Exception(response.ReasonPhrase);
                 }
             }
-            //PlayerDataHandler.Rootobject eventData = new PlayerDataHandler.Rootobject();
+
             var eventData = JsonConvert.DeserializeObject<PlayerDataHandler.Rootobject>(playerData);
+
+            return eventData;
+        }
+
+        public async Task<MarketDataHandler> GetMarketData(PlayerDataHandler.Equipment1 victimEquipment)
+        {
+            //var head = $"{victimEquipment.Head.Type + "?quality=" + victimEquipment.Head.Quality }";
+            //var weapon = $"{victimEquipment.MainHand.Type + "?quality=" + victimEquipment.MainHand.Quality}";
+            //var offhand = $"{victimEquipment.OffHand.Type + "?quality=" + victimEquipment.OffHand.Quality}";
+            //var cape = $"{victimEquipment.Cape.Type + "?quality=" + victimEquipment.Cape.Quality}";
+            //var armor = $"{victimEquipment.Armor.Type + "?quality=" + victimEquipment.Armor.Quality}";
+            //var boots = $"{victimEquipment.Shoes.Type + "?quality=" + victimEquipment.Shoes.Quality}";
+
+            //T4_ARMOR_LEATHER_HELL@3.png?count=1&quality=4
+            //T7_ARMOR_CLOTH_AVALON@1?count=1&quality=4
+            //https://www.albion-online-data.com/api/v2/stats/prices/T4_BAG,T5_BAG.json?locations=Martlock&qualities=1
+
+            //https://www.albion-online-data.com/api/v2/stats/prices/T4_ARMOR_LEATHER_HELL@3.json?locations=Martlock&qualities=3
+
+            string marketData = null;
+
+            //using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"events/{command.Data.Options.First().Value}"))
+            //{
+            //    if (response.IsSuccessStatusCode)
+            //    {
+            //        marketData = await response.Content.ReadAsStringAsync();
+            //    }
+            //    else
+            //    {
+            //        throw new Exception(response.ReasonPhrase);
+            //    }
+            //}
+            //PlayerDataHandler.Rootobject eventData = new PlayerDataHandler.Rootobject();
+            var eventData = JsonConvert.DeserializeObject<MarketDataHandler>(marketData);
 
             return eventData;
         }
@@ -441,32 +488,39 @@ namespace FreeBeerBot
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
         {
             //ulong id = 1014912611004989491; // 3 "specific channel"
-            ulong id = 603281980951494670; // 3 "private channel"
+            ulong id = 603281980951494670; // 3 "private channel" //throw this in config
             var chnl = _client.GetChannel(id) as IMessageChannel; // 4
 
-            var head = "https://render.albiononline.com/v1/item/T8_HEAD_PLATE_SET2.png?count=1&quality=3";
-            var weapon = "https://render.albiononline.com/v1/item/T5_2H_RAM_KEEPER@3.png?count=1&quality=3";
-            var cape = "https://render.albiononline.com/v1/item/T4_CAPEITEM_FW_MARTLOCK@3.png?count=1&quality=3";
-            var armor = "https://render.albiononline.com/v1/item/T8_ARMOR_PLATE_SET3.png?count=1&quality=3";
-            var boots = "https://render.albiononline.com/v1/item/T8_SHOES_LEATHER_SET2.png?count=1&quality=3";
+            //REWRITE THIS TO BE CLEANER. ASSIGN ALL GEAR DATA. ADD 
+            var placeholder = "https://render.albiononline.com/v1/item/T1_WOOD.png";
+            var head = (eventData.Victim.Equipment.Head != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Head.Type + "?quality=" + eventData.Victim.Equipment.Head.Quality }" : placeholder;
+            var weapon = (eventData.Victim.Equipment.MainHand != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.MainHand.Type + "?quality=" + eventData.Victim.Equipment.MainHand.Quality}" : placeholder;
+            var offhand = (eventData.Victim.Equipment.OffHand != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.OffHand.Type + "?quality=" + eventData.Victim.Equipment.OffHand.Quality}" : placeholder;
+            var cape = (eventData.Victim.Equipment.Cape != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Cape.Type + "?quality=" + eventData.Victim.Equipment.Cape.Quality}" : placeholder;
+            var armor = (eventData.Victim.Equipment.Armor != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Armor.Type + "?quality=" + eventData.Victim.Equipment.Armor.Quality}" : placeholder;
+            var boots = (eventData.Victim.Equipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Shoes.Type + "?quality=" + eventData.Victim.Equipment.Shoes.Quality}" : placeholder;
+
+
+            //var gearPrice = GetMarketData(eventData.Victim.Equipment);
 
             try
             {
-                
+
                 var img1 = $"<div style='width: auto'><img style='display: inline;width:100px;height:100px' src='{head}'/>";
                 var img2 = $"<img style='display: inline;width:100px;height:100px' src='{weapon}'/>";
-                var img3 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
-                var img4 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
-                var img5 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : 10000$</div></div>";
+                var img3 = $"<img style='display: inline;width:100px;height:100px' src='{offhand}'/>";
+                var img4 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
+                var img5 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
+                var img6 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : $1,700,000</div></div>";
                 var converter = new HtmlConverter();
-                var html = img1+ img2 + img3 + img4 + img5;
+                var html = img1 + img2 + img3 + img4 + img5 + img6;
                 var bytes = converter.FromHtmlString(html);
 
                 using (System.IO.MemoryStream imgStream = new System.IO.MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
                                     .WithTitle($"{command.Data.Name} Regear")
-                                    .AddField("Discord user ", command.User.Username, true)
+                                    .AddField("User submitted ", command.User.Username, true)
                                     .AddField("Victim", eventData.Victim.Name)
 
                                     //.WithImageUrl(GearImageRenderSerivce(command))
@@ -474,7 +528,7 @@ namespace FreeBeerBot
                                     .WithImageUrl($"attachment://image.jpg")
                                     .WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}");
 
-                    await chnl.SendFileAsync(imgStream, "image.jpg", "Regear Submission from....", false, embed.Build()); // 5
+                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User}", false, embed.Build()); // 5
                     //await chnl.SendMessageAsync("Regear Submission from....", false, embed.Build()); // 5
                     //build.WithThumbnailUrl("attachment://anyImageName.png"); //or build.WithImageUrl("")
                     //await Context.Channel.SendFileAsync(imgStream, "anyImageName.png", "", false, build.Build());
@@ -488,37 +542,51 @@ namespace FreeBeerBot
             }
 
 
+            var approveButton = new ButtonBuilder()
+            {
+                Label = "Approve",
+                CustomId = "approve",
+                Style = ButtonStyle.Success
+            };
 
+            var denyButton = new ButtonBuilder()
+            {
+                Label = "Deny",
+                CustomId = "deny",
+                Style = ButtonStyle.Danger
+            };
+
+            //var menu = new SelectMenuBuilder()
+            //{
+            //    CustomId = "regearMenu",
+            //    Placeholder = "Test Menu"
+            //};
+
+            var component = new ComponentBuilder();
+            component.WithButton(approveButton);
+            component.WithButton(denyButton);
+            // componet.WithSelectMenu(menu);
+
+            await command.RespondAsync("Regear Submission", components: component.Build());
+        }
+
+
+
+        [ComponentInteraction("approve")]
+        public async Task ApproveButtonInput()
+        {
+
+            Console.WriteLine("Regear approved");
 
         }
-        public static Bitmap Combine(string[] files)
+
+        [ComponentInteraction("deny")]
+        public async Task DenyButtonInputAsync()
         {
-            //read all images into memory
-            List<System.Drawing.Bitmap> images = new List<System.Drawing.Bitmap>();
-            System.Drawing.Bitmap finalImage = null;
-
-            int width = 0;
-            int height = 0;
-
-            foreach (string image in files)
-            {
-                //create a Bitmap from the file and add it to the list
-                System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(image);
-
-                //update the size of the final bitmap
-                width += bitmap.Width;
-                height = bitmap.Height > height ? bitmap.Height : height;
-
-                images.Add(bitmap);
-            }
-
-            //create a bitmap to hold the combined image
-            finalImage = new System.Drawing.Bitmap(width, height);
-            return finalImage;
+            Console.WriteLine("Regear denied");
         }
 
     }
-
 
 }
 

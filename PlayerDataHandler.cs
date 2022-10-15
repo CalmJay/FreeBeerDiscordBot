@@ -800,7 +800,5 @@ namespace PlayerData
             public int Avalon { get; set; }
         }
 
-
-
     }
 }
