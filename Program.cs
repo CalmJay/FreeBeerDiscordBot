@@ -34,6 +34,9 @@ using Rectangle = Aspose.Imaging.Rectangle;
 using Size = Aspose.Imaging.Size;
 using System.Text.Json;
 using Color = Discord.Color;
+using AlbionOnlineDataParser;
+using static AlbionOnlineDataParser.AlbionOnlineDataParser;
+using AlbionData.Models;
 
 namespace FreeBeerBot
 {
@@ -446,42 +449,80 @@ namespace FreeBeerBot
             }
 
             var eventData = JsonConvert.DeserializeObject<PlayerDataHandler.Rootobject>(playerData);
-
             return eventData;
         }
 
-        public async Task<MarketDataHandler> GetMarketData(PlayerDataHandler.Equipment1 victimEquipment)
+        public async Task<int> GetMarketData(PlayerDataHandler.Equipment1 victimEquipment)
         {
-            //var head = $"{victimEquipment.Head.Type + "?quality=" + victimEquipment.Head.Quality }";
-            //var weapon = $"{victimEquipment.MainHand.Type + "?quality=" + victimEquipment.MainHand.Quality}";
-            //var offhand = $"{victimEquipment.OffHand.Type + "?quality=" + victimEquipment.OffHand.Quality}";
-            //var cape = $"{victimEquipment.Cape.Type + "?quality=" + victimEquipment.Cape.Quality}";
-            //var armor = $"{victimEquipment.Armor.Type + "?quality=" + victimEquipment.Armor.Quality}";
-            //var boots = $"{victimEquipment.Shoes.Type + "?quality=" + victimEquipment.Shoes.Quality}";
+            AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProject();
 
-            //T4_ARMOR_LEATHER_HELL@3.png?count=1&quality=4
-            //T7_ARMOR_CLOTH_AVALON@1?count=1&quality=4
-            //https://www.albion-online-data.com/api/v2/stats/prices/T4_BAG,T5_BAG.json?locations=Martlock&qualities=1
+            int returnValue = 0;
+            string sMarketLocation = AlbionCitiesEnum.Martlock.ToString(); //add this to config. If field is null, all cities market data will be pulled
+            bool bAddAllQualities = false;
+            int iDefaultItemQuality = 2;
 
-            //https://www.albion-online-data.com/api/v2/stats/prices/T4_ARMOR_LEATHER_HELL@3.json?locations=Martlock&qualities=3
+            string? head = (victimEquipment.Head != null) ? $"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality }" : null;
+            string? weapon = (victimEquipment.MainHand != null) ? $"{victimEquipment.MainHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.MainHand.Quality}" : null;
+            string? offhand = (victimEquipment.OffHand != null) ? $"{victimEquipment.OffHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.OffHand.Quality}" : null;
+            string? cape = (victimEquipment.Cape != null) ? $"{victimEquipment.Cape.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Cape.Quality}" : null;
+            string? armor = (victimEquipment.Armor != null) ? $"{victimEquipment.Armor.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Armor.Quality}" : null;
+            string? boots = (victimEquipment.Shoes != null) ? $"{victimEquipment.Shoes.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Shoes.Quality}" : null;
+            string? mount = (victimEquipment.Mount != null) ? $"{victimEquipment.Mount.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Mount.Quality}" : null;
 
-            string marketData = null;
+            List<string> equipmentList = new List<string>();
 
-            //using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"events/{command.Data.Options.First().Value}"))
-            //{
-            //    if (response.IsSuccessStatusCode)
-            //    {
-            //        marketData = await response.Content.ReadAsStringAsync();
-            //    }
-            //    else
-            //    {
-            //        throw new Exception(response.ReasonPhrase);
-            //    }
-            //}
-            //PlayerDataHandler.Rootobject eventData = new PlayerDataHandler.Rootobject();
-            var eventData = JsonConvert.DeserializeObject<MarketDataHandler>(marketData);
+            equipmentList.Add(head);
+            equipmentList.Add(weapon);
+            equipmentList.Add(offhand);
+            equipmentList.Add(cape);
+            equipmentList.Add(armor);
+            equipmentList.Add(boots);
+            equipmentList.Add(mount);
 
-            return eventData;
+
+            //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3.json?locations=Martlock&qualities=4 brought back only 1
+            //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3?Locations=Martlock brought back all qualities
+
+            //MarketResponse testMarketdata = new MarketResponse() // THIS IS THE CONSTRUCTORS TO THE AlbionData.MODELS
+
+            //SUDO
+            //IF Market entry is zero change quality. If still zero send message back to user to update the market with the https://www.albion-online-data.com/ project and update the market items
+
+            string jsonMarketData = null;
+
+            foreach (var item in equipmentList)
+            {
+                if(item != null)
+                {
+                    using (HttpResponseMessage response = await ApiAlbionDataProject.GetAsync(item))
+                    {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            jsonMarketData = await response.Content.ReadAsStringAsync();
+                        }
+                        else
+                        {
+                            throw new Exception(response.ReasonPhrase);
+                        }
+                    }
+
+                    var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData);
+
+                    returnValue += marketData.FirstOrDefault().sell_price_min;
+                }
+                
+            }
+
+
+
+            
+
+            //TODO: Add average market data checks here
+            //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
+
+            //returnValue = marketData.FirstOrDefault().sell_price_min; 
+
+            return returnValue;
         }
 
         [Command("regear")]
@@ -499,9 +540,10 @@ namespace FreeBeerBot
             var cape = (eventData.Victim.Equipment.Cape != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Cape.Type + "?quality=" + eventData.Victim.Equipment.Cape.Quality}" : placeholder;
             var armor = (eventData.Victim.Equipment.Armor != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Armor.Type + "?quality=" + eventData.Victim.Equipment.Armor.Quality}" : placeholder;
             var boots = (eventData.Victim.Equipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Shoes.Type + "?quality=" + eventData.Victim.Equipment.Shoes.Quality}" : placeholder;
+            var mount = (eventData.Victim.Equipment.Mount != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Mount.Type + "?quality=" + eventData.Victim.Equipment.Mount.Quality}" : placeholder;
 
-
-            //var gearPrice = GetMarketData(eventData.Victim.Equipment);
+            var gearPrice = await GetMarketData(eventData.Victim.Equipment);
+            //var gearPrice = $"$1,700,000";
 
             try
             {
@@ -511,9 +553,11 @@ namespace FreeBeerBot
                 var img3 = $"<img style='display: inline;width:100px;height:100px' src='{offhand}'/>";
                 var img4 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
                 var img5 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
-                var img6 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : $1,700,000</div></div>";
+                var img6 = $"<img style='display: inline;width:100px;height:100px' src='{mount}'/>";
+                var img7 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : {String.Format("{0:0.##}",gearPrice)}</div></div>";
+
                 var converter = new HtmlConverter();
-                var html = img1 + img2 + img3 + img4 + img5 + img6;
+                var html = img1 + img2 + img3 + img4 + img5 + img6 + img7;
                 var bytes = converter.FromHtmlString(html);
 
                 using (System.IO.MemoryStream imgStream = new System.IO.MemoryStream(bytes))
@@ -567,7 +611,7 @@ namespace FreeBeerBot
             component.WithButton(denyButton);
             // componet.WithSelectMenu(menu);
 
-            await command.RespondAsync("Regear Submission", components: component.Build());
+            //await command.RespondAsync("Regear Submission", components: component.Build());
         }
 
 
