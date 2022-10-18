@@ -61,7 +61,7 @@ namespace FreeBeerBot
         public async Task MainAsync()
         {
             _client = new DiscordSocketClient();
-            _client.MessageReceived += CommandHandler;
+            //_client.MessageReceived += CommandHandler;
             _client.Log += Log;
 
             _client.Ready += Client_Ready;
@@ -93,39 +93,39 @@ namespace FreeBeerBot
             return Task.CompletedTask;
         }
 
-        private Task CommandHandler(SocketMessage message)
-        {
-            //variables
-            string command = "";
-            int lengthOfCommand = -1;
+        //private Task CommandHandler(SocketMessage message)
+        //{
+        //    //variables
+        //    string command = "";
+        //    int lengthOfCommand = -1;
 
-            //filtering messages begin here
-            if (!message.Content.StartsWith('!')) //This is your prefix
-                return Task.CompletedTask;
+        //    //filtering messages begin here
+        //    if (!message.Content.StartsWith('!')) //This is your prefix
+        //        return Task.CompletedTask;
 
-            if (message.Author.IsBot) //This ignores all commands from bots
-                return Task.CompletedTask;
+        //    if (message.Author.IsBot) //This ignores all commands from bots
+        //        return Task.CompletedTask;
 
-            if (message.Content.Contains(' '))
-                lengthOfCommand = message.Content.IndexOf(' ');
-            else
-                lengthOfCommand = message.Content.Length;
+        //    if (message.Content.Contains(' '))
+        //        lengthOfCommand = message.Content.IndexOf(' ');
+        //    else
+        //        lengthOfCommand = message.Content.Length;
 
-            command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
+        //    command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
 
-            switch (command)
-            {
-                case "hello":
-                    message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
-                    break;
-                case "regear":
-                    message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
-                    break;
+        //    switch (command)
+        //    {
+        //        case "hello":
+        //            message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
+        //            break;
+        //        case "regear":
+        //            message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
+        //            break;
 
-            }
+        //    }
 
-            return Task.CompletedTask;
-        }
+        //    return Task.CompletedTask;
+        //}
 
         public async Task Client_Ready()
         {
@@ -452,7 +452,7 @@ namespace FreeBeerBot
             return eventData;
         }
 
-        public async Task<int> GetMarketData(PlayerDataHandler.Equipment1 victimEquipment)
+        public async Task<int> GetMarketData(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
         {
             AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProject();
 
@@ -460,6 +460,7 @@ namespace FreeBeerBot
             string sMarketLocation = AlbionCitiesEnum.Martlock.ToString(); //add this to config. If field is null, all cities market data will be pulled
             bool bAddAllQualities = false;
             int iDefaultItemQuality = 2;
+
 
             string? head = (victimEquipment.Head != null) ? $"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality }" : null;
             string? weapon = (victimEquipment.MainHand != null) ? $"{victimEquipment.MainHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.MainHand.Quality}" : null;
@@ -508,14 +509,27 @@ namespace FreeBeerBot
 
                     var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData);
 
-                    returnValue += marketData.FirstOrDefault().sell_price_min;
+
+
+                    returnValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
                 }
                 
             }
 
+            #if DEBUG
+               Console.WriteLine("Mode=Debug");
+            #endif
 
+            var guildUser = (SocketGuildUser)command.User;
 
-            
+            if(guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible"))
+            {
+                returnValue = Math.Min(1300000,returnValue);
+            }
+            else if(guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible"))
+            {
+                returnValue = returnValue = Math.Min(1700000, returnValue);
+            }
 
             //TODO: Add average market data checks here
             //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
@@ -525,7 +539,6 @@ namespace FreeBeerBot
             return returnValue;
         }
 
-        [Command("regear")]
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
         {
             //ulong id = 1014912611004989491; // 3 "specific channel"
@@ -542,8 +555,7 @@ namespace FreeBeerBot
             var boots = (eventData.Victim.Equipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Shoes.Type + "?quality=" + eventData.Victim.Equipment.Shoes.Quality}" : placeholder;
             var mount = (eventData.Victim.Equipment.Mount != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Mount.Type + "?quality=" + eventData.Victim.Equipment.Mount.Quality}" : placeholder;
 
-            var gearPrice = await GetMarketData(eventData.Victim.Equipment);
-            //var gearPrice = $"$1,700,000";
+            var gearPrice = await GetMarketData(command, eventData.Victim.Equipment);
 
             try
             {
@@ -554,7 +566,7 @@ namespace FreeBeerBot
                 var img4 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
                 var img5 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
                 var img6 = $"<img style='display: inline;width:100px;height:100px' src='{mount}'/>";
-                var img7 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : {String.Format("{0:0.##}",gearPrice)}</div></div>";
+                var img7 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : {gearPrice}</div></div>";
 
                 var converter = new HtmlConverter();
                 var html = img1 + img2 + img3 + img4 + img5 + img6 + img7;
@@ -563,9 +575,10 @@ namespace FreeBeerBot
                 using (System.IO.MemoryStream imgStream = new System.IO.MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                    .WithTitle($"{command.Data.Name} Regear")
+                                    .WithTitle($"Regear Submission")
                                     .AddField("User submitted ", command.User.Username, true)
                                     .AddField("Victim", eventData.Victim.Name)
+                                    .AddField("Death Average IP", eventData.Victim.AverageItemPower)
 
                                     //.WithImageUrl(GearImageRenderSerivce(command))
                                     //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
@@ -584,54 +597,60 @@ namespace FreeBeerBot
 
                 throw;
             }
-
-
-            var approveButton = new ButtonBuilder()
-            {
-                Label = "Approve",
-                CustomId = "approve",
-                Style = ButtonStyle.Success
-            };
-
-            var denyButton = new ButtonBuilder()
-            {
-                Label = "Deny",
-                CustomId = "deny",
-                Style = ButtonStyle.Danger
-            };
-
-            //var menu = new SelectMenuBuilder()
-            //{
-            //    CustomId = "regearMenu",
-            //    Placeholder = "Test Menu"
-            //};
-
-            var component = new ComponentBuilder();
-            component.WithButton(approveButton);
-            component.WithButton(denyButton);
-            // componet.WithSelectMenu(menu);
-
-            //await command.RespondAsync("Regear Submission", components: component.Build());
         }
-
-
-
-        [ComponentInteraction("approve")]
-        public async Task ApproveButtonInput()
-        {
-
-            Console.WriteLine("Regear approved");
-
-        }
-
-        [ComponentInteraction("deny")]
-        public async Task DenyButtonInputAsync()
-        {
-            Console.WriteLine("Regear denied");
-        }
-
     }
 
 }
 
 
+public class InteractionModule : InteractionModuleBase<SocketInteractionContext>
+{
+    [SlashCommand("testregear", "regear buttons")]
+    public async Task handleButtonCommand() 
+    {
+        var approveButton = new ButtonBuilder()
+        {
+            Label = "Approve",
+            CustomId = "approve",
+            Style = ButtonStyle.Success
+        };
+
+        var denyButton = new ButtonBuilder()
+        {
+            Label = "Deny",
+            CustomId = "deny",
+            Style = ButtonStyle.Danger
+        };
+
+        //var menu = new SelectMenuBuilder()
+        //{
+        //    CustomId = "regearMenu",
+        //    Placeholder = "Test Menu"
+        //};
+
+        var component = new ComponentBuilder();
+        component.WithButton(approveButton);
+        component.WithButton(denyButton);
+        // componet.WithSelectMenu(menu);
+
+        await RespondAsync("Regear Submission", components: component.Build());
+    }
+
+    [ComponentInteraction("approve")]
+    public async Task ApproveButtonInput()
+    {
+
+        Console.WriteLine("Regear approved");
+
+    }
+
+    [ComponentInteraction("deny")]
+    public async Task DenyButtonInputAsync()
+    {
+        Console.WriteLine("Regear denied");
+    }
+
+
+
+
+}
