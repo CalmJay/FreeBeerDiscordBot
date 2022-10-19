@@ -40,28 +40,30 @@ using AlbionData.Models;
 
 namespace FreeBeerBot
 {
-    class Program
+    public class Program : InteractionModuleBase<SocketInteractionContext>
     {
+        private DiscordSocketClient _client;
+
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        //string SpreadsheetId = "1HFGJk3lAIMrMMBg3PlyPZrX0ooJ_O86brWYrSWdf9Gk"; //TEST SHEET
-        string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET
-        private const string GoogleCredentialsFileName = "credentials.json";
+        string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
+        private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
         //string sFreeBeerGuildAPIID = "9ndyGFTPT0mYwPOPDXDmSQ";
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
-        public bool enableGoogleApi = true;
+        public bool enableGoogleApi = true; //ADD TO CONFIG
 
-        ulong GuildID = 157626637913948160;//CHANGE THIS TO THE OFFICAL SERVER WHEN DONE
+        ulong GuildID = 157626637913948160;//CHANGE THIS TO THE OFFICAL SERVER WHEN DONE. //ADD TO CONFIG
 
-        public static void Main(string[] args)
-        => new Program().MainAsync().GetAwaiter().GetResult();
+        
 
-        private DiscordSocketClient _client;
+        public static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
+
+        
 
         public async Task MainAsync()
         {
             _client = new DiscordSocketClient();
-            _client.MessageReceived += CommandHandler;
+            //_client.MessageReceived += CommandHandler;
             _client.Log += Log;
 
             _client.Ready += Client_Ready;
@@ -93,65 +95,47 @@ namespace FreeBeerBot
             return Task.CompletedTask;
         }
 
-        private Task CommandHandler(SocketMessage message)
-        {
-            //variables
-            string command = "";
-            int lengthOfCommand = -1;
+        //private Task CommandHandler(SocketMessage message)
+        //{
+        //    //variables
+        //    string command = "";
+        //    int lengthOfCommand = -1;
 
-            //filtering messages begin here
-            if (!message.Content.StartsWith('!')) //This is your prefix
-                return Task.CompletedTask;
+        //    //filtering messages begin here
+        //    if (!message.Content.StartsWith('!')) //This is your prefix
+        //        return Task.CompletedTask;
 
-            if (message.Author.IsBot) //This ignores all commands from bots
-                return Task.CompletedTask;
+        //    if (message.Author.IsBot) //This ignores all commands from bots
+        //        return Task.CompletedTask;
 
-            if (message.Content.Contains(' '))
-                lengthOfCommand = message.Content.IndexOf(' ');
-            else
-                lengthOfCommand = message.Content.Length;
+        //    if (message.Content.Contains(' '))
+        //        lengthOfCommand = message.Content.IndexOf(' ');
+        //    else
+        //        lengthOfCommand = message.Content.Length;
 
-            command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
+        //    command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
 
-            switch (command)
-            {
-                case "hello":
-                    message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
-                    break;
-                case "regear":
-                    message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
-                    break;
+        //    switch (command)
+        //    {
+        //        case "hello":
+        //            message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
+        //            break;
+        //        case "regear":
+        //            message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
+        //            break;
 
-            }
+        //    }
 
-            return Task.CompletedTask;
-        }
+        //    return Task.CompletedTask;
+        //}
 
         public async Task Client_Ready()
         {
             //USE GUILD COMMANDS FOR PRIVATE USE
             //GLOBAL COMMANDS ARE MORE FOR LARGE USER BASE USE (AKA IF THE BOT IS GOING TO BE USED IN A LOT OF DISCORD SERVERS)
-            // Let's build a guild command! We're going to need a guild so lets just put that in a variable.
-            var guild = _client.GetGuild(GuildID); //guildID = server ID
+            var guild = _client.GetGuild(GuildID); 
 
-            // Next, lets create our slash command builder. This is like the embed builder but for slash commands.
             var guildCommand = new SlashCommandBuilder();
-
-            // Note: Names have to be all lowercase and match the regular expression ^[\w-]{3,32}$
-            //guildCommand
-            //    .WithName("list-roles")
-            //    .WithDescription("List all roles of a user")
-            //    .AddOption("user", ApplicationCommandOptionType.User, "The users whos roles you want to be listed", isRequired: true);
-
-            //guildCommand
-            //    .WithName("blacklist")
-            //    .WithDescription("Blacklist an asshole")
-            //    .AddOption("player", ApplicationCommandOptionType.String, "Name of player blacklisting", isRequired: true);
-
-            //guildCommand //SEE ABOUT ADDING slash bulk commands  https://discordnet.dev/guides/int_basics/application-commands/slash-commands/bulk-overwrite-of-global-slash-commands.html
-            //    .WithName("register")
-            //    .WithDescription("Verify if the player is not on the blacklist and meets recruitment requirements")
-            //    .AddOption("player", ApplicationCommandOptionType.String, "Name of player", isRequired: false);
 
             guildCommand
                 .WithName("regear")
@@ -162,13 +146,13 @@ namespace FreeBeerBot
             guildCommand = new SlashCommandBuilder();
             guildCommand
                 .WithName("get-recent-deaths")
-                .WithDescription("View 10 recent deaths");
+                .WithDescription("View recent deaths");
             await guild.CreateApplicationCommandAsync(guildCommand.Build());
 
             try
             {
-                //await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
-               // await guild.CreateApplicationCommandAsync(guildCommand.Build());
+                await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
+                await guild.CreateApplicationCommandAsync(guildCommand.Build());
             }
             catch (ApplicationCommandException exception)
             {
@@ -202,7 +186,7 @@ namespace FreeBeerBot
                 case "get-recent-deaths":
                     AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
                     await Task.Run(() => { GetRecentDeaths(command); });
-                    
+
                     break;
             }
         }
@@ -387,7 +371,7 @@ namespace FreeBeerBot
         public async void GetRecentDeaths(SocketSlashCommand command)
         {
             string playerData = null;
-            string playerAlbionId = "aTTj2Vm9QJ24nGrAsHVqFQ";
+            string playerAlbionId = "KYDr8-OIQKO_qEsilGyyHA";
             int deathDisplayCounter = 1;
             int visibleDeathsShown = 5; //can add up to 10 deaths
 
@@ -415,22 +399,16 @@ namespace FreeBeerBot
                             deathDisplayCounter++;
                         }
                     }
-                        await command.Channel.SendMessageAsync(null,false, embed.Build());
+                    await command.Channel.SendMessageAsync(null, false, embed.Build());
                 }
                 else
                 {
                     throw new Exception(response.ReasonPhrase);
                 }
-            }           
+            }
         }
 
-        public async void RegearSubmission(SocketSlashCommand command)
-        {
-            var eventData = await GetAlbionEventInfo(command);
-
-            PostRegear(command, eventData);
-            Console.WriteLine("something");
-        }
+       
 
         public async Task<PlayerDataHandler.Rootobject> GetAlbionEventInfo(SocketSlashCommand command)
         {
@@ -452,7 +430,7 @@ namespace FreeBeerBot
             return eventData;
         }
 
-        public async Task<int> GetMarketData(PlayerDataHandler.Equipment1 victimEquipment)
+        public async Task<int> GetMarketData(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
         {
             AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProject();
 
@@ -460,6 +438,7 @@ namespace FreeBeerBot
             string sMarketLocation = AlbionCitiesEnum.Martlock.ToString(); //add this to config. If field is null, all cities market data will be pulled
             bool bAddAllQualities = false;
             int iDefaultItemQuality = 2;
+
 
             string? head = (victimEquipment.Head != null) ? $"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality }" : null;
             string? weapon = (victimEquipment.MainHand != null) ? $"{victimEquipment.MainHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.MainHand.Quality}" : null;
@@ -492,7 +471,7 @@ namespace FreeBeerBot
 
             foreach (var item in equipmentList)
             {
-                if(item != null)
+                if (item != null)
                 {
                     using (HttpResponseMessage response = await ApiAlbionDataProject.GetAsync(item))
                     {
@@ -508,16 +487,28 @@ namespace FreeBeerBot
 
                     var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData);
 
-                    returnValue += marketData.FirstOrDefault().sell_price_min;
+
+
+                    returnValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
                 }
-                
+
             }
 
+#if DEBUG
+            Console.WriteLine("Mode=Debug");
+#endif
 
+            var guildUser = (SocketGuildUser)command.User;
 
-            
+            if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 1031731037149081630
+            {
+                returnValue = Math.Min(1300000, returnValue);
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1031731127431479428
+            {
+                returnValue = returnValue = Math.Min(1700000, returnValue);
+            }
 
-            //TODO: Add average market data checks here
             //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
 
             //returnValue = marketData.FirstOrDefault().sell_price_min; 
@@ -525,7 +516,15 @@ namespace FreeBeerBot
             return returnValue;
         }
 
-        [Command("regear")]
+        [SlashCommand("regeartest", "Submit death for regear")]
+        public async void RegearSubmission(SocketSlashCommand command)
+        {
+            var eventData = await GetAlbionEventInfo(command);
+
+            PostRegear(command, eventData);
+            Console.WriteLine("something");
+        }
+
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
         {
             //ulong id = 1014912611004989491; // 3 "specific channel"
@@ -542,8 +541,7 @@ namespace FreeBeerBot
             var boots = (eventData.Victim.Equipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Shoes.Type + "?quality=" + eventData.Victim.Equipment.Shoes.Quality}" : placeholder;
             var mount = (eventData.Victim.Equipment.Mount != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Mount.Type + "?quality=" + eventData.Victim.Equipment.Mount.Quality}" : placeholder;
 
-            var gearPrice = await GetMarketData(eventData.Victim.Equipment);
-            //var gearPrice = $"$1,700,000";
+            var gearPrice = await GetMarketData(command, eventData.Victim.Equipment);
 
             try
             {
@@ -554,7 +552,7 @@ namespace FreeBeerBot
                 var img4 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
                 var img5 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
                 var img6 = $"<img style='display: inline;width:100px;height:100px' src='{mount}'/>";
-                var img7 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : {String.Format("{0:0.##}",gearPrice)}</div></div>";
+                var img7 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : {gearPrice}</div></div>";
 
                 var converter = new HtmlConverter();
                 var html = img1 + img2 + img3 + img4 + img5 + img6 + img7;
@@ -563,9 +561,10 @@ namespace FreeBeerBot
                 using (System.IO.MemoryStream imgStream = new System.IO.MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                    .WithTitle($"{command.Data.Name} Regear")
+                                    .WithTitle($"Regear Submission")
                                     .AddField("User submitted ", command.User.Username, true)
                                     .AddField("Victim", eventData.Victim.Name)
+                                    .AddField("Death Average IP", eventData.Victim.AverageItemPower)
 
                                     //.WithImageUrl(GearImageRenderSerivce(command))
                                     //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
@@ -585,49 +584,6 @@ namespace FreeBeerBot
                 throw;
             }
 
-
-            var approveButton = new ButtonBuilder()
-            {
-                Label = "Approve",
-                CustomId = "approve",
-                Style = ButtonStyle.Success
-            };
-
-            var denyButton = new ButtonBuilder()
-            {
-                Label = "Deny",
-                CustomId = "deny",
-                Style = ButtonStyle.Danger
-            };
-
-            //var menu = new SelectMenuBuilder()
-            //{
-            //    CustomId = "regearMenu",
-            //    Placeholder = "Test Menu"
-            //};
-
-            var component = new ComponentBuilder();
-            component.WithButton(approveButton);
-            component.WithButton(denyButton);
-            // componet.WithSelectMenu(menu);
-
-            //await command.RespondAsync("Regear Submission", components: component.Build());
-        }
-
-
-
-        [ComponentInteraction("approve")]
-        public async Task ApproveButtonInput()
-        {
-
-            Console.WriteLine("Regear approved");
-
-        }
-
-        [ComponentInteraction("deny")]
-        public async Task DenyButtonInputAsync()
-        {
-            Console.WriteLine("Regear denied");
         }
 
     }
@@ -635,3 +591,54 @@ namespace FreeBeerBot
 }
 
 
+public class InteractionModule : InteractionModuleBase<SocketInteractionContext>
+{
+    [SlashCommand("testregear", "regear buttons")]
+    public async Task handleButtonCommand() 
+    {
+        var approveButton = new ButtonBuilder()
+        {
+            Label = "Approve",
+            CustomId = "approve",
+            Style = ButtonStyle.Success
+        };
+
+        var denyButton = new ButtonBuilder()
+        {
+            Label = "Deny",
+            CustomId = "deny",
+            Style = ButtonStyle.Danger
+        };
+
+        //var menu = new SelectMenuBuilder()
+        //{
+        //    CustomId = "regearMenu",
+        //    Placeholder = "Test Menu"
+        //};
+
+        var component = new ComponentBuilder();
+        component.WithButton(approveButton);
+        component.WithButton(denyButton);
+        // componet.WithSelectMenu(menu);
+
+        await RespondAsync("Regear Submission", components: component.Build());
+    }
+
+    [ComponentInteraction("approve")]
+    public async Task ApproveButtonInput()
+    {
+
+        Console.WriteLine("Regear approved");
+
+    }
+
+    [ComponentInteraction("deny")]
+    public async Task DenyButtonInputAsync()
+    {
+        Console.WriteLine("Regear denied");
+    }
+
+
+
+
+}
