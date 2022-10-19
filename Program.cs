@@ -40,23 +40,25 @@ using AlbionData.Models;
 
 namespace FreeBeerBot
 {
-    class Program
+    public class Program : InteractionModuleBase<SocketInteractionContext>
     {
+        private DiscordSocketClient _client;
+
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        //string SpreadsheetId = "1HFGJk3lAIMrMMBg3PlyPZrX0ooJ_O86brWYrSWdf9Gk"; //TEST SHEET
-        string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET
-        private const string GoogleCredentialsFileName = "credentials.json";
+        string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
+        private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
         //string sFreeBeerGuildAPIID = "9ndyGFTPT0mYwPOPDXDmSQ";
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
-        public bool enableGoogleApi = true;
+        public bool enableGoogleApi = true; //ADD TO CONFIG
 
-        ulong GuildID = 157626637913948160;//CHANGE THIS TO THE OFFICAL SERVER WHEN DONE
+        ulong GuildID = 157626637913948160;//CHANGE THIS TO THE OFFICAL SERVER WHEN DONE. //ADD TO CONFIG
 
-        public static void Main(string[] args)
-        => new Program().MainAsync().GetAwaiter().GetResult();
+        
 
-        private DiscordSocketClient _client;
+        public static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
+
+        
 
         public async Task MainAsync()
         {
@@ -131,27 +133,9 @@ namespace FreeBeerBot
         {
             //USE GUILD COMMANDS FOR PRIVATE USE
             //GLOBAL COMMANDS ARE MORE FOR LARGE USER BASE USE (AKA IF THE BOT IS GOING TO BE USED IN A LOT OF DISCORD SERVERS)
-            // Let's build a guild command! We're going to need a guild so lets just put that in a variable.
-            var guild = _client.GetGuild(GuildID); //guildID = server ID
+            var guild = _client.GetGuild(GuildID); 
 
-            // Next, lets create our slash command builder. This is like the embed builder but for slash commands.
             var guildCommand = new SlashCommandBuilder();
-
-            // Note: Names have to be all lowercase and match the regular expression ^[\w-]{3,32}$
-            //guildCommand
-            //    .WithName("list-roles")
-            //    .WithDescription("List all roles of a user")
-            //    .AddOption("user", ApplicationCommandOptionType.User, "The users whos roles you want to be listed", isRequired: true);
-
-            //guildCommand
-            //    .WithName("blacklist")
-            //    .WithDescription("Blacklist an asshole")
-            //    .AddOption("player", ApplicationCommandOptionType.String, "Name of player blacklisting", isRequired: true);
-
-            //guildCommand //SEE ABOUT ADDING slash bulk commands  https://discordnet.dev/guides/int_basics/application-commands/slash-commands/bulk-overwrite-of-global-slash-commands.html
-            //    .WithName("register")
-            //    .WithDescription("Verify if the player is not on the blacklist and meets recruitment requirements")
-            //    .AddOption("player", ApplicationCommandOptionType.String, "Name of player", isRequired: false);
 
             guildCommand
                 .WithName("regear")
@@ -162,13 +146,13 @@ namespace FreeBeerBot
             guildCommand = new SlashCommandBuilder();
             guildCommand
                 .WithName("get-recent-deaths")
-                .WithDescription("View 10 recent deaths");
+                .WithDescription("View recent deaths");
             await guild.CreateApplicationCommandAsync(guildCommand.Build());
 
             try
             {
-                //await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
-               // await guild.CreateApplicationCommandAsync(guildCommand.Build());
+                await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
+                await guild.CreateApplicationCommandAsync(guildCommand.Build());
             }
             catch (ApplicationCommandException exception)
             {
@@ -202,7 +186,7 @@ namespace FreeBeerBot
                 case "get-recent-deaths":
                     AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
                     await Task.Run(() => { GetRecentDeaths(command); });
-                    
+
                     break;
             }
         }
@@ -387,7 +371,7 @@ namespace FreeBeerBot
         public async void GetRecentDeaths(SocketSlashCommand command)
         {
             string playerData = null;
-            string playerAlbionId = "aTTj2Vm9QJ24nGrAsHVqFQ";
+            string playerAlbionId = "KYDr8-OIQKO_qEsilGyyHA";
             int deathDisplayCounter = 1;
             int visibleDeathsShown = 5; //can add up to 10 deaths
 
@@ -415,22 +399,16 @@ namespace FreeBeerBot
                             deathDisplayCounter++;
                         }
                     }
-                        await command.Channel.SendMessageAsync(null,false, embed.Build());
+                    await command.Channel.SendMessageAsync(null, false, embed.Build());
                 }
                 else
                 {
                     throw new Exception(response.ReasonPhrase);
                 }
-            }           
+            }
         }
 
-        public async void RegearSubmission(SocketSlashCommand command)
-        {
-            var eventData = await GetAlbionEventInfo(command);
-
-            PostRegear(command, eventData);
-            Console.WriteLine("something");
-        }
+       
 
         public async Task<PlayerDataHandler.Rootobject> GetAlbionEventInfo(SocketSlashCommand command)
         {
@@ -493,7 +471,7 @@ namespace FreeBeerBot
 
             foreach (var item in equipmentList)
             {
-                if(item != null)
+                if (item != null)
                 {
                     using (HttpResponseMessage response = await ApiAlbionDataProject.GetAsync(item))
                     {
@@ -513,30 +491,38 @@ namespace FreeBeerBot
 
                     returnValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
                 }
-                
+
             }
 
-            #if DEBUG
-               Console.WriteLine("Mode=Debug");
-            #endif
+#if DEBUG
+            Console.WriteLine("Mode=Debug");
+#endif
 
             var guildUser = (SocketGuildUser)command.User;
 
-            if(guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible"))
+            if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 1031731037149081630
             {
-                returnValue = Math.Min(1300000,returnValue);
+                returnValue = Math.Min(1300000, returnValue);
             }
-            else if(guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible"))
+            else if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1031731127431479428
             {
                 returnValue = returnValue = Math.Min(1700000, returnValue);
             }
 
-            //TODO: Add average market data checks here
             //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
 
             //returnValue = marketData.FirstOrDefault().sell_price_min; 
 
             return returnValue;
+        }
+
+        [SlashCommand("regeartest", "Submit death for regear")]
+        public async void RegearSubmission(SocketSlashCommand command)
+        {
+            var eventData = await GetAlbionEventInfo(command);
+
+            PostRegear(command, eventData);
+            Console.WriteLine("something");
         }
 
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
@@ -597,7 +583,9 @@ namespace FreeBeerBot
 
                 throw;
             }
+
         }
+
     }
 
 }
