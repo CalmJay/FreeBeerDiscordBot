@@ -51,6 +51,7 @@ namespace FreeBeerBot
 
         public async Task MainAsync()
         {
+            dataBaseService.AddSeedingData();
             _client = new DiscordSocketClient();
             //_client.MessageReceived += CommandHandler;
             _client.Log += Log;
@@ -753,18 +754,18 @@ namespace FreeBeerBot
                 returnValue = returnValue = Math.Min(1700000, returnValue);
             }
 
-            var gearImage = "<div style='background-color: #c7a98f;'> <div> <center><h3>Under ReRear</h3>";
+            var gearImage = "<div style='background-color: #c7a98f;'> <div> <center><h3>Regearable</h3>";
             foreach (var item in underRegearList)
             {
                 gearImage += $"<img style='display: inline;width:100px;height:100px' src='{item}'/>";
             }
-            gearImage += $"<div style:'text-align : right;'>Items Price : {returnValue}</div></center></div>";
-            gearImage += $"<div><center><h3>Not Under ReRear</h3>";
+            gearImage += $"<div style:'text-align : right;'>Refund amt. : {returnValue}</div></center></div>";
+            gearImage += $"<div><center><h3>Not Regearable</h3>";
             foreach (var item in notUnderRegearList)
             {
                 gearImage += $"<img style='display: inline;width:100px;height:100px' src='{item}'/>";
             }
-            gearImage += $"<div style:'text-align : right;'>Items Price : {returnNotUnderRegearValue}</div></center></div><center><br/><h3> Items Not Available In The Market </h3>";
+            gearImage += $"<div style:'text-align : right;'>Items Price : {returnNotUnderRegearValue}</div></center></div><center><br/><h3> Items not found or price is too high </h3>";
             foreach (var item in notAvailableInMarketList)
             {
                 gearImage += $"{item}<br/>";
