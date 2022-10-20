@@ -1,49 +1,38 @@
-﻿using Aspose.Imaging;
-using Aspose.Imaging.FileFormats.Jpeg;
-using Aspose.Imaging.ImageOptions;
-using Aspose.Imaging.Sources;
-using Aspose.Words;
-using CoreHtmlToImage;
+﻿using CoreHtmlToImage;
 using Discord;
 using Discord.Commands;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
+using DiscordBot.Extension;
+using DiscordBot.Models;
+using DiscordBot.Services;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
-using GroupDocs.Merger;
-using GroupDocs.Merger.Domain;
-using GroupDocs.Merger.Domain.Options;
 using MarketData;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerData;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Image = Aspose.Imaging.Image;
-using Rectangle = Aspose.Imaging.Rectangle;
-using Size = Aspose.Imaging.Size;
-using System.Text.Json;
-using Color = Discord.Color;
-using AlbionOnlineDataParser;
 using static AlbionOnlineDataParser.AlbionOnlineDataParser;
-using AlbionData.Models;
+using Color = Discord.Color;
 
 namespace FreeBeerBot
 {
     public class Program : InteractionModuleBase<SocketInteractionContext>
     {
         private DiscordSocketClient _client;
-
+        private DataBaseService dataBaseService;
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
         string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
         private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
@@ -84,6 +73,9 @@ namespace FreeBeerBot
 
             // Block this task until the program is closed.
             await Task.Delay(-1);
+            var services = new ServiceCollection();
+            //string usercount = ConfigurationSettings.AppSettings["ConnectionString"];
+            DependencyInjectionExtension.DependencyInjection(services);
 
 
         }
@@ -430,14 +422,16 @@ namespace FreeBeerBot
             return eventData;
         }
 
-        public async Task<int> GetMarketData(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
+        public async Task<string> GetMarketDataAndGearImg(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
         {
             AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProject();
 
             int returnValue = 0;
+            int returnNotUnderRegearValue = 0;
             string sMarketLocation = AlbionCitiesEnum.Martlock.ToString(); //add this to config. If field is null, all cities market data will be pulled
             bool bAddAllQualities = false;
             int iDefaultItemQuality = 2;
+
 
 
             string? head = (victimEquipment.Head != null) ? $"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality }" : null;
@@ -448,16 +442,229 @@ namespace FreeBeerBot
             string? boots = (victimEquipment.Shoes != null) ? $"{victimEquipment.Shoes.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Shoes.Quality}" : null;
             string? mount = (victimEquipment.Mount != null) ? $"{victimEquipment.Mount.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Mount.Quality}" : null;
 
+            var placeholder = "https://render.albiononline.com/v1/item/T1_WOOD.png";
+            var headImg = (victimEquipment.Head != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Head.Type + "?quality=" + victimEquipment.Head.Quality }" : placeholder;
+            var weaponImg = (victimEquipment.MainHand != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.MainHand.Type + "?quality=" + victimEquipment.MainHand.Quality}" : placeholder;
+            var offhandImg = (victimEquipment.OffHand != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.OffHand.Type + "?quality=" + victimEquipment.OffHand.Quality}" : placeholder;
+            var capeImg = (victimEquipment.Cape != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Cape.Type + "?quality=" + victimEquipment.Cape.Quality}" : placeholder;
+            var armorImg = (victimEquipment.Armor != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Armor.Type + "?quality=" + victimEquipment.Armor.Quality}" : placeholder;
+            var bootsImg = (victimEquipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Shoes.Type + "?quality=" + victimEquipment.Shoes.Quality}" : placeholder;
+            var mountImg = (victimEquipment.Mount != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Mount.Type + "?quality=" + victimEquipment.Mount.Quality}" : placeholder;
+
             List<string> equipmentList = new List<string>();
+            List<string> notUnderRegearEquipmentList = new List<string>();
+            List<string> underRegearList = new List<string>();
+            List<string> notUnderRegearList = new List<string>();
+            List<string> notAvailableInMarketList = new List<string>();
+            if (victimEquipment.Head.Type.Contains("T5") || victimEquipment.Head.Type.Contains("T6") || victimEquipment.Head.Type.Contains("T7") || victimEquipment.Head.Type.Contains("T8"))
+            {
+                if (victimEquipment.Head.Type.Contains("T5") && victimEquipment.Head.Type.Contains("@3"))
+                {
+                    equipmentList.Add(head);
+                    underRegearList.Add(headImg);
+                }
+                else if (victimEquipment.Head.Type.Contains("T6") && (victimEquipment.Head.Type.Contains("@2")  || victimEquipment.Head.Type.Contains("@3")))
+                {
+                    equipmentList.Add(head);
+                    underRegearList.Add(headImg);
+                }
+                else if(victimEquipment.Head.Type.Contains("T7") && (victimEquipment.Head.Type.Contains("@1") || victimEquipment.Head.Type.Contains("@2")))
+                {
+                    equipmentList.Add(head);
+                    underRegearList.Add(headImg);
+                }
+                else  if (victimEquipment.Head.Type.Contains("T8"))
+                {
+                    equipmentList.Add(head);
+                    underRegearList.Add(headImg);
+                }
+                else
+                {
+                    notUnderRegearEquipmentList.Add(head);
+                    notUnderRegearList.Add(headImg);
+                }
+            }
+            else
+            {
+                notUnderRegearEquipmentList.Add(head);
+                notUnderRegearList.Add(headImg);
+            }
+            if (victimEquipment.MainHand.Type.Contains("T5") || victimEquipment.MainHand.Type.Contains("T6") || victimEquipment.MainHand.Type.Contains("T7") || victimEquipment.MainHand.Type.Contains("T8"))
+            {
+                if (victimEquipment.MainHand.Type.Contains("T5") && victimEquipment.MainHand.Type.Contains("@3"))
+                {
+                    equipmentList.Add(weapon);
+                    underRegearList.Add(weaponImg);
+                }
+                else if(victimEquipment.MainHand.Type.Contains("T6") && (victimEquipment.MainHand.Type.Contains("@2") || victimEquipment.MainHand.Type.Contains("@3")))
+                {
+                    equipmentList.Add(weapon);
+                    underRegearList.Add(weaponImg);
+                }
+                else if (victimEquipment.MainHand.Type.Contains("T7") && (victimEquipment.MainHand.Type.Contains("@1") || victimEquipment.MainHand.Type.Contains("@2")))
+                {
+                    equipmentList.Add(weapon);
+                    underRegearList.Add(weaponImg);
+                }
+                else if(victimEquipment.MainHand.Type.Contains("T8"))
+                {
+                    equipmentList.Add(weapon);
+                    underRegearList.Add(weaponImg);
+                }
+                else
+                {
+                    notUnderRegearEquipmentList.Add(weapon);
+                    notUnderRegearList.Add(weaponImg);
+                }
+            }
+            else
+            {
+                notUnderRegearEquipmentList.Add(weapon);
+                notUnderRegearList.Add(weaponImg);
+            }
+            if (victimEquipment.OffHand != null)
+            {
+                if (victimEquipment.OffHand.Type.Contains("T5") || victimEquipment.OffHand.Type.Contains("T6") || victimEquipment.OffHand.Type.Contains("T7") || victimEquipment.OffHand.Type.Contains("T8"))
+                {
+                    if (victimEquipment.OffHand.Type.Contains("T5") && victimEquipment.OffHand.Type.Contains("@3"))
+                    {
+                        equipmentList.Add(offhand);
+                        underRegearList.Add(offhandImg);
+                    }
+                    else if(victimEquipment.OffHand.Type.Contains("T6") && (victimEquipment.OffHand.Type.Contains("@2") || victimEquipment.OffHand.Type.Contains("@3")))
+                    {
+                        equipmentList.Add(offhand);
+                        underRegearList.Add(offhandImg);
+                    }
+                    else if(victimEquipment.OffHand.Type.Contains("T7") && (victimEquipment.OffHand.Type.Contains("@1") || victimEquipment.OffHand.Type.Contains("@2")))
+                    {
+                        equipmentList.Add(offhand);
+                        underRegearList.Add(offhandImg);
+                    }
+                    else if(victimEquipment.OffHand.Type.Contains("T8"))
+                    {
+                        equipmentList.Add(offhand);
+                        underRegearList.Add(offhandImg);
+                    }
+                    else
+                    {
+                        notUnderRegearEquipmentList.Add(offhand);
+                        notUnderRegearList.Add(offhandImg);
+                    }
+                }
+                else
+                {
+                    notUnderRegearEquipmentList.Add(offhand);
+                    notUnderRegearList.Add(offhandImg);
+                }
+            }
 
-            equipmentList.Add(head);
-            equipmentList.Add(weapon);
-            equipmentList.Add(offhand);
-            equipmentList.Add(cape);
-            equipmentList.Add(armor);
-            equipmentList.Add(boots);
+            if (victimEquipment.Armor.Type.Contains("T5") || victimEquipment.Armor.Type.Contains("T6") || victimEquipment.Armor.Type.Contains("T7") || victimEquipment.Armor.Type.Contains("T8"))
+            {
+                if (victimEquipment.Armor.Type.Contains("T5") && victimEquipment.Armor.Type.Contains("@3"))
+                {
+                    equipmentList.Add(armor);
+                    underRegearList.Add(armorImg);
+                }
+                else if(victimEquipment.Armor.Type.Contains("T6") && (victimEquipment.Armor.Type.Contains("@2") || victimEquipment.Armor.Type.Contains("@3")))
+                {
+                    equipmentList.Add(armor);
+                    underRegearList.Add(armorImg);
+                }
+                else if(victimEquipment.Armor.Type.Contains("T7") && (victimEquipment.Armor.Type.Contains("@1") || victimEquipment.Armor.Type.Contains("@2")))
+                {
+                    equipmentList.Add(armor);
+                    underRegearList.Add(armorImg);
+                }
+                else if(victimEquipment.Armor.Type.Contains("T8"))
+                {
+                    equipmentList.Add(armor);
+                    underRegearList.Add(armorImg);
+                }
+                else
+                {
+                    notUnderRegearEquipmentList.Add(armor);
+                    notUnderRegearList.Add(armorImg);
+                }
+            }
+            else
+            {
+                notUnderRegearEquipmentList.Add(armor);
+                notUnderRegearList.Add(armorImg);
+            }
+            if (victimEquipment.Shoes.Type.Contains("T5") || victimEquipment.Shoes.Type.Contains("T6") || victimEquipment.Shoes.Type.Contains("T7") || victimEquipment.Shoes.Type.Contains("T8"))
+            {
+                if (victimEquipment.Shoes.Type.Contains("T5") && victimEquipment.Shoes.Type.Contains("@3"))
+                {
+                    equipmentList.Add(boots);
+                    underRegearList.Add(bootsImg);
+                }
+                else if(victimEquipment.Shoes.Type.Contains("T6") && (victimEquipment.Shoes.Type.Contains("@2") || victimEquipment.Shoes.Type.Contains("@3")))
+                {
+                    equipmentList.Add(boots);
+                    underRegearList.Add(bootsImg);
+                }
+                else if(victimEquipment.Shoes.Type.Contains("T7") && (victimEquipment.Shoes.Type.Contains("@1") || victimEquipment.Shoes.Type.Contains("@2")))
+                {
+                    equipmentList.Add(boots);
+                    underRegearList.Add(bootsImg);
+                }
+                else if(victimEquipment.Shoes.Type.Contains("T8"))
+                {
+                    equipmentList.Add(boots);
+                    underRegearList.Add(bootsImg);
+                }
+                else
+                {
+                    notUnderRegearEquipmentList.Add(boots);
+                    notUnderRegearList.Add(bootsImg);
+                }
+            }
+            else
+            {
+                notUnderRegearEquipmentList.Add(boots);
+                notUnderRegearList.Add(bootsImg);
+            }
+            if (victimEquipment.Cape.Type.Contains("T4") || victimEquipment.Cape.Type.Contains("T5") || victimEquipment.Cape.Type.Contains("T6") || victimEquipment.Cape.Type.Contains("T7") || victimEquipment.Cape.Type.Contains("T8"))
+            {
+                if (victimEquipment.Cape.Type.Contains("T4") && victimEquipment.Cape.Type.Contains("@3"))
+                {
+                    equipmentList.Add(cape);
+                    underRegearList.Add(capeImg);
+                }
+                else if(victimEquipment.Cape.Type.Contains("T5") && (victimEquipment.Cape.Type.Contains("@2") || victimEquipment.Cape.Type.Contains("@3")))
+                {
+                    equipmentList.Add(cape);
+                    underRegearList.Add(capeImg);
+                }
+                else if(victimEquipment.Cape.Type.Contains("T6") && (victimEquipment.Cape.Type.Contains("@1") || victimEquipment.Cape.Type.Contains("@2") || victimEquipment.Cape.Type.Contains("@3")))
+                {
+                    equipmentList.Add(cape);
+                    underRegearList.Add(capeImg);
+                }
+                else if(victimEquipment.Cape.Type.Contains("T7"))
+                {
+                    equipmentList.Add(cape);
+                    underRegearList.Add(capeImg);
+                }
+                else if(victimEquipment.Cape.Type.Contains("T8"))
+                {
+                    equipmentList.Add(cape);
+                    underRegearList.Add(capeImg);
+                }
+                else
+                {
+                    notUnderRegearEquipmentList.Add(cape);
+                    notUnderRegearList.Add(capeImg);
+                }
+            }
+            else
+            {
+                notUnderRegearEquipmentList.Add(cape);
+                notUnderRegearList.Add(capeImg);
+            }
             equipmentList.Add(mount);
-
+            underRegearList.Add(mountImg);
 
             //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3.json?locations=Martlock&qualities=4 brought back only 1
             //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3?Locations=Martlock brought back all qualities
@@ -468,6 +675,7 @@ namespace FreeBeerBot
             //IF Market entry is zero change quality. If still zero send message back to user to update the market with the https://www.albion-online-data.com/ project and update the market items
 
             string jsonMarketData = null;
+            string jsonMarketData2 = null;
 
             foreach (var item in equipmentList)
             {
@@ -488,8 +696,44 @@ namespace FreeBeerBot
                     var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData);
 
 
+                    if (marketData.FirstOrDefault().sell_price_min != 0)
+                    {
+                        returnValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
+                    }
+                    else
+                    {
+                        notAvailableInMarketList.Add(marketData.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
+                    }
+                }
 
-                    returnValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
+            }
+            foreach (var item in notUnderRegearEquipmentList)
+            {
+                if (item != null)
+                {
+                    using (HttpResponseMessage response = await ApiAlbionDataProject.GetAsync(item))
+                    {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            jsonMarketData2 = await response.Content.ReadAsStringAsync();
+                        }
+                        else
+                        {
+                            throw new Exception(response.ReasonPhrase);
+                        }
+                    }
+
+                    var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData2);
+
+
+                    if (marketData.FirstOrDefault().sell_price_min != 0)
+                    {
+                        returnNotUnderRegearValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
+                    }
+                    else
+                    {
+                        notAvailableInMarketList.Add(marketData.FirstOrDefault().item_id.Replace('_',' ').Replace('@','.'));
+                    }
                 }
 
             }
@@ -509,19 +753,65 @@ namespace FreeBeerBot
                 returnValue = returnValue = Math.Min(1700000, returnValue);
             }
 
+            var gearImage = "<div style='background-color: #c7a98f;'> <div> <center><h3>Under ReRear</h3>";
+            foreach (var item in underRegearList)
+            {
+                gearImage += $"<img style='display: inline;width:100px;height:100px' src='{item}'/>";
+            }
+            gearImage += $"<div style:'text-align : right;'>Items Price : {returnValue}</div></center></div>";
+            gearImage += $"<div><center><h3>Not Under ReRear</h3>";
+            foreach (var item in notUnderRegearList)
+            {
+                gearImage += $"<img style='display: inline;width:100px;height:100px' src='{item}'/>";
+            }
+            gearImage += $"<div style:'text-align : right;'>Items Price : {returnNotUnderRegearValue}</div></center></div><center><br/><h3> Items Not Available In The Market </h3>";
+            foreach (var item in notAvailableInMarketList)
+            {
+                gearImage += $"{item}<br/>";
+            }
+            gearImage +=$"</center></div>";
+            //var img1 = $"<div style='width: auto'><img style='display: inline;width:100px;height:100px' src='{head}'/>";
+            //var img2 = $"<img style='display: inline;width:100px;height:100px' src='{weapon}'/>";
+            //var img3 = $"<img style='display: inline;width:100px;height:100px' src='{offhand}'/>";
+            //var img4 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
+            //var img5 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
+            //var img6 = $"<img style='display: inline;width:100px;height:100px' src='{mount}'/>";
+            //var img7 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : {gearPrice}</div></div>";
+
             //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
 
             //returnValue = marketData.FirstOrDefault().sell_price_min; 
 
-            return returnValue;
+            return gearImage;
         }
+        public bool CheckIfPlayerHaveReGearIcon(SocketSlashCommand command)
+        {
+            var guildUser = (SocketGuildUser)command.User;
 
+            if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible"))
+            {
+                return true;
+            }else
+            {
+                return false;
+            }
+        }
         [SlashCommand("regeartest", "Submit death for regear")]
         public async void RegearSubmission(SocketSlashCommand command)
         {
             var eventData = await GetAlbionEventInfo(command);
+            //await PostRegear(command, eventData);
+            dataBaseService = new DataBaseService();
+            await dataBaseService.AddPlayerInfo(new Player
+            {
+                PlayerId = eventData.Victim.Id,
+                PlayerName = eventData.Victim.Name
+            });
+            if (CheckIfPlayerHaveReGearIcon(command))
+            {
+                await PostRegear(command, eventData);
+            }
 
-            PostRegear(command, eventData);
             Console.WriteLine("something");
         }
 
@@ -532,30 +822,15 @@ namespace FreeBeerBot
             var chnl = _client.GetChannel(id) as IMessageChannel; // 4
 
             //REWRITE THIS TO BE CLEANER. ASSIGN ALL GEAR DATA. ADD 
-            var placeholder = "https://render.albiononline.com/v1/item/T1_WOOD.png";
-            var head = (eventData.Victim.Equipment.Head != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Head.Type + "?quality=" + eventData.Victim.Equipment.Head.Quality }" : placeholder;
-            var weapon = (eventData.Victim.Equipment.MainHand != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.MainHand.Type + "?quality=" + eventData.Victim.Equipment.MainHand.Quality}" : placeholder;
-            var offhand = (eventData.Victim.Equipment.OffHand != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.OffHand.Type + "?quality=" + eventData.Victim.Equipment.OffHand.Quality}" : placeholder;
-            var cape = (eventData.Victim.Equipment.Cape != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Cape.Type + "?quality=" + eventData.Victim.Equipment.Cape.Quality}" : placeholder;
-            var armor = (eventData.Victim.Equipment.Armor != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Armor.Type + "?quality=" + eventData.Victim.Equipment.Armor.Quality}" : placeholder;
-            var boots = (eventData.Victim.Equipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Shoes.Type + "?quality=" + eventData.Victim.Equipment.Shoes.Quality}" : placeholder;
-            var mount = (eventData.Victim.Equipment.Mount != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Mount.Type + "?quality=" + eventData.Victim.Equipment.Mount.Quality}" : placeholder;
 
-            var gearPrice = await GetMarketData(command, eventData.Victim.Equipment);
-
+            
+            var gearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment);
             try
             {
 
-                var img1 = $"<div style='width: auto'><img style='display: inline;width:100px;height:100px' src='{head}'/>";
-                var img2 = $"<img style='display: inline;width:100px;height:100px' src='{weapon}'/>";
-                var img3 = $"<img style='display: inline;width:100px;height:100px' src='{offhand}'/>";
-                var img4 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
-                var img5 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
-                var img6 = $"<img style='display: inline;width:100px;height:100px' src='{mount}'/>";
-                var img7 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : {gearPrice}</div></div>";
 
                 var converter = new HtmlConverter();
-                var html = img1 + img2 + img3 + img4 + img5 + img6 + img7;
+                var html = gearImg;
                 var bytes = converter.FromHtmlString(html);
 
                 using (System.IO.MemoryStream imgStream = new System.IO.MemoryStream(bytes))
@@ -585,6 +860,7 @@ namespace FreeBeerBot
             }
 
         }
+
 
     }
 
