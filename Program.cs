@@ -51,6 +51,7 @@ namespace FreeBeerBot
 
         public async Task MainAsync()
         {
+            dataBaseService.AddSeedingData();
             _client = new DiscordSocketClient();
             //_client.MessageReceived += CommandHandler;
             _client.Log += Log;

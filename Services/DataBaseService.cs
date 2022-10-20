@@ -16,6 +16,7 @@ namespace DiscordBot.Services
             if (!await CheckPlayerIsExist(player.PlayerName))
             {
                 await freeBeerdbContext.Player.AddAsync(player);
+                await freeBeerdbContext.SaveChangesAsync();
             }
         }
         public async Task<Boolean> CheckPlayerIsExist(string playerName)
@@ -38,6 +39,7 @@ namespace DiscordBot.Services
         public async Task AddPlayerReGear(PlayerLoot playerLoot)
         {
             await freeBeerdbContext.PlayerLoot.AddAsync(playerLoot);
+            await freeBeerdbContext.SaveChangesAsync();
         }
         public async Task AddSeedingData()
         {
@@ -82,6 +84,7 @@ namespace DiscordBot.Services
                     Type = Enums.MoneyTypes.ReGear
                 });
             }
+            await freeBeerdbContext.SaveChangesAsync();
         }
     }
 }
