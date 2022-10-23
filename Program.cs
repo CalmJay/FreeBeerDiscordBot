@@ -371,9 +371,9 @@ namespace FreeBeerBot
         public async void GetRecentDeaths(SocketSlashCommand command)
         {
             string playerData = null;
-            string playerAlbionId = "KYDr8-OIQKO_qEsilGyyHA";
+            string playerAlbionId = "KYDr8-OIQKO_qEsilGyyHA"; //either get from google sheet or search in albion API
             int deathDisplayCounter = 1;
-            int visibleDeathsShown = 5; //can add up to 10 deaths
+            int visibleDeathsShown = 5; //can add up to 10 deaths //Add to config
 
             using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"players/{playerAlbionId}/deaths"))
             {
