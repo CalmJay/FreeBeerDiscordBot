@@ -28,8 +28,8 @@ namespace DiscordBot.Models
         //        Type = value;
         //    }
         //}
-        [EnumDataType(typeof(MoneyTypes))]
-        public MoneyTypes Type { get; set; }
+        [EnumDataType(typeof(Enumerations))]
+        public Enumerations Type { get; set; }
         public virtual ICollection<PlayerLoot> PlayerLoot { get; set; }
     }
 }

@@ -37,6 +37,8 @@ using Color = Discord.Color;
 using AlbionOnlineDataParser;
 using static AlbionOnlineDataParser.AlbionOnlineDataParser;
 using AlbionData.Models;
+using DiscordBot.Enums;
+using GoogleSheetsData;
 
 namespace FreeBeerBot
 {
@@ -44,21 +46,9 @@ namespace FreeBeerBot
     {
         private DiscordSocketClient _client;
 
-        static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
-        private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
-        //string sFreeBeerGuildAPIID = "9ndyGFTPT0mYwPOPDXDmSQ";
-
-        static string ApplicationName = "Google Sheets API .NET Quickstart";
-        public bool enableGoogleApi = true; //ADD TO CONFIG
-
         ulong GuildID = 157626637913948160;//CHANGE THIS TO THE OFFICAL SERVER WHEN DONE. //ADD TO CONFIG
 
-        
-
         public static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
-
-        
 
         public async Task MainAsync()
         {
@@ -77,15 +67,25 @@ namespace FreeBeerBot
             // var token = File.ReadAllText("token.txt");
             // var token = JsonConvert.DeserializeObject<AConfigurationClass>(File.ReadAllText("config.json")).Token;
 
-
-
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
+
+            var CommandsNames = _client.GetGlobalApplicationCommandAsync(941201333543911474);
+            
+
+            //GET GUILD APP COMMAND /applications/{application.id}/guilds/{guild.id}/commands/{command.id}
+            //DELETE GUILD APP COMMAND /applications/{application.id}/guilds/{guild.id}/commands/{command.id}
+            var test = _client.app
+            Console.WriteLine(CommandsNames); 
+
+            /// applications /{ application.id}/ guilds /{ guild.id}/ commands
 
             // Block this task until the program is closed.
             await Task.Delay(-1);
 
 
+            //941201333543911474
+            
         }
 
 
@@ -95,39 +95,38 @@ namespace FreeBeerBot
             return Task.CompletedTask;
         }
 
-        //private Task CommandHandler(SocketMessage message)
-        //{
-        //    //variables
-        //    string command = "";
-        //    int lengthOfCommand = -1;
+        private Task CommandHandler(SocketMessage message)
+        {
+            //variables
+            string command = "";
+            int lengthOfCommand = -1;
 
-        //    //filtering messages begin here
-        //    if (!message.Content.StartsWith('!')) //This is your prefix
-        //        return Task.CompletedTask;
+            //filtering messages begin here
+            if (!message.Content.StartsWith('!')) //This is your prefix
+                return Task.CompletedTask;
 
-        //    if (message.Author.IsBot) //This ignores all commands from bots
-        //        return Task.CompletedTask;
+            if (message.Author.IsBot) //This ignores all commands from bots
+                return Task.CompletedTask;
 
-        //    if (message.Content.Contains(' '))
-        //        lengthOfCommand = message.Content.IndexOf(' ');
-        //    else
-        //        lengthOfCommand = message.Content.Length;
+            if (message.Content.Contains(' '))
+                lengthOfCommand = message.Content.IndexOf(' ');
+            else
+                lengthOfCommand = message.Content.Length;
 
-        //    command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
+            command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
 
-        //    switch (command)
-        //    {
-        //        case "hello":
-        //            message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
-        //            break;
-        //        case "regear":
-        //            message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
-        //            break;
+            switch (command)
+            {
+                case "hello":
+                    message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
+                    break;
+                case "regear":
+                    message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
+                    break;
+            }
 
-        //    }
-
-        //    return Task.CompletedTask;
-        //}
+            return Task.CompletedTask;
+        }
 
         public async Task Client_Ready()
         {
@@ -137,6 +136,7 @@ namespace FreeBeerBot
 
             var guildCommand = new SlashCommandBuilder();
 
+
             guildCommand
                 .WithName("regear")
                 .WithDescription("Submit a regear")
@@ -145,10 +145,10 @@ namespace FreeBeerBot
 
             guildCommand = new SlashCommandBuilder();
             guildCommand
-                .WithName("get-recent-deaths")
+                .WithName("recent-deaths")
                 .WithDescription("View recent deaths");
             await guild.CreateApplicationCommandAsync(guildCommand.Build());
-
+            
             try
             {
                 await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
@@ -183,7 +183,7 @@ namespace FreeBeerBot
                     await Task.Run(() => { RegearSubmission(command); });
                     Console.Write("Regear complete");
                     break;
-                case "get-recent-deaths":
+                case "recent-deaths":
                     AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
                     await Task.Run(() => { GetRecentDeaths(command); });
 
@@ -211,163 +211,20 @@ namespace FreeBeerBot
         }
 
         private async void BlacklistPlayer(SocketSlashCommand command)
-        {
-            var serviceValues = GetSheetsService().Spreadsheets.Values;
+        {       
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
             var guildUser = (SocketGuildUser)command.Data.Options.First().Value;
 
             Console.WriteLine("Dickhead " + guildUser + " has been blacklisted");
 
-            await WriteAsync(serviceValues, guildUser.ToString(), "THIS IS A TEST STRING.");
+            await GoogleSheetsDataWriter.WriteAsync(serviceValues, guildUser.ToString(), "THIS IS A TEST STRING.");
 
 
             await command.Channel.SendMessageAsync(guildUser.ToString() + " has been blacklisted");
 
         }
 
-        public void ConnectToGoogleAPI()
-        {
-            try
-            {
-                UserCredential credential;
-                // Load client secrets.
-                using (var stream =
-                       new FileStream("credentials.json", FileMode.Open, FileAccess.Read))
-                {
-                    /* The file token.json stores the user's access and refresh tokens, and is created
-                     automatically when the authorization flow completes for the first time. */
-                    string credPath = "token.json";
-                    credential = GoogleWebAuthorizationBroker.AuthorizeAsync(GoogleClientSecrets.FromStream(stream).Secrets, Scopes, "user", CancellationToken.None, new FileDataStore(credPath, true)).Result;
-                    Console.WriteLine("Credential file saved to: " + credPath);
-                }
-
-                // Create Google Sheets API service.
-                var service = new SheetsService(new BaseClientService.Initializer
-                {
-                    HttpClientInitializer = credential,
-                    ApplicationName = ApplicationName
-                });
-
-                // Define request parameters.
-
-                String range = "Free Beer blackList!A2:G";
-                SpreadsheetsResource.ValuesResource.GetRequest request =
-                    service.Spreadsheets.Values.Get(SpreadsheetId, range);
-
-                // Prints the names and majors of students in a sample spreadsheet:
-                // https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
-                ValueRange response = request.Execute();
-                IList<IList<Object>> values = response.Values;
-                if (values == null || values.Count == 0)
-                {
-                    Console.WriteLine("No data found.");
-                    return;
-                }
-
-                Console.WriteLine("DiscordName, InGameName, Blacklisted, Reason, Date Recruited, DateLeftKicked, Notes");
-
-                foreach (var row in values)
-                {
-                    // Print columns A and D, which correspond to indices 0 and 5.
-                    Console.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}", row[0], row[1], row[2], row[3], row[4], row[5], row[6]);
-                }
-
-            }
-            catch (FileNotFoundException e)
-            {
-                Console.WriteLine(e.Message);
-            }
-        }
-
-        public string ReadRange { get; set; }
-        public string WriteRange { get; set; }
-
-        private static SheetsService GetSheetsService()
-        {
-            using (var stream = new FileStream(GoogleCredentialsFileName, FileMode.Open, FileAccess.Read))
-            {
-                string credPath = "token.json";
-                var serviceInitializer = new BaseClientService.Initializer
-                {
-                    HttpClientInitializer = GoogleWebAuthorizationBroker.AuthorizeAsync(GoogleClientSecrets.FromStream(stream).Secrets, Scopes, "user", CancellationToken.None, new FileDataStore(credPath, true)).Result  //GoogleCredential.FromStream(stream).CreateScoped(Scopes)
-                };
-                return new SheetsService(serviceInitializer);
-            }
-        }
-        private async Task ReadAsync(SpreadsheetsResource.ValuesResource valuesResource, string sReadrange)
-        {
-            var response = await valuesResource.Get(SpreadsheetId, sReadrange).ExecuteAsync();
-            var values = response.Values;
-            if (values == null || !values.Any())
-            {
-                Console.WriteLine("No data found.");
-                return;
-            }
-            var header = string.Join(" ", values.First().Select(r => r.ToString()));
-            Console.WriteLine($"Header: {header}");
-
-            foreach (var row in values.Skip(1))
-            {
-
-                var res = string.Join(" ", row.Select(r => r.ToString()));
-                Console.WriteLine(res);
-            }
-        }
-
-
-        private async Task WriteAsync(SpreadsheetsResource.ValuesResource valuesResource, string a_SocketGuildUser, string a_sReason)
-        {
-            ////writing to spreadsheet
-            //var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
-            //var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange); 
-            //update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-
-            var col1 = 2;
-            var col2 = 2;
-            ReadRange = $"Copy of Free Beer BlackList!A{col1}";
-            WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
-
-            ValueRange GetResponse = null;
-            IList<IList<object>> values = null;
-            int valuesCount = 0;
-            //var GetResponse = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
-            //var values = GetResponse.Values;
-
-            while (true)
-            {
-                GetResponse = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
-                values = GetResponse.Values;
-
-                if (values == null || !values.Any())
-                {
-                    break;
-                }
-
-                //var testValue = GetResponse.Values.First();
-                //valuesCount = values.Count;
-
-                col1++;
-                col2++;
-
-                ReadRange = $"Copy of Free Beer BlackList!A{col1}";
-                WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
-
-
-            }
-
-            if (values == null || !values.Any())
-            {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
-                var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange);
-                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-                var updateresponse = await update.ExecuteAsync();
-
-            }
-
-            //var response = await update.ExecuteAsync();
-            // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
-        }
-
-        [Command("get-recent-deaths")]
+        [Command("recent-deaths")]
         public async void GetRecentDeaths(SocketSlashCommand command)
         {
             string playerData = null;
@@ -484,20 +341,15 @@ namespace FreeBeerBot
                             throw new Exception(response.ReasonPhrase);
                         }
                     }
-
                     var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData);
-
-
 
                     returnValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
                 }
-
             }
 
 #if DEBUG
             Console.WriteLine("Mode=Debug");
 #endif
-
             var guildUser = (SocketGuildUser)command.User;
 
             if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 1031731037149081630
@@ -510,8 +362,6 @@ namespace FreeBeerBot
             }
 
             //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
-
-            //returnValue = marketData.FirstOrDefault().sell_price_min; 
 
             return returnValue;
         }
@@ -531,7 +381,7 @@ namespace FreeBeerBot
             ulong id = 603281980951494670; // 3 "private channel" //throw this in config
             var chnl = _client.GetChannel(id) as IMessageChannel; // 4
 
-            //REWRITE THIS TO BE CLEANER. ASSIGN ALL GEAR DATA. ADD 
+            //REWRITE THIS TO BE CLEANER. ASSIGN ALL GEAR DATA.
             var placeholder = "https://render.albiononline.com/v1/item/T1_WOOD.png";
             var head = (eventData.Victim.Equipment.Head != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.Head.Type + "?quality=" + eventData.Victim.Equipment.Head.Quality }" : placeholder;
             var weapon = (eventData.Victim.Equipment.MainHand != null) ? $"https://render.albiononline.com/v1/item/{eventData.Victim.Equipment.MainHand.Type + "?quality=" + eventData.Victim.Equipment.MainHand.Quality}" : placeholder;
@@ -545,7 +395,6 @@ namespace FreeBeerBot
 
             try
             {
-
                 var img1 = $"<div style='width: auto'><img style='display: inline;width:100px;height:100px' src='{head}'/>";
                 var img2 = $"<img style='display: inline;width:100px;height:100px' src='{weapon}'/>";
                 var img3 = $"<img style='display: inline;width:100px;height:100px' src='{offhand}'/>";
@@ -583,11 +432,8 @@ namespace FreeBeerBot
 
                 throw;
             }
-
         }
-
     }
-
 }
 
 
