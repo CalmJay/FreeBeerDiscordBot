@@ -4,15 +4,15 @@ using System.Text;
 
 namespace DiscordBot.Enums
 {
-    public enum Enumerations
-    {
-        ReGear,
-        LootSplit,
-        Other,
-        OCBreak,
-        FocusSale,
-        Hellgates,
-    }
+    //public enum Enumerations
+    //{
+    //    ReGear,
+    //    LootSplit,
+    //    Other,
+    //    OCBreak,
+    //    FocusSale,
+    //    Hellgates,
+    //}
 
     public enum AlbionAPIDataTypesEnum
     {
@@ -40,5 +40,15 @@ namespace DiscordBot.Enums
         sell,
         prices,
         history
+    }
+
+    public enum MoneyTypes
+    {
+        FocusSale,
+        Hellgates,
+        LootSplit,
+        OCBreak,
+        Other,
+        ReGear
     }
 }

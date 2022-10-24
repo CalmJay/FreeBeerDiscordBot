@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DiscordBot.Enums;
 
 namespace DiscordBot.Services
 {
@@ -43,45 +44,45 @@ namespace DiscordBot.Services
         }
         public async Task AddSeedingData()
         {
-            if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == Enums.MoneyTypes.FocusSale))
+            if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == MoneyTypes.FocusSale))
             {
                 await freeBeerdbContext.MoneyType.AddAsync(new MoneyType { 
-                Type= Enums.MoneyTypes.FocusSale
+                Type= MoneyTypes.FocusSale
                 });
             }
             if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == Enums.MoneyTypes.Hellgates))
             {
                 await freeBeerdbContext.MoneyType.AddAsync(new MoneyType
                 {
-                    Type = Enums.MoneyTypes.Hellgates
+                    Type = MoneyTypes.Hellgates
                 });
             }
             if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == Enums.MoneyTypes.LootSplit))
             {
                 await freeBeerdbContext.MoneyType.AddAsync(new MoneyType
                 {
-                    Type = Enums.MoneyTypes.LootSplit
+                    Type = MoneyTypes.LootSplit
                 });
             }
             if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == Enums.MoneyTypes.OCBreak))
             {
                 await freeBeerdbContext.MoneyType.AddAsync(new MoneyType
                 {
-                    Type = Enums.MoneyTypes.OCBreak
+                    Type = MoneyTypes.OCBreak
                 });
             }
             if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == Enums.MoneyTypes.Other))
             {
                 await freeBeerdbContext.MoneyType.AddAsync(new MoneyType
                 {
-                    Type = Enums.MoneyTypes.Other
+                    Type = MoneyTypes.Other
                 });
             }
             if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == Enums.MoneyTypes.ReGear))
             {
                 await freeBeerdbContext.MoneyType.AddAsync(new MoneyType
                 {
-                    Type = Enums.MoneyTypes.ReGear
+                    Type = MoneyTypes.ReGear
                 });
             }
             await freeBeerdbContext.SaveChangesAsync();

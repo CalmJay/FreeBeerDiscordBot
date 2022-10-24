@@ -7,11 +7,6 @@ using Discord.WebSocket;
 using DiscordBot.Extension;
 using DiscordBot.Models;
 using DiscordBot.Services;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Services;
-using Google.Apis.Sheets.v4;
-using Google.Apis.Sheets.v4.Data;
-using Google.Apis.Util.Store;
 using MarketData;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
@@ -22,13 +17,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using static AlbionOnlineDataParser.AlbionOnlineDataParser;
 using Color = Discord.Color;
 using AlbionData.Models;
 using DiscordBot.Enums;
 using GoogleSheetsData;
+using System.Configuration;
 
 namespace FreeBeerBot
 {
@@ -36,44 +31,30 @@ namespace FreeBeerBot
     {
         private DiscordSocketClient _client;
         private DataBaseService dataBaseService;
-        static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
-        private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
-        //string sFreeBeerGuildAPIID = "9ndyGFTPT0mYwPOPDXDmSQ";
 
-        static string ApplicationName = "Google Sheets API .NET Quickstart";
-        public bool enableGoogleApi = true; //ADD TO CONFIG
-
-        ulong GuildID = 157626637913948160;//CHANGE THIS TO THE OFFICAL SERVER WHEN DONE. //ADD TO CONFIG
+        ulong GuildID = ulong.Parse( ConfigurationManager.AppSettings.Get("guildID"));
+        string discordToken = ConfigurationManager.AppSettings.Get("discordBotToken");
 
         public static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
         public async Task MainAsync()
         {
-            dataBaseService.AddSeedingData();
+            //dataBaseService.AddSeedingData();
             _client = new DiscordSocketClient();
             //_client.MessageReceived += CommandHandler;
             _client.Log += Log;
 
             _client.Ready += Client_Ready;
             _client.SlashCommandExecuted += SlashCommandHandler;
-            //  You can assign your bot token to a string, and pass that in to connect.
-            //  This is, however, insecure, particularly if you plan to have your code hosted in a public repository.
-            var token = File.ReadAllText("token.txt");
 
-            // Some alternative options would be to keep your token in an Environment Variable or a standalone file.
-            // var token = Environment.GetEnvironmentVariable("NameOfYourEnvironmentVariable");
-            // var token = File.ReadAllText("token.txt");
-            // var token = JsonConvert.DeserializeObject<AConfigurationClass>(File.ReadAllText("config.json")).Token;
-
-            await _client.LoginAsync(TokenType.Bot, token);
+            await _client.LoginAsync(TokenType.Bot, discordToken);
             await _client.StartAsync();
 
             // Block this task until the program is closed.
             await Task.Delay(-1);
-            var services = new ServiceCollection();
+            //var services = new ServiceCollection();
             //string usercount = ConfigurationSettings.AppSettings["ConnectionString"];
-            DependencyInjectionExtension.DependencyInjection(services);
+            //DependencyInjectionExtension.DependencyInjection(services);
 
 
         }
@@ -286,7 +267,7 @@ namespace FreeBeerBot
 
             int returnValue = 0;
             int returnNotUnderRegearValue = 0;
-            string sMarketLocation = AlbionCitiesEnum.Martlock.ToString(); //add this to config. If field is null, all cities market data will be pulled
+            string? sMarketLocation = ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             bool bAddAllQualities = false;
             int iDefaultItemQuality = 2;
 
@@ -656,18 +637,16 @@ namespace FreeBeerBot
         {
             var eventData = await GetAlbionEventInfo(command);
             //await PostRegear(command, eventData);
-            dataBaseService = new DataBaseService();
-            await dataBaseService.AddPlayerInfo(new Player
-            {
-                PlayerId = eventData.Victim.Id,
-                PlayerName = eventData.Victim.Name
-            });
+            //dataBaseService = new DataBaseService();
+            //await dataBaseService.AddPlayerInfo(new Player
+            //{
+            //    PlayerId = eventData.Victim.Id,
+            //    PlayerName = eventData.Victim.Name
+            //});
             if (CheckIfPlayerHaveReGearIcon(command))
             {
                 await PostRegear(command, eventData);
             }
-
-            Console.WriteLine("something");
         }
 
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
@@ -694,6 +673,7 @@ namespace FreeBeerBot
                                     .WithTitle($"Regear Submission")
                                     .AddField("User submitted ", command.User.Username, true)
                                     .AddField("Victim", eventData.Victim.Name)
+                                    .AddField("Killer", "[" + eventData.Killer.AllianceName+"] " +"["+ eventData.Killer.GuildName +"] " + eventData.Killer.Name)
                                     .AddField("Death Average IP", eventData.Victim.AverageItemPower)
 
                                     //.WithImageUrl(GearImageRenderSerivce(command))
