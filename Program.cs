@@ -30,6 +30,8 @@ namespace FreeBeerBot
     public class Program : InteractionModuleBase<SocketInteractionContext>
     {
         private DiscordSocketClient _client;
+
+        private SocketGuildUser _user;
         private DataBaseService dataBaseService;
 
         ulong GuildID = ulong.Parse( ConfigurationManager.AppSettings.Get("guildID"));
@@ -47,18 +49,17 @@ namespace FreeBeerBot
             _client.Ready += Client_Ready;
             _client.SlashCommandExecuted += SlashCommandHandler;
 
+           
+
             await _client.LoginAsync(TokenType.Bot, discordToken);
             await _client.StartAsync();
-
+            
             // Block this task until the program is closed.
             await Task.Delay(-1);
             //var services = new ServiceCollection();
             //string usercount = ConfigurationSettings.AppSettings["ConnectionString"];
             //DependencyInjectionExtension.DependencyInjection(services);
-
-
         }
-
 
         private Task Log(LogMessage msg)
         {
@@ -68,7 +69,6 @@ namespace FreeBeerBot
 
         private Task CommandHandler(SocketMessage message)
         {
-            //variables
             string command = "";
             int lengthOfCommand = -1;
 
@@ -101,13 +101,11 @@ namespace FreeBeerBot
 
         public async Task Client_Ready()
         {
-            //USE GUILD COMMANDS FOR PRIVATE USE
-            //GLOBAL COMMANDS ARE MORE FOR LARGE USER BASE USE (AKA IF THE BOT IS GOING TO BE USED IN A LOT OF DISCORD SERVERS)
             var guild = _client.GetGuild(GuildID);
 
             var global = _client.GetGlobalApplicationCommandsAsync();
-            //_client.Rest.DeleteAllGlobalCommandsAsync();
-            //guild.DeleteApplicationCommandsAsync();
+            //_client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+            //guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
 
             var guildCommand = new SlashCommandBuilder();
 
@@ -141,9 +139,6 @@ namespace FreeBeerBot
 
             switch (command.Data.Name)
             {
-                case "list-roles":
-                    await HandleListRoleCommand(command);
-                    break;
                 case "blacklist":
                     BlacklistPlayer(command);
                     break;
@@ -165,25 +160,6 @@ namespace FreeBeerBot
             }
         }
 
-        private async Task HandleListRoleCommand(SocketSlashCommand command)
-        {
-            // We need to extract the user parameter from the command. since we only have one option and it's required, we can just use the first option.
-            var guildUser = (SocketGuildUser)command.Data.Options.First().Value;
-
-            // We remove the everyone role and select the mention of each role.
-            var roleList = string.Join(",\n", guildUser.Roles.Where(x => !x.IsEveryone).Select(x => x.Mention));
-
-            var embedBuiler = new EmbedBuilder()
-                .WithAuthor(guildUser.ToString(), guildUser.GetAvatarUrl() ?? guildUser.GetDefaultAvatarUrl())
-                .WithTitle("Roles")
-                .WithDescription(roleList)
-                .WithColor(Discord.Color.Green)
-                .WithCurrentTimestamp();
-
-            // Now, Let's respond with the embed.
-            await command.RespondAsync(embed: embedBuiler.Build());
-        }
-
         private async void BlacklistPlayer(SocketSlashCommand command)
         {       
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
@@ -198,20 +174,66 @@ namespace FreeBeerBot
 
         }
 
+        public bool IsUserInDatabase()
+        {
+            return false;
+        }
+
         [Command("recent-deaths")]
         public async void GetRecentDeaths(SocketSlashCommand command)
         {
-            string playerData = null;
-            string playerAlbionId = "KYDr8-OIQKO_qEsilGyyHA"; //either get from google sheet or search in albion API
-            int deathDisplayCounter = 1;
-            int visibleDeathsShown = 5; //can add up to 10 deaths //Add to config
+            string? sPlayerData = null;
+            string? sPlayerAlbionId = null; //either get from google sheet or search in albion API
+            string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
 
-            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"players/{playerAlbionId}/deaths"))
+            int iDeathDisplayCounter = 1;
+            int iVisibleDeathsShown =   Int32.Parse(ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths //Add to config
+
+            if(IsUserInDatabase())
+            {
+                //add user to database
+            }
+            else
+            {
+                using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"search?q={sUserNickname}"))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        sPlayerData = await response.Content.ReadAsStringAsync();
+                        var parsedObjects = JObject.Parse(sPlayerData);
+                        PlayersSearch playerSearchData = JsonConvert.DeserializeObject<PlayersSearch>(sPlayerData);
+
+                        //USE THIS LOGIC TO CREATE METHOD TO ADD USER TO DATABASE
+                        if (playerSearchData.players.FirstOrDefault() != null)
+                        {
+                            sPlayerAlbionId = playerSearchData.players.FirstOrDefault().Id;
+                            Console.WriteLine("Guild Nickname Matches Albion Username");
+                        }
+                        else
+                        {
+                            await command.Channel.SendMessageAsync("Hey idiot. Does your discord nickname match your in-game name?");
+                        }
+
+                        //var playerUniqueID = (string)parsedObjects["players"]["Id"]
+                        //    .Select(n => n["Name"] = sUserNickname).ToString();
+
+                            //the things that worked
+                            //var test = parsedObjects.players; //parsed objects must be declared dynamic
+                            //var playerUniqueID = (string)parsedObjects["players"][0]["Id"];
+                    }
+                    else
+                    {
+                        throw new Exception(response.ReasonPhrase);
+                    }
+                }
+            }
+            
+            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"players/{sPlayerAlbionId}/deaths"))
             {
                 if (response.IsSuccessStatusCode)
                 {
-                    playerData = await response.Content.ReadAsStringAsync();
-                    var parsedObjects = JArray.Parse(playerData);
+                    sPlayerData = await response.Content.ReadAsStringAsync();
+                    var parsedObjects = JArray.Parse(sPlayerData);
                     //TODO: Add killer and date of death
 
                     var searchDeaths = parsedObjects.Children<JObject>()
@@ -224,10 +246,10 @@ namespace FreeBeerBot
 
                     for (int i = 0; i < searchDeaths.Count; i++)
                     {
-                        if (i <= visibleDeathsShown)
+                        if (i <= iVisibleDeathsShown)
                         {
-                            embed.AddField($"Death{deathDisplayCounter}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
-                            deathDisplayCounter++;
+                            embed.AddField($"Death{iDeathDisplayCounter}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                            iDeathDisplayCounter++;
                         }
                     }
                     await command.Channel.SendMessageAsync(null, false, embed.Build());
