@@ -70,22 +70,8 @@ namespace FreeBeerBot
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
 
-            var CommandsNames = _client.GetGlobalApplicationCommandAsync(941201333543911474);
-            
-
-            //GET GUILD APP COMMAND /applications/{application.id}/guilds/{guild.id}/commands/{command.id}
-            //DELETE GUILD APP COMMAND /applications/{application.id}/guilds/{guild.id}/commands/{command.id}
-            var test = _client.app
-            Console.WriteLine(CommandsNames); 
-
-            /// applications /{ application.id}/ guilds /{ guild.id}/ commands
-
             // Block this task until the program is closed.
             await Task.Delay(-1);
-
-
-            //941201333543911474
-            
         }
 
 
@@ -132,10 +118,13 @@ namespace FreeBeerBot
         {
             //USE GUILD COMMANDS FOR PRIVATE USE
             //GLOBAL COMMANDS ARE MORE FOR LARGE USER BASE USE (AKA IF THE BOT IS GOING TO BE USED IN A LOT OF DISCORD SERVERS)
-            var guild = _client.GetGuild(GuildID); 
+            var guild = _client.GetGuild(GuildID);
+
+            var global = _client.GetGlobalApplicationCommandsAsync();
+            //_client.Rest.DeleteAllGlobalCommandsAsync();
+            //guild.DeleteApplicationCommandsAsync();
 
             var guildCommand = new SlashCommandBuilder();
-
 
             guildCommand
                 .WithName("regear")
@@ -148,7 +137,7 @@ namespace FreeBeerBot
                 .WithName("recent-deaths")
                 .WithDescription("View recent deaths");
             await guild.CreateApplicationCommandAsync(guildCommand.Build());
-            
+
             try
             {
                 await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
