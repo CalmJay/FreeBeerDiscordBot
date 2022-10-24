@@ -7,11 +7,6 @@ using Discord.WebSocket;
 using DiscordBot.Extension;
 using DiscordBot.Models;
 using DiscordBot.Services;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Services;
-using Google.Apis.Sheets.v4;
-using Google.Apis.Sheets.v4.Data;
-using Google.Apis.Util.Store;
 using MarketData;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
@@ -22,65 +17,49 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using static AlbionOnlineDataParser.AlbionOnlineDataParser;
 using Color = Discord.Color;
+using AlbionData.Models;
+using DiscordBot.Enums;
+using GoogleSheetsData;
+using System.Configuration;
 
 namespace FreeBeerBot
 {
     public class Program : InteractionModuleBase<SocketInteractionContext>
     {
         private DiscordSocketClient _client;
+
+        private SocketGuildUser _user;
         private DataBaseService dataBaseService;
-        static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
-        private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
-        //string sFreeBeerGuildAPIID = "9ndyGFTPT0mYwPOPDXDmSQ";
 
-        static string ApplicationName = "Google Sheets API .NET Quickstart";
-        public bool enableGoogleApi = true; //ADD TO CONFIG
-
-        ulong GuildID = 157626637913948160;//CHANGE THIS TO THE OFFICAL SERVER WHEN DONE. //ADD TO CONFIG
-
-        
+        ulong GuildID = ulong.Parse( ConfigurationManager.AppSettings.Get("guildID"));
+        string discordToken = ConfigurationManager.AppSettings.Get("discordBotToken");
 
         public static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
-        
-
         public async Task MainAsync()
         {
-            dataBaseService.AddSeedingData();
+            //dataBaseService.AddSeedingData();
             _client = new DiscordSocketClient();
             //_client.MessageReceived += CommandHandler;
             _client.Log += Log;
 
             _client.Ready += Client_Ready;
             _client.SlashCommandExecuted += SlashCommandHandler;
-            //  You can assign your bot token to a string, and pass that in to connect.
-            //  This is, however, insecure, particularly if you plan to have your code hosted in a public repository.
-            var token = File.ReadAllText("token.txt");
 
-            // Some alternative options would be to keep your token in an Environment Variable or a standalone file.
-            // var token = Environment.GetEnvironmentVariable("NameOfYourEnvironmentVariable");
-            // var token = File.ReadAllText("token.txt");
-            // var token = JsonConvert.DeserializeObject<AConfigurationClass>(File.ReadAllText("config.json")).Token;
+           
 
-
-
-            await _client.LoginAsync(TokenType.Bot, token);
+            await _client.LoginAsync(TokenType.Bot, discordToken);
             await _client.StartAsync();
-
+            
             // Block this task until the program is closed.
             await Task.Delay(-1);
-            var services = new ServiceCollection();
+            //var services = new ServiceCollection();
             //string usercount = ConfigurationSettings.AppSettings["ConnectionString"];
-            DependencyInjectionExtension.DependencyInjection(services);
-
-
+            //DependencyInjectionExtension.DependencyInjection(services);
         }
-
 
         private Task Log(LogMessage msg)
         {
@@ -88,45 +67,45 @@ namespace FreeBeerBot
             return Task.CompletedTask;
         }
 
-        //private Task CommandHandler(SocketMessage message)
-        //{
-        //    //variables
-        //    string command = "";
-        //    int lengthOfCommand = -1;
+        private Task CommandHandler(SocketMessage message)
+        {
+            string command = "";
+            int lengthOfCommand = -1;
 
-        //    //filtering messages begin here
-        //    if (!message.Content.StartsWith('!')) //This is your prefix
-        //        return Task.CompletedTask;
+            //filtering messages begin here
+            if (!message.Content.StartsWith('!')) //This is your prefix
+                return Task.CompletedTask;
 
-        //    if (message.Author.IsBot) //This ignores all commands from bots
-        //        return Task.CompletedTask;
+            if (message.Author.IsBot) //This ignores all commands from bots
+                return Task.CompletedTask;
 
-        //    if (message.Content.Contains(' '))
-        //        lengthOfCommand = message.Content.IndexOf(' ');
-        //    else
-        //        lengthOfCommand = message.Content.Length;
+            if (message.Content.Contains(' '))
+                lengthOfCommand = message.Content.IndexOf(' ');
+            else
+                lengthOfCommand = message.Content.Length;
 
-        //    command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
+            command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
 
-        //    switch (command)
-        //    {
-        //        case "hello":
-        //            message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
-        //            break;
-        //        case "regear":
-        //            message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
-        //            break;
+            switch (command)
+            {
+                case "hello":
+                    message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
+                    break;
+                case "regear":
+                    message.Channel.SendMessageAsync($@"This is the regear shit {message.Author.Mention}");
+                    break;
+            }
 
-        //    }
-
-        //    return Task.CompletedTask;
-        //}
+            return Task.CompletedTask;
+        }
 
         public async Task Client_Ready()
         {
-            //USE GUILD COMMANDS FOR PRIVATE USE
-            //GLOBAL COMMANDS ARE MORE FOR LARGE USER BASE USE (AKA IF THE BOT IS GOING TO BE USED IN A LOT OF DISCORD SERVERS)
-            var guild = _client.GetGuild(GuildID); 
+            var guild = _client.GetGuild(GuildID);
+
+            var global = _client.GetGlobalApplicationCommandsAsync();
+            //_client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+            //guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
 
             var guildCommand = new SlashCommandBuilder();
 
@@ -138,7 +117,7 @@ namespace FreeBeerBot
 
             guildCommand = new SlashCommandBuilder();
             guildCommand
-                .WithName("get-recent-deaths")
+                .WithName("recent-deaths")
                 .WithDescription("View recent deaths");
             await guild.CreateApplicationCommandAsync(guildCommand.Build());
 
@@ -160,9 +139,6 @@ namespace FreeBeerBot
 
             switch (command.Data.Name)
             {
-                case "list-roles":
-                    await HandleListRoleCommand(command);
-                    break;
                 case "blacklist":
                     BlacklistPlayer(command);
                     break;
@@ -176,7 +152,7 @@ namespace FreeBeerBot
                     await Task.Run(() => { RegearSubmission(command); });
                     Console.Write("Regear complete");
                     break;
-                case "get-recent-deaths":
+                case "recent-deaths":
                     AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeClient();
                     await Task.Run(() => { GetRecentDeaths(command); });
 
@@ -184,196 +160,80 @@ namespace FreeBeerBot
             }
         }
 
-        private async Task HandleListRoleCommand(SocketSlashCommand command)
-        {
-            // We need to extract the user parameter from the command. since we only have one option and it's required, we can just use the first option.
-            var guildUser = (SocketGuildUser)command.Data.Options.First().Value;
-
-            // We remove the everyone role and select the mention of each role.
-            var roleList = string.Join(",\n", guildUser.Roles.Where(x => !x.IsEveryone).Select(x => x.Mention));
-
-            var embedBuiler = new EmbedBuilder()
-                .WithAuthor(guildUser.ToString(), guildUser.GetAvatarUrl() ?? guildUser.GetDefaultAvatarUrl())
-                .WithTitle("Roles")
-                .WithDescription(roleList)
-                .WithColor(Discord.Color.Green)
-                .WithCurrentTimestamp();
-
-            // Now, Let's respond with the embed.
-            await command.RespondAsync(embed: embedBuiler.Build());
-        }
-
         private async void BlacklistPlayer(SocketSlashCommand command)
-        {
-            var serviceValues = GetSheetsService().Spreadsheets.Values;
+        {       
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
             var guildUser = (SocketGuildUser)command.Data.Options.First().Value;
 
             Console.WriteLine("Dickhead " + guildUser + " has been blacklisted");
 
-            await WriteAsync(serviceValues, guildUser.ToString(), "THIS IS A TEST STRING.");
+            await GoogleSheetsDataWriter.WriteAsync(serviceValues, guildUser.ToString(), "THIS IS A TEST STRING.");
 
 
             await command.Channel.SendMessageAsync(guildUser.ToString() + " has been blacklisted");
 
         }
 
-        public void ConnectToGoogleAPI()
+        public bool IsUserInDatabase()
         {
-            try
-            {
-                UserCredential credential;
-                // Load client secrets.
-                using (var stream =
-                       new FileStream("credentials.json", FileMode.Open, FileAccess.Read))
-                {
-                    /* The file token.json stores the user's access and refresh tokens, and is created
-                     automatically when the authorization flow completes for the first time. */
-                    string credPath = "token.json";
-                    credential = GoogleWebAuthorizationBroker.AuthorizeAsync(GoogleClientSecrets.FromStream(stream).Secrets, Scopes, "user", CancellationToken.None, new FileDataStore(credPath, true)).Result;
-                    Console.WriteLine("Credential file saved to: " + credPath);
-                }
-
-                // Create Google Sheets API service.
-                var service = new SheetsService(new BaseClientService.Initializer
-                {
-                    HttpClientInitializer = credential,
-                    ApplicationName = ApplicationName
-                });
-
-                // Define request parameters.
-
-                String range = "Free Beer blackList!A2:G";
-                SpreadsheetsResource.ValuesResource.GetRequest request =
-                    service.Spreadsheets.Values.Get(SpreadsheetId, range);
-
-                // Prints the names and majors of students in a sample spreadsheet:
-                // https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
-                ValueRange response = request.Execute();
-                IList<IList<Object>> values = response.Values;
-                if (values == null || values.Count == 0)
-                {
-                    Console.WriteLine("No data found.");
-                    return;
-                }
-
-                Console.WriteLine("DiscordName, InGameName, Blacklisted, Reason, Date Recruited, DateLeftKicked, Notes");
-
-                foreach (var row in values)
-                {
-                    // Print columns A and D, which correspond to indices 0 and 5.
-                    Console.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}", row[0], row[1], row[2], row[3], row[4], row[5], row[6]);
-                }
-
-            }
-            catch (FileNotFoundException e)
-            {
-                Console.WriteLine(e.Message);
-            }
+            return false;
         }
 
-        public string ReadRange { get; set; }
-        public string WriteRange { get; set; }
-
-        private static SheetsService GetSheetsService()
-        {
-            using (var stream = new FileStream(GoogleCredentialsFileName, FileMode.Open, FileAccess.Read))
-            {
-                string credPath = "token.json";
-                var serviceInitializer = new BaseClientService.Initializer
-                {
-                    HttpClientInitializer = GoogleWebAuthorizationBroker.AuthorizeAsync(GoogleClientSecrets.FromStream(stream).Secrets, Scopes, "user", CancellationToken.None, new FileDataStore(credPath, true)).Result  //GoogleCredential.FromStream(stream).CreateScoped(Scopes)
-                };
-                return new SheetsService(serviceInitializer);
-            }
-        }
-        private async Task ReadAsync(SpreadsheetsResource.ValuesResource valuesResource, string sReadrange)
-        {
-            var response = await valuesResource.Get(SpreadsheetId, sReadrange).ExecuteAsync();
-            var values = response.Values;
-            if (values == null || !values.Any())
-            {
-                Console.WriteLine("No data found.");
-                return;
-            }
-            var header = string.Join(" ", values.First().Select(r => r.ToString()));
-            Console.WriteLine($"Header: {header}");
-
-            foreach (var row in values.Skip(1))
-            {
-
-                var res = string.Join(" ", row.Select(r => r.ToString()));
-                Console.WriteLine(res);
-            }
-        }
-
-
-        private async Task WriteAsync(SpreadsheetsResource.ValuesResource valuesResource, string a_SocketGuildUser, string a_sReason)
-        {
-            ////writing to spreadsheet
-            //var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
-            //var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange); 
-            //update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-
-            var col1 = 2;
-            var col2 = 2;
-            ReadRange = $"Copy of Free Beer BlackList!A{col1}";
-            WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
-
-            ValueRange GetResponse = null;
-            IList<IList<object>> values = null;
-            int valuesCount = 0;
-            //var GetResponse = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
-            //var values = GetResponse.Values;
-
-            while (true)
-            {
-                GetResponse = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
-                values = GetResponse.Values;
-
-                if (values == null || !values.Any())
-                {
-                    break;
-                }
-
-                //var testValue = GetResponse.Values.First();
-                //valuesCount = values.Count;
-
-                col1++;
-                col2++;
-
-                ReadRange = $"Copy of Free Beer BlackList!A{col1}";
-                WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
-
-
-            }
-
-            if (values == null || !values.Any())
-            {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
-                var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange);
-                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-                var updateresponse = await update.ExecuteAsync();
-
-            }
-
-            //var response = await update.ExecuteAsync();
-            // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
-        }
-
-        [Command("get-recent-deaths")]
+        [Command("recent-deaths")]
         public async void GetRecentDeaths(SocketSlashCommand command)
         {
-            string playerData = null;
-            string playerAlbionId = "KYDr8-OIQKO_qEsilGyyHA";
-            int deathDisplayCounter = 1;
-            int visibleDeathsShown = 5; //can add up to 10 deaths
+            string? sPlayerData = null;
+            string? sPlayerAlbionId = null; //either get from google sheet or search in albion API
+            string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
 
-            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"players/{playerAlbionId}/deaths"))
+            int iDeathDisplayCounter = 1;
+            int iVisibleDeathsShown =   Int32.Parse(ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths //Add to config
+
+            if(IsUserInDatabase())
+            {
+                //add user to database
+            }
+            else
+            {
+                using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"search?q={sUserNickname}"))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        sPlayerData = await response.Content.ReadAsStringAsync();
+                        var parsedObjects = JObject.Parse(sPlayerData);
+                        PlayersSearch playerSearchData = JsonConvert.DeserializeObject<PlayersSearch>(sPlayerData);
+
+                        //USE THIS LOGIC TO CREATE METHOD TO ADD USER TO DATABASE
+                        if (playerSearchData.players.FirstOrDefault() != null)
+                        {
+                            sPlayerAlbionId = playerSearchData.players.FirstOrDefault().Id;
+                            Console.WriteLine("Guild Nickname Matches Albion Username");
+                        }
+                        else
+                        {
+                            await command.Channel.SendMessageAsync("Hey idiot. Does your discord nickname match your in-game name?");
+                        }
+
+                        //var playerUniqueID = (string)parsedObjects["players"]["Id"]
+                        //    .Select(n => n["Name"] = sUserNickname).ToString();
+
+                            //the things that worked
+                            //var test = parsedObjects.players; //parsed objects must be declared dynamic
+                            //var playerUniqueID = (string)parsedObjects["players"][0]["Id"];
+                    }
+                    else
+                    {
+                        throw new Exception(response.ReasonPhrase);
+                    }
+                }
+            }
+            
+            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"players/{sPlayerAlbionId}/deaths"))
             {
                 if (response.IsSuccessStatusCode)
                 {
-                    playerData = await response.Content.ReadAsStringAsync();
-                    var parsedObjects = JArray.Parse(playerData);
+                    sPlayerData = await response.Content.ReadAsStringAsync();
+                    var parsedObjects = JArray.Parse(sPlayerData);
                     //TODO: Add killer and date of death
 
                     var searchDeaths = parsedObjects.Children<JObject>()
@@ -386,10 +246,10 @@ namespace FreeBeerBot
 
                     for (int i = 0; i < searchDeaths.Count; i++)
                     {
-                        if (i <= visibleDeathsShown)
+                        if (i <= iVisibleDeathsShown)
                         {
-                            embed.AddField($"Death{deathDisplayCounter}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
-                            deathDisplayCounter++;
+                            embed.AddField($"Death{iDeathDisplayCounter}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                            iDeathDisplayCounter++;
                         }
                     }
                     await command.Channel.SendMessageAsync(null, false, embed.Build());
@@ -429,7 +289,7 @@ namespace FreeBeerBot
 
             int returnValue = 0;
             int returnNotUnderRegearValue = 0;
-            string sMarketLocation = AlbionCitiesEnum.Martlock.ToString(); //add this to config. If field is null, all cities market data will be pulled
+            string? sMarketLocation = ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             bool bAddAllQualities = false;
             int iDefaultItemQuality = 2;
 
@@ -693,7 +553,6 @@ namespace FreeBeerBot
                             throw new Exception(response.ReasonPhrase);
                         }
                     }
-
                     var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData);
 
 
@@ -736,13 +595,11 @@ namespace FreeBeerBot
                         notAvailableInMarketList.Add(marketData.FirstOrDefault().item_id.Replace('_',' ').Replace('@','.'));
                     }
                 }
-
             }
 
 #if DEBUG
             Console.WriteLine("Mode=Debug");
 #endif
-
             var guildUser = (SocketGuildUser)command.User;
 
             if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 1031731037149081630
@@ -802,18 +659,16 @@ namespace FreeBeerBot
         {
             var eventData = await GetAlbionEventInfo(command);
             //await PostRegear(command, eventData);
-            dataBaseService = new DataBaseService();
-            await dataBaseService.AddPlayerInfo(new Player
-            {
-                PlayerId = eventData.Victim.Id,
-                PlayerName = eventData.Victim.Name
-            });
+            //dataBaseService = new DataBaseService();
+            //await dataBaseService.AddPlayerInfo(new Player
+            //{
+            //    PlayerId = eventData.Victim.Id,
+            //    PlayerName = eventData.Victim.Name
+            //});
             if (CheckIfPlayerHaveReGearIcon(command))
             {
                 await PostRegear(command, eventData);
             }
-
-            Console.WriteLine("something");
         }
 
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
@@ -840,6 +695,7 @@ namespace FreeBeerBot
                                     .WithTitle($"Regear Submission")
                                     .AddField("User submitted ", command.User.Username, true)
                                     .AddField("Victim", eventData.Victim.Name)
+                                    .AddField("Killer", "[" + eventData.Killer.AllianceName+"] " +"["+ eventData.Killer.GuildName +"] " + eventData.Killer.Name)
                                     .AddField("Death Average IP", eventData.Victim.AverageItemPower)
 
                                     //.WithImageUrl(GearImageRenderSerivce(command))
@@ -859,12 +715,10 @@ namespace FreeBeerBot
 
                 throw;
             }
-
         }
 
 
     }
-
 }
 
 

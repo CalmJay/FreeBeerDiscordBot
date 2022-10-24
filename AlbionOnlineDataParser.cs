@@ -10,34 +10,6 @@ namespace AlbionOnlineDataParser
         public static HttpClient ApiClient { get; set; } = new HttpClient();
         public static HttpClient ApiAlbionDataProject { get; set; } = new HttpClient();
 
-        public enum AlbionAPIDataTypesEnum
-        {
-            search,
-            playerSearch,
-            playerDeaths,
-            playerKills,
-            playerStatistics,
-            events
-        }
-
-        public enum AlbionCitiesEnum
-        {
-            Thetford,
-            FortSterling,
-            Lymhurst,
-            Bridgewatch,
-            Martlock,
-            Caerleon
-        }
-
-        public enum MarketEnum
-        {
-            buy,
-            sell,
-            prices,
-            history
-        }
-
         public static void InitializeClient()
         {
             ApiClient = new HttpClient();
