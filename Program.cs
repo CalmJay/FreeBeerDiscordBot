@@ -46,7 +46,7 @@ namespace FreeBeerBot
             _client.Ready += Client_Ready;
             _client.SlashCommandExecuted += SlashCommandHandler;
             _client.MessageReceived += CommandHandler;
-            //_client.ButtonExecuted += MyButtonHandler;
+            _client.ButtonExecuted += ButtonHandler;
             _client.Log += Log;
 
 
@@ -163,12 +163,35 @@ namespace FreeBeerBot
                     await Task.Run(() => { GetRecentDeaths(command); });
                     break;
                 case "componets":
-
-                   await HandleComponetCommand();
+                   await HandleComponetCommand(command);
                     break;
             }
         }
 
+        public async Task ButtonHandler(SocketMessageComponent component)
+        {
+            switch (component.Data.CustomId)
+            {
+                case "approve":
+                    await component.RespondAsync($"Regear has been approved!");
+                    break;
+                case "deny":
+                    await component.RespondAsync($"Regear is denied!");
+                    await RegearDenied(component);
+                    break;
+            }
+        }
+        public async Task RegearDenied(SocketMessageComponent component)
+        {
+            var mb = new ModalBuilder()
+            .WithTitle("Fav Food")
+            .WithCustomId("food_menu")
+            .AddTextInput("What??", "food_name", placeholder: "Pizza")
+            .AddTextInput("Why??", "food_reason", TextInputStyle.Paragraph, "Kus it's so tasty");
+            await component.RespondWithModalAsync(mb.Build());
+
+
+        }
         private async void BlacklistPlayer(SocketSlashCommand command)
         {
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
@@ -689,19 +712,33 @@ namespace FreeBeerBot
 
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
         {
-            //ulong id = 1014912611004989491; // 3 "specific channel"
-            ulong id = 603281980951494670; // 3 "private channel" //throw this in config
+            ulong id = ulong.Parse(ConfigurationManager.AppSettings.Get("regearTeamChannelId")); // 3 "private channel" //throw this in config
             var chnl = _client.GetChannel(id) as IMessageChannel; // 4
 
-            //REWRITE THIS TO BE CLEANER. ASSIGN ALL GEAR DATA. ADD 
-
-
             var gearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment);
+
             try
             {
                 var converter = new HtmlConverter();
                 var html = gearImg;
                 var bytes = converter.FromHtmlString(html);
+
+                var approveButton = new ButtonBuilder()
+                {
+                    Label = "Approve",
+                    CustomId = "approve",
+                    Style = ButtonStyle.Success
+                };
+                var denyButton = new ButtonBuilder()
+                {
+                    Label = "Deny",
+                    CustomId = "deny",
+                    Style = ButtonStyle.Danger
+                };
+
+                var component = new ComponentBuilder();
+                component.WithButton(approveButton);
+                component.WithButton(denyButton);
 
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
@@ -716,14 +753,14 @@ namespace FreeBeerBot
                                     //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
                                     .WithImageUrl($"attachment://image.jpg")
                                     .WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}");
-                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User}", false, embed.Build()); // 5
+                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User}", false, embed.Build(), null, false, null, null, components: component.Build());
                     //await chnl.SendMessageAsync("Regear Submission from....", false, embed.Build()); // 5
                     //build.WithThumbnailUrl("attachment://anyImageName.png"); //or build.WithImageUrl("")
                     //await Context.Channel.SendFileAsync(imgStream, "anyImageName.png", "", false, build.Build());
-
+                    //command.RespondAsync();
                 }
 
-
+                //HandleComponetCommand(command);
             }
             catch (Exception ex)
             {
@@ -731,9 +768,8 @@ namespace FreeBeerBot
             }
         }
 
-
         [SlashCommand("componets", "Demo of buttons")]
-        public async Task HandleComponetCommand()
+        public async Task HandleComponetCommand(SocketSlashCommand command)
         {
             var button = new ButtonBuilder()
             {
@@ -755,7 +791,9 @@ namespace FreeBeerBot
             component.WithButton(button);
             component.WithSelectMenu(menu);
 
-            await RespondAsync("testing", components: component.Build());
+
+            await command.RespondAsync("testing", components: component.Build());
+            
         }
 
         [ComponentInteraction("button")]
@@ -764,26 +802,18 @@ namespace FreeBeerBot
             await RespondWithModalAsync<DemoModal>("demo-modal");
         }
 
+        [ComponentInteraction("menu")]
+        public async Task HandleMenuSelection(string[] inputs)
+        {
+            await RespondAsync(inputs[0]);
+        }
+
         [ModalInteraction("demo_modal")]
         public async Task HandleModalInput(DemoModal modal)
         {
             string input = modal.Greeting;
             await RespondWithModalAsync<DemoModal> ("demo_modal");
         }
-
-
-        //public async Task MyButtonHandler(SocketMessageComponent component)
-        //{
-        //    // We can now check for our custom id
-        //    switch (component.Data.CustomId)
-        //    {
-        //        // Since we set our buttons custom id as 'custom-id', we can check for it like this:
-        //        case "regear":
-        //            // Lets respond by sending a message saying they clicked the button
-        //            await component.RespondAsync($"{component.User.Mention} has clicked the button!");
-        //            break;
-        //    }
-        //}
     }
 
     public class DemoModal : IModal
