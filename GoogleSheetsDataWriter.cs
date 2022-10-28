@@ -113,17 +113,13 @@ namespace GoogleSheetsData
         }
 
 
-        public static async Task WriteAsync(SpreadsheetsResource.ValuesResource valuesResource, string a_SocketGuildUser, string a_sReason)
+        public static async Task WriteAsync(SpreadsheetsResource.ValuesResource valuesResource, string a_SocketGuildUser,string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
         {
-            ////writing to spreadsheet
-            //var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
-            //var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange); 
-            //update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-
+            //THIS ONLY WRITES TO THE FREE BEER BLACKLIST SPREADSHEET. ADJUST THIS METHOD SO THAT IT CAN WRITE TO ANYSPREADSHEET
             var col1 = 2;
             var col2 = 2;
-            ReadRange = $"Copy of Free Beer BlackList!A{col1}";
-            WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
+            ReadRange = $"Free Beer BlackList!A{col1}";
+            WriteRange = $"Free Beer BlackList!A{col1}:G{col2}";
 
             ValueRange GetResponse = null;
             IList<IList<object>> values = null;
@@ -144,13 +140,13 @@ namespace GoogleSheetsData
                 col1++;
                 col2++;
 
-                ReadRange = $"Copy of Free Beer BlackList!A{col1}";
-                WriteRange = $"Copy of Free Beer BlackList!A{col1}:G{col2}";
+                ReadRange = $"Free Beer BlackList!A{col1}";
+                WriteRange = $"Free Beer BlackList!A{col1}:G{col2}";
             }
 
             if (values == null || !values.Any())
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "NOT AVALIABLE", "TRUE", a_sReason, DateTime.Now.ToString("M/d/yyyy") } } };
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, a_sIngameName, "TRUE", a_sReason, a_sFine, DateTime.Now.ToString("M/d/yyyy"), a_sNotes } } };
                 var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 var updateresponse = await update.ExecuteAsync();
