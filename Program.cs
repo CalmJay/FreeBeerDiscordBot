@@ -40,6 +40,7 @@ namespace FreeBeerBot
 
         public async Task MainAsync()
         {
+            //TODO: Redo then entire command handler system. This one can accidently make the but run twice in the loop
             //dataBaseService.AddSeedingData();
             _client = new DiscordSocketClient();
 
@@ -47,7 +48,33 @@ namespace FreeBeerBot
             _client.SlashCommandExecuted += SlashCommandHandler;
             _client.MessageReceived += CommandHandler;
             _client.ButtonExecuted += ButtonHandler;
-            _client.Log += Log;
+
+            _client.ModalSubmitted += async modal =>
+            {
+                // Get the values of components.
+                List<SocketMessageComponentData> components =
+                    modal.Data.Components.ToList();
+                string denyreason = components
+                    .First(x => x.CustomId == "deny_reason").Value;
+
+                // Build the message to send.
+                string message = "hey @everyone; I just learned " +
+                    $"{denyreason}";
+
+                // Specify the AllowedMentions so we don't actually ping everyone.
+                AllowedMentions mentions = new AllowedMentions();
+                mentions.AllowedTypes = AllowedMentionTypes.Users;
+
+                // Respond to the modal.
+                await modal.RespondAsync(message, allowedMentions: mentions);
+            };
+
+
+
+
+
+
+            _client.Log += Log;// TODO: Switch to use the logger module.
 
 
             await _client.LoginAsync(TokenType.Bot, ConfigurationManager.AppSettings.Get("discordBotToken"));
@@ -127,6 +154,31 @@ namespace FreeBeerBot
                 .WithDescription("test button and menu");
             await guild.CreateApplicationCommandAsync(guildCommand.Build());
 
+            //guildCommand = new SlashCommandBuilder();
+            //guildCommand
+            //    .WithName("register")
+            //    .WithDescription("Register new member to guild");
+            //await guild.CreateApplicationCommandAsync(guildCommand.Build());
+
+            guildCommand = new SlashCommandBuilder();
+            guildCommand
+                .WithName("blacklist")
+                .WithDescription("Put someone on the shit list")
+                .AddOption("discordusername", ApplicationCommandOptionType.Mentionable, "Discord username", false)
+                .AddOption("ingame-name", ApplicationCommandOptionType.String, "In-game name or discord nickname", true)
+                .AddOption("reason", ApplicationCommandOptionType.String, "Reason for being blacklisted.", false)
+                .AddOption("fine", ApplicationCommandOptionType.String, "What's the fine?", false)
+                .AddOption("notes", ApplicationCommandOptionType.String, "Additional notes on blacklist?", false);
+
+
+            await guild.CreateApplicationCommandAsync(guildCommand.Build());
+
+            //guildCommand = new SlashCommandBuilder();
+            //guildCommand
+            //    .WithName("view-paychex")
+            //    .WithDescription("Put someone on the shit list");
+            //await guild.CreateApplicationCommandAsync(guildCommand.Build());
+
             try
             {
                 await _client.Rest.CreateGuildCommand(guildCommand.Build(), GuildID);
@@ -146,11 +198,15 @@ namespace FreeBeerBot
             switch (command.Data.Name)
             {
                 case "blacklist":
-                    BlacklistPlayer(command);
+                    //only recruiters and officers can use this command
+                    await Task.Run(() => {BlacklistPlayer(command); });
                     break;
                 case "register":
+                    //only recruiters and officers can use this command
                     InitializeClient();
-                    await GetAlbionEventInfo(command);
+                    await Task.Run(() => { GetAlbionEventInfo(command); });
+                    //background check method
+                    //if playerblackgroundcheck == good {write them into database} else{send message back on the red flags that show up.}
                     Console.Write("Registering player");
                     break;
                 case "regear":
@@ -162,8 +218,13 @@ namespace FreeBeerBot
                     InitializeClient();
                     await Task.Run(() => { GetRecentDeaths(command); });
                     break;
+                case "view-paychex":
+                    //await Task.Run(() => { GetSumOfCurrentWeekPaychex(command); });
+                    break;
+
                 case "componets":
-                   await HandleComponetCommand(command);
+                   //await HandleComponetCommand(command);
+                   //this is a debug command
                     break;
             }
         }
@@ -174,35 +235,46 @@ namespace FreeBeerBot
             {
                 case "approve":
                     await component.RespondAsync($"Regear has been approved!");
+                    //await UpdateGoogleSpreadSheet(PlayerData, MarketData);
+                    //Send message back to user their regear is complete.
                     break;
                 case "deny":
-                    await component.RespondAsync($"Regear is denied!");
+                    //await component.RespondAsync($"Regear is denied!");
                     await RegearDenied(component);
+                    break;
+                case "exception":
+                    //await component.RespondAsync($"Regear is denied!");
+                    //if(DiscordRole == Officer)
+                    //await RegearApproved(component);
+                    //else(send message back "Only a officer can use this function")
                     break;
             }
         }
         public async Task RegearDenied(SocketMessageComponent component)
         {
-            var mb = new ModalBuilder()
-            .WithTitle("Fav Food")
-            .WithCustomId("food_menu")
-            .AddTextInput("What??", "food_name", placeholder: "Pizza")
-            .AddTextInput("Why??", "food_reason", TextInputStyle.Paragraph, "Kus it's so tasty");
-            await component.RespondWithModalAsync(mb.Build());
+            //Check 
 
+            var mb = new ModalBuilder()
+            .WithTitle("Regear Denied")
+            .WithCustomId("deny_menu")
+            .AddTextInput("Reason", "deny_reason", TextInputStyle.Paragraph, "Why is regear denied?");
+
+            await component.RespondWithModalAsync(mb.Build());
 
         }
         private async void BlacklistPlayer(SocketSlashCommand command)
         {
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
-            var guildUser = (SocketGuildUser)command.Data.Options.First().Value;
+            var sDiscordUsername = (SocketGuildUser)command.Data.Options.First().Value;
+            string? sDiscordNickname = command.Data.Options.FirstOrDefault(x => x.Name == "ingame-name").Value.ToString();
+            string? sReason = command.Data.Options.FirstOrDefault(x => x.Name == "reason").Value.ToString();
+            string? sFine = command.Data.Options.FirstOrDefault(x => x.Name == "fine").Value.ToString();
+            string? sNotes = command.Data.Options.FirstOrDefault(x => x.Name == "notes").Value.ToString();
 
-            Console.WriteLine("Dickhead " + guildUser + " has been blacklisted");
+            Console.WriteLine("Dickhead " + sDiscordUsername + " has been blacklisted");
 
-            await GoogleSheetsDataWriter.WriteAsync(serviceValues, guildUser.ToString(), "THIS IS A TEST STRING.");
-
-
-            await command.Channel.SendMessageAsync(guildUser.ToString() + " has been blacklisted");
+            await GoogleSheetsDataWriter.WriteAsync(serviceValues, sDiscordUsername.ToString(), sDiscordNickname, sReason, sFine, sNotes);
+            await command.Channel.SendMessageAsync(sDiscordUsername.ToString() + " has been blacklisted");
 
         }
 
@@ -354,6 +426,7 @@ namespace FreeBeerBot
             List<string> underRegearList = new List<string>();
             List<string> notUnderRegearList = new List<string>();
             List<string> notAvailableInMarketList = new List<string>();
+
             if (victimEquipment.Head.Type.Contains("T5") || victimEquipment.Head.Type.Contains("T6") || victimEquipment.Head.Type.Contains("T7") || victimEquipment.Head.Type.Contains("T8"))
             {
                 if (victimEquipment.Head.Type.Contains("T5") && victimEquipment.Head.Type.Contains("@3"))
@@ -387,6 +460,7 @@ namespace FreeBeerBot
                 notUnderRegearEquipmentList.Add(head);
                 notUnderRegearList.Add(headImg);
             }
+
             if (victimEquipment.MainHand.Type.Contains("T5") || victimEquipment.MainHand.Type.Contains("T6") || victimEquipment.MainHand.Type.Contains("T7") || victimEquipment.MainHand.Type.Contains("T8"))
             {
                 if (victimEquipment.MainHand.Type.Contains("T5") && victimEquipment.MainHand.Type.Contains("@3"))
@@ -420,6 +494,7 @@ namespace FreeBeerBot
                 notUnderRegearEquipmentList.Add(weapon);
                 notUnderRegearList.Add(weaponImg);
             }
+
             if (victimEquipment.OffHand != null)
             {
                 if (victimEquipment.OffHand.Type.Contains("T5") || victimEquipment.OffHand.Type.Contains("T6") || victimEquipment.OffHand.Type.Contains("T7") || victimEquipment.OffHand.Type.Contains("T8"))
@@ -568,6 +643,10 @@ namespace FreeBeerBot
             //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3?Locations=Martlock brought back all qualities
 
             //MarketResponse testMarketdata = new MarketResponse() // THIS IS THE CONSTRUCTORS TO THE AlbionData.MODELS
+            //AVERGE PRICE TESTING
+
+            //T6_2H_MACE@1
+            //// Root myDeserializedClass = JsonConvert.DeserializeObject<List<Root>>(myJsonResponse);
 
             //SUDO
             //IF Market entry is zero change quality. If still zero send message back to user to update the market with the https://www.albion-online-data.com/ project and update the market items
@@ -647,6 +726,10 @@ namespace FreeBeerBot
             {
                 returnValue = returnValue = Math.Min(1700000, returnValue);
             }
+            else
+            {
+                returnValue = returnValue = Math.Min(800000, returnValue);
+            }
 
             var gearImage = "<div style='background-color: #c7a98f;'> <div> <center><h3>Regearable</h3>";
             foreach (var item in underRegearList)
@@ -692,28 +775,37 @@ namespace FreeBeerBot
                 return false;
             }
         }
-        //[SlashCommand("regear", "Submit a regear")]
+        [SlashCommand("regear", "Submit a regear")]
         public async void RegearSubmission(SocketSlashCommand command)
         {
             var eventData = await GetAlbionEventInfo(command);
-            //await PostRegear(command, eventData);
-            //dataBaseService = new DataBaseService();
-            //await dataBaseService.AddPlayerInfo(new Player
-            //{
-            //    PlayerId = eventData.Victim.Id,
-            //    PlayerName = eventData.Victim.Name
-            //});
+           // await PostRegear(command, eventData);
+            dataBaseService = new DataBaseService();
+
+            await dataBaseService.AddPlayerInfo(new Player
+            {
+                PlayerId = eventData.Victim.Id,
+                PlayerName = eventData.Victim.Name
+            });
+#if DEBUG
+            Console.WriteLine("Mode=Debug: Testing regear icon logic ");
+
             if (CheckIfPlayerHaveReGearIcon(command))
             {
                 await PostRegear(command, eventData);
-
+            }
+            
+#endif
+            if (CheckIfPlayerHaveReGearIcon(command))
+            {
+                await PostRegear(command, eventData);
             }
         }
 
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
         {
-            ulong id = ulong.Parse(ConfigurationManager.AppSettings.Get("regearTeamChannelId")); // 3 "private channel" //throw this in config
-            var chnl = _client.GetChannel(id) as IMessageChannel; // 4
+            ulong id = ulong.Parse(ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
+            var chnl = _client.GetChannel(id) as IMessageChannel;
 
             var gearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment);
 
@@ -735,10 +827,17 @@ namespace FreeBeerBot
                     CustomId = "deny",
                     Style = ButtonStyle.Danger
                 };
+                var exceptionButton = new ButtonBuilder()
+                {
+                    Label = "Special Exception",
+                    CustomId = "exception",
+                    Style = ButtonStyle.Secondary
+                };
 
                 var component = new ComponentBuilder();
                 component.WithButton(approveButton);
                 component.WithButton(denyButton);
+                component.WithButton(exceptionButton);
 
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
@@ -761,6 +860,7 @@ namespace FreeBeerBot
                 }
 
                 //HandleComponetCommand(command);
+                
             }
             catch (Exception ex)
             {
@@ -769,7 +869,7 @@ namespace FreeBeerBot
         }
 
         [SlashCommand("componets", "Demo of buttons")]
-        public async Task HandleComponetCommand(SocketSlashCommand command)
+        public async Task HandleComponetCommand(SocketMessageComponent componenttest)
         {
             var button = new ButtonBuilder()
             {
@@ -792,7 +892,7 @@ namespace FreeBeerBot
             component.WithSelectMenu(menu);
 
 
-            await command.RespondAsync("testing", components: component.Build());
+            await componenttest.RespondAsync("testing", components: component.Build());
             
         }
 
