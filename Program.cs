@@ -104,10 +104,14 @@ namespace FreeBeerBot
 
             command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
 
+           
             switch (command)
             {
-                case "hello":
-                    message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
+                case "botsays":
+                    string restofmessage = message.Content.Remove(0, message.Content.IndexOf(' ') + 1);
+                    message.Channel.DeleteMessageAsync(message.Id);
+                    message.Channel.SendMessageAsync($@"{restofmessage}");
+
                     break;
                 case "insult":
                     message.Channel.SendMessageAsync($@"Command Online {message.Author.Mention}");
