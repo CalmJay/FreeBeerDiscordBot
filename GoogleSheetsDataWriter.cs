@@ -1,8 +1,12 @@
-﻿using Google.Apis.Auth.OAuth2;
+﻿using Discord;
+using Discord.WebSocket;
+using DiscordBot.Enums;
+using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
+using PlayerData;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,7 +25,8 @@ namespace GoogleSheetsData
         private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
 
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        public static string SpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
+        public static string GuildSpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
+        public static string RegearSheetID = "1Yf1BnzHVIal_mj9c99cIAXgMN-EnmFeUcp59bTHSOb4"; //Developer Copy of regear sheet
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
         public bool enableGoogleApi = true; //ADD TO CONFIG
@@ -53,7 +58,7 @@ namespace GoogleSheetsData
 
                 String range = "Free Beer blackList!A2:G";
                 SpreadsheetsResource.ValuesResource.GetRequest request =
-                    service.Spreadsheets.Values.Get(SpreadsheetId, range);
+                    service.Spreadsheets.Values.Get(GuildSpreadsheetId, range);
 
                 // Prints the names and majors of students in a sample spreadsheet:
                 // https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
@@ -94,7 +99,7 @@ namespace GoogleSheetsData
 
         public async Task ReadAsync(SpreadsheetsResource.ValuesResource valuesResource, string sReadrange)
         {
-            var response = await valuesResource.Get(SpreadsheetId, sReadrange).ExecuteAsync();
+            var response = await valuesResource.Get(GuildSpreadsheetId, sReadrange).ExecuteAsync();
             var values = response.Values;
             if (values == null || !values.Any())
             {
@@ -113,9 +118,10 @@ namespace GoogleSheetsData
         }
 
 
-        public static async Task WriteAsync(SpreadsheetsResource.ValuesResource valuesResource, string a_SocketGuildUser,string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
+        public static async Task WriteToFreeBeerRosterDatabase(string a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
         {
             //THIS ONLY WRITES TO THE FREE BEER BLACKLIST SPREADSHEET. ADJUST THIS METHOD SO THAT IT CAN WRITE TO ANYSPREADSHEET
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
             var col1 = 2;
             var col2 = 2;
             ReadRange = $"Free Beer BlackList!A{col1}";
@@ -129,7 +135,7 @@ namespace GoogleSheetsData
 
             while (true)
             {
-                GetResponse = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
+                GetResponse = await serviceValues.Get(GuildSpreadsheetId, ReadRange).ExecuteAsync();
                 values = GetResponse.Values;
 
                 if (values == null || !values.Any())
@@ -147,14 +153,72 @@ namespace GoogleSheetsData
             if (values == null || !values.Any())
             {
                 var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, a_sIngameName, "TRUE", a_sReason, a_sFine, DateTime.Now.ToString("M/d/yyyy"), a_sNotes } } };
-                var update = valuesResource.Update(rowValues, SpreadsheetId, WriteRange);
+                var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-                var updateresponse = await update.ExecuteAsync();
+                await update.ExecuteAsync();
 
             }
 
             //var response = await update.ExecuteAsync();
             // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
+        }
+
+        public static async Task WriteToRegearSheet(SocketSlashCommand a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund)
+        {
+            string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString(): a_command.User.Username;
+
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+            
+            var numberOfRow = GetSheetsService().Spreadsheets.Values.Get(RegearSheetID, "Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
+            var col1 = numberOfRow;
+            var col2 = numberOfRow;
+            int googleIterations = 0;
+
+
+            ReadRange = $"Dumps!B{col1}";
+            WriteRange = $"Dumps!A{col1}:I{col2}";
+            ValueRange GetResponse = null;
+            IList<IList<object>> values = null;
+
+            var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
+            var msgRef = new MessageReference(messages.First().Id);
+
+
+            while (true)
+            {
+                GetResponse = await serviceValues.Get(RegearSheetID, ReadRange).ExecuteAsync();
+                values = GetResponse.Values;
+
+                if (values == null || !values.Any())
+                {
+                    break;
+                }
+
+                col1++;
+                col2++;
+
+#if DEBUG
+                googleIterations++;
+                if (googleIterations >= 250)
+                {
+                    Console.WriteLine($"Iteration is approaching googles rate limit of 500 {googleIterations}");
+                }
+               
+#endif
+
+                ReadRange = $"Dumps!B{col1}";
+                WriteRange = $"Dumps!A{col1}:I{col2}";
+            }
+
+            if (values == null || !values.Any())
+            {
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sDiscordName, a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", "Unknown", a_command.Data.Options.First().Value.ToString(), msgRef.MessageId.ToString() } } };
+                var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
+                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+                await update.ExecuteAsync();
+
+            }
+
         }
     }
 }

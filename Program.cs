@@ -33,6 +33,7 @@ namespace FreeBeerBot
 
         private SocketGuildUser _user;
         private DataBaseService dataBaseService;
+        private int TotalRegearSilverAmount { get; set; }
 
         ulong GuildID = ulong.Parse(ConfigurationManager.AppSettings.Get("guildID"));
 
@@ -69,22 +70,13 @@ namespace FreeBeerBot
                 await modal.RespondAsync(message, allowedMentions: mentions);
             };
 
-
-
-
-
-
             _client.Log += Log;// TODO: Switch to use the logger module.
-
 
             await _client.LoginAsync(TokenType.Bot, ConfigurationManager.AppSettings.Get("discordBotToken"));
             await _client.StartAsync();
 
             // Block this task until the program is closed.
             await Task.Delay(-1);
-            //var services = new ServiceCollection();
-            //string usercount = ConfigurationSettings.AppSettings["ConnectionString"];
-            //DependencyInjectionExtension.DependencyInjection(services);
         }
 
         private Task Log(LogMessage msg)
@@ -97,7 +89,7 @@ namespace FreeBeerBot
         {
             string command = "";
             int lengthOfCommand = -1;
-
+            string[] instultsList = { "You suck at Albion", "Votel is better than you" };
             //filtering messages begin here
             if (!message.Content.StartsWith('!')) //This is your prefix
                 return Task.CompletedTask;
@@ -117,7 +109,7 @@ namespace FreeBeerBot
                 case "hello":
                     message.Channel.SendMessageAsync($@"Hello {message.Author.Mention}");
                     break;
-                case "botmessage":
+                case "insult":
                     message.Channel.SendMessageAsync($@"Command Online {message.Author.Mention}");
                     break;
             }
@@ -201,13 +193,13 @@ namespace FreeBeerBot
                     //only recruiters and officers can use this command
                     await Task.Run(() => {BlacklistPlayer(command); });
                     break;
-                case "register":
-                    //only recruiters and officers can use this command
-                    InitializeClient();
-                    await Task.Run(() => { GetAlbionEventInfo(command); });
-                    //background check method
-                    //if playerblackgroundcheck == good {write them into database} else{send message back on the red flags that show up.}
-                    Console.Write("Registering player");
+                //case "register":
+                //    //only recruiters and officers can use this command
+                //    InitializeClient();
+                //    await Task.Run(() => { GetAlbionEventInfo(command); });
+                //    //background check method
+                //    //if playerblackgroundcheck == good {write them into database} else{send message back on the red flags that show up.}
+                //    Console.Write("Registering player");
                     break;
                 case "regear":
                     InitializeClient();
@@ -235,7 +227,7 @@ namespace FreeBeerBot
             {
                 case "approve":
                     await component.RespondAsync($"Regear has been approved!");
-                    //await UpdateGoogleSpreadSheet(PlayerData, MarketData);
+                    //await GoogleSheetsDataWriter.WriteToRegearSheet(command, eventData);
                     //Send message back to user their regear is complete.
                     break;
                 case "deny":
@@ -264,7 +256,6 @@ namespace FreeBeerBot
         }
         private async void BlacklistPlayer(SocketSlashCommand command)
         {
-            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
             var sDiscordUsername = (SocketGuildUser)command.Data.Options.First().Value;
             string? sDiscordNickname = command.Data.Options.FirstOrDefault(x => x.Name == "ingame-name").Value.ToString();
             string? sReason = command.Data.Options.FirstOrDefault(x => x.Name == "reason").Value.ToString();
@@ -273,9 +264,8 @@ namespace FreeBeerBot
 
             Console.WriteLine("Dickhead " + sDiscordUsername + " has been blacklisted");
 
-            await GoogleSheetsDataWriter.WriteAsync(serviceValues, sDiscordUsername.ToString(), sDiscordNickname, sReason, sFine, sNotes);
+            await GoogleSheetsDataWriter.WriteToFreeBeerRosterDatabase( sDiscordUsername.ToString(), sDiscordNickname, sReason, sFine, sNotes);
             await command.Channel.SendMessageAsync(sDiscordUsername.ToString() + " has been blacklisted");
-
         }
 
         public bool IsUserInDatabase()
@@ -287,7 +277,7 @@ namespace FreeBeerBot
         public async void GetRecentDeaths(SocketSlashCommand command)
         {
             string? sPlayerData = null;
-            string? sPlayerAlbionId = null; //either get from google sheet or search in albion API
+            string? sPlayerAlbionId = GetPlayerInfo(command).Result.Id; //either get from google sheet or search in albion API
             string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
 
             int iDeathDisplayCounter = 1;
@@ -319,15 +309,28 @@ namespace FreeBeerBot
                     .WithTitle("Recent Deaths")
                     .WithColor(new Color(238, 62, 75));
 
+
+                    var regearbutton = new ButtonBuilder()
+                    {
+                        Style = ButtonStyle.Secondary
+                    };
+
+                    var component = new ComponentBuilder();
+
+
                     for (int i = 0; i < searchDeaths.Count; i++)
                     {
                         if (i <= iVisibleDeathsShown)
                         {
                             embed.AddField($"Death{iDeathDisplayCounter}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                            //regearbutton.Label = $"Regear Death{iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
+                            //regearbutton.CustomId = searchDeaths[i].ToString();
+                            //component.WithButton(regearbutton);
+
                             iDeathDisplayCounter++;
                         }
                     }
-                    await command.Channel.SendMessageAsync(null, false, embed.Build());
+                    await command.Channel.SendMessageAsync(null, false, embed.Build(),null ,null, null, component.Build(), null, null);
                 }
                 else
                 {
@@ -713,6 +716,8 @@ namespace FreeBeerBot
                 }
             }
 
+            
+
 #if DEBUG
             Console.WriteLine("Mode=Debug");
 #endif
@@ -730,6 +735,8 @@ namespace FreeBeerBot
             {
                 returnValue = returnValue = Math.Min(800000, returnValue);
             }
+
+            TotalRegearSilverAmount = returnValue;
 
             var gearImage = "<div style='background-color: #c7a98f;'> <div> <center><h3>Regearable</h3>";
             foreach (var item in underRegearList)
@@ -779,27 +786,26 @@ namespace FreeBeerBot
         public async void RegearSubmission(SocketSlashCommand command)
         {
             var eventData = await GetAlbionEventInfo(command);
-           // await PostRegear(command, eventData);
-            dataBaseService = new DataBaseService();
 
-            await dataBaseService.AddPlayerInfo(new Player
-            {
-                PlayerId = eventData.Victim.Id,
-                PlayerName = eventData.Victim.Name
-            });
+            // dataBaseService = new DataBaseService();
+
+            //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
+            //{
+            //    PlayerId = eventData.Victim.Id,
+            //    PlayerName = eventData.Victim.Name
+            //});
 #if DEBUG
             Console.WriteLine("Mode=Debug: Testing regear icon logic ");
-
-            if (CheckIfPlayerHaveReGearIcon(command))
-            {
-                await PostRegear(command, eventData);
-            }
-            
 #endif
             if (CheckIfPlayerHaveReGearIcon(command))
             {
                 await PostRegear(command, eventData);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(command, eventData, TotalRegearSilverAmount);
             }
+
+
+
+
         }
 
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
@@ -853,6 +859,8 @@ namespace FreeBeerBot
                                     .WithImageUrl($"attachment://image.jpg")
                                     .WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}");
                     await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User}", false, embed.Build(), null, false, null, null, components: component.Build());
+
+                    
                     //await chnl.SendMessageAsync("Regear Submission from....", false, embed.Build()); // 5
                     //build.WithThumbnailUrl("attachment://anyImageName.png"); //or build.WithImageUrl("")
                     //await Context.Channel.SendFileAsync(imgStream, "anyImageName.png", "", false, build.Build());
@@ -860,7 +868,8 @@ namespace FreeBeerBot
                 }
 
                 //HandleComponetCommand(command);
-                
+
+
             }
             catch (Exception ex)
             {
