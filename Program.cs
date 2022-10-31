@@ -30,7 +30,6 @@ namespace FreeBeerBot
     public class Program : InteractionModuleBase<SocketInteractionContext>
     {
         private DiscordSocketClient _client;
-
         private SocketGuildUser _user;
         private DataBaseService dataBaseService;
         private int TotalRegearSilverAmount { get; set; }
@@ -224,23 +223,31 @@ namespace FreeBeerBot
 
         public async Task ButtonHandler(SocketMessageComponent component)
         {
+            var guildUser = (SocketGuildUser)component.User;
             switch (component.Data.CustomId)
             {
                 case "approve":
-                    await component.RespondAsync($"Regear has been approved!");
-                    await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
-                    await DeleteOriginalResponseAsync();
-                    //Send message back to user their regear is complete.
+                   
+                    if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+                    {
+                        await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
+                        await component.Channel.DeleteMessageAsync(component.Message.Id);
+                        await component.Channel.SendMessageAsync($"<@{component.User.Id}> your regear has been approved!" + Environment.NewLine + $"{TotalRegearSilverAmount} has been added to your paychex");
+                    }
                     break;
                 case "deny":
-                    //await component.RespondAsync($"Regear is denied!");
                     await RegearDenied(component);
                     break;
                 case "exception":
-                    //await component.RespondAsync($"Regear is denied!");
-                    //if(DiscordRole == Officer)
-                    //await RegearApproved(component);
-                    //else(send message back "Only a officer can use this function")
+                    if (guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                    {
+                        await component.RespondAsync($"Regear is approved by officer!");
+                        await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
+                    }
+                    else
+                    {
+                        await component.RespondAsync($"Access Denied: Only a officer can use this function!");
+                    } 
                     break;
             }
         }
@@ -254,11 +261,7 @@ namespace FreeBeerBot
             //.AddTextInput("Reason", "deny_reason", TextInputStyle.Paragraph, "Why is regear denied?");
 
             //await component.RespondWithModalAsync(mb.Build());
-            //var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
-            //var msgRef = new MessageReference(messages.First().Id);
-            //msgRef.MessageId.ToString()
-            var testname = component.Message.Embeds.FirstOrDefault().Fields.FirstOrDefault().Value;
-            var test2 = component.Message.MentionedUsers;
+
             await component.RespondAsync($"@{component.Message.Embeds.FirstOrDefault().Fields.FirstOrDefault().Value} Regear Denied", null, false, false, null, null, null, null);
             await component.Channel.DeleteMessageAsync(component.Message.Id);
 
