@@ -28,6 +28,10 @@ namespace DiscordBot.Services
         {
             return freeBeerdbContext.Player.AsQueryable().Where(x => x.PlayerName == playerName).FirstOrDefault();
         }
+        public MoneyType GetMoneyTypeByName(MoneyTypes moneyType)
+        {
+            return freeBeerdbContext.MoneyType.AsQueryable().Where(x => x.Type == moneyType).FirstOrDefault();
+        }
         public async Task AddPlayerReGear(PlayerLoot playerLoot)
         {
             await freeBeerdbContext.PlayerLoot.AddAsync(playerLoot);

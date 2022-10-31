@@ -846,9 +846,10 @@ namespace FreeBeerBot
             {
                 dataBaseService = new DataBaseService();
                 var player = dataBaseService.GetPlayerInfoByName(eventData.Victim.Name);
+                var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
                 await dataBaseService.AddPlayerReGear(new PlayerLoot
                 {
-                    TypeId =(int)moneyTypes,
+                    TypeId = moneyType.Id,
                     CreateDate = DateTime.Now,
                     Loot = Convert.ToDecimal(marketDataAndGearImg[1]),
                     PlayerId= player.Id,
