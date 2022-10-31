@@ -1015,7 +1015,7 @@ namespace FreeBeerBot
             //if (FromButton)
             //{
             //    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
-            //    await PostRegear(command, eventData, "", "", moneyType);
+            //    await PostRegearException(command, eventData, "", "", moneyType);
             //}
 
 
