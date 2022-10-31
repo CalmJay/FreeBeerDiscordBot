@@ -412,7 +412,7 @@ namespace FreeBeerBot
             return returnValue;
         }
 
-        public async Task<string> GetMarketDataAndGearImg(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
+        public async Task<List<string>> GetMarketDataAndGearImg(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
         {
             AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProject();
 
@@ -783,7 +783,7 @@ namespace FreeBeerBot
             //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
 
             //returnValue = marketData.FirstOrDefault().sell_price_min; 
-            return new List<string> { gearImage, returnValue.ToString() };
+            return new List<string> { gearImage, returnValue.ToString()};
         }
         public bool CheckIfPlayerHaveReGearIcon(SocketSlashCommand command)
         {
@@ -813,7 +813,7 @@ namespace FreeBeerBot
 #if DEBUG
             Console.WriteLine("Mode=Debug: Testing regear icon logic ");
 #endif
-            var eventData = await GetAlbionEventInfo(command);
+            //var eventData1 = await GetAlbionEventInfo(command);
             //await PostRegear(command, eventData);
             dataBaseService = new DataBaseService();
             await dataBaseService.AddPlayerInfo(new Player
