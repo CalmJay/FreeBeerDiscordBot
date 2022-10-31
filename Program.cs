@@ -34,6 +34,7 @@ namespace FreeBeerBot
         private SocketGuildUser _user;
         private DataBaseService dataBaseService;
         private int TotalRegearSilverAmount { get; set; }
+        private PlayerDataHandler.Rootobject PlayerEventData { get; set;}
 
         ulong GuildID = ulong.Parse(ConfigurationManager.AppSettings.Get("guildID"));
 
@@ -227,7 +228,8 @@ namespace FreeBeerBot
             {
                 case "approve":
                     await component.RespondAsync($"Regear has been approved!");
-                    //await GoogleSheetsDataWriter.WriteToRegearSheet(command, eventData);
+                    await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
+                    await DeleteOriginalResponseAsync();
                     //Send message back to user their regear is complete.
                     break;
                 case "deny":
@@ -246,12 +248,20 @@ namespace FreeBeerBot
         {
             //Check 
 
-            var mb = new ModalBuilder()
-            .WithTitle("Regear Denied")
-            .WithCustomId("deny_menu")
-            .AddTextInput("Reason", "deny_reason", TextInputStyle.Paragraph, "Why is regear denied?");
+            //var mb = new ModalBuilder()
+            //.WithTitle("Regear Denied")
+            //.WithCustomId("deny_menu")
+            //.AddTextInput("Reason", "deny_reason", TextInputStyle.Paragraph, "Why is regear denied?");
 
-            await component.RespondWithModalAsync(mb.Build());
+            //await component.RespondWithModalAsync(mb.Build());
+            //var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
+            //var msgRef = new MessageReference(messages.First().Id);
+            //msgRef.MessageId.ToString()
+            var testname = component.Message.Embeds.FirstOrDefault().Fields.FirstOrDefault().Value;
+            var test2 = component.Message.MentionedUsers;
+            await component.RespondAsync($"@{component.Message.Embeds.FirstOrDefault().Fields.FirstOrDefault().Value} Regear Denied", null, false, false, null, null, null, null);
+            await component.Channel.DeleteMessageAsync(component.Message.Id);
+
 
         }
         private async void BlacklistPlayer(SocketSlashCommand command)
@@ -785,8 +795,8 @@ namespace FreeBeerBot
         [SlashCommand("regear", "Submit a regear")]
         public async void RegearSubmission(SocketSlashCommand command)
         {
-            var eventData = await GetAlbionEventInfo(command);
-
+            PlayerDataHandler.Rootobject eventData = await GetAlbionEventInfo(command);
+            PlayerEventData = eventData;
             // dataBaseService = new DataBaseService();
 
             //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
@@ -800,7 +810,7 @@ namespace FreeBeerBot
             if (CheckIfPlayerHaveReGearIcon(command))
             {
                 await PostRegear(command, eventData);
-                await GoogleSheetsDataWriter.WriteToRegearSheet(command, eventData, TotalRegearSilverAmount);
+                //await GoogleSheetsDataWriter.WriteToRegearSheet(command, eventData, TotalRegearSilverAmount);
             }
 
 
@@ -837,7 +847,7 @@ namespace FreeBeerBot
                 {
                     Label = "Special Exception",
                     CustomId = "exception",
-                    Style = ButtonStyle.Secondary
+                    Style = ButtonStyle.Secondary,  
                 };
 
                 var component = new ComponentBuilder();

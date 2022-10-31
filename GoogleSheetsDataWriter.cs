@@ -163,7 +163,7 @@ namespace GoogleSheetsData
             // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
         }
 
-        public static async Task WriteToRegearSheet(SocketSlashCommand a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund)
+        public static async Task WriteToRegearSheet(SocketMessageComponent a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund)
         {
             string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString(): a_command.User.Username;
 
@@ -182,7 +182,6 @@ namespace GoogleSheetsData
 
             var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
             var msgRef = new MessageReference(messages.First().Id);
-
 
             while (true)
             {
@@ -212,7 +211,7 @@ namespace GoogleSheetsData
 
             if (values == null || !values.Any())
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sDiscordName, a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", "Unknown", a_command.Data.Options.First().Value.ToString(), msgRef.MessageId.ToString() } } };
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sDiscordName, a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", "Unknown", "123456789", msgRef.MessageId.ToString() } } };
                 var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 await update.ExecuteAsync();
