@@ -22,20 +22,11 @@ namespace DiscordBot.Services
         }
         public async Task<Boolean> CheckPlayerIsExist(string playerName)
         {
-            try
-            {
-                return await freeBeerdbContext.Player.AnyAsync(x => x.PlayerName == playerName);
-
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
+            return await freeBeerdbContext.Player.AnyAsync(x => x.PlayerName == playerName);
         }
         public Player GetPlayerInfoByName(string playerName)
         {
-            return freeBeerdbContext.Player.AsQueryable().Where(x=>x.PlayerName==playerName).FirstOrDefault();
+            return freeBeerdbContext.Player.AsQueryable().Where(x => x.PlayerName == playerName).FirstOrDefault();
         }
         public async Task AddPlayerReGear(PlayerLoot playerLoot)
         {
@@ -46,8 +37,9 @@ namespace DiscordBot.Services
         {
             if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == MoneyTypes.FocusSale))
             {
-                await freeBeerdbContext.MoneyType.AddAsync(new MoneyType { 
-                Type= MoneyTypes.FocusSale
+                await freeBeerdbContext.MoneyType.AddAsync(new MoneyType
+                {
+                    Type = MoneyTypes.FocusSale
                 });
             }
             if (await freeBeerdbContext.MoneyType.AnyAsync(x => x.Type == Enums.MoneyTypes.Hellgates))

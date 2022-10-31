@@ -283,7 +283,7 @@ namespace FreeBeerBot
             return eventData;
         }
 
-        public async Task<string> GetMarketDataAndGearImg(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
+        public async Task<List<string>> GetMarketDataAndGearImg(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
         {
             AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProject();
 
@@ -639,8 +639,7 @@ namespace FreeBeerBot
             //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
 
             //returnValue = marketData.FirstOrDefault().sell_price_min; 
-
-            return gearImage;
+            return new List<string> { gearImage, returnValue.ToString() };
         }
         public bool CheckIfPlayerHaveReGearIcon(SocketSlashCommand command)
         {
@@ -659,19 +658,20 @@ namespace FreeBeerBot
         {
             var eventData = await GetAlbionEventInfo(command);
             //await PostRegear(command, eventData);
-            //dataBaseService = new DataBaseService();
-            //await dataBaseService.AddPlayerInfo(new Player
-            //{
-            //    PlayerId = eventData.Victim.Id,
-            //    PlayerName = eventData.Victim.Name
-            //});
+            dataBaseService = new DataBaseService();
+            await dataBaseService.AddPlayerInfo(new Player
+            {
+                PlayerId = eventData.Victim.Id,
+                PlayerName = eventData.Victim.Name
+            });
             if (CheckIfPlayerHaveReGearIcon(command))
             {
-                await PostRegear(command, eventData);
+                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
+                await PostRegear(command, eventData,"","", moneyType);
             }
         }
 
-        public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData)
+        public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData,string partyLeader,string reason , MoneyTypes moneyTypes)
         {
             //ulong id = 1014912611004989491; // 3 "specific channel"
             ulong id = 603281980951494670; // 3 "private channel" //throw this in config
@@ -680,13 +680,25 @@ namespace FreeBeerBot
             //REWRITE THIS TO BE CLEANER. ASSIGN ALL GEAR DATA. ADD 
 
             
-            var gearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment);
+            var marketDataAndGearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment);
             try
             {
-
+                dataBaseService = new DataBaseService();
+                var player = dataBaseService.GetPlayerInfoByName(eventData.Victim.Name);
+                await dataBaseService.AddPlayerReGear(new PlayerLoot
+                {
+                    TypeId =(int)moneyTypes,
+                    CreateDate = DateTime.Now,
+                    Loot = Convert.ToDecimal(marketDataAndGearImg[1]),
+                    PlayerId= player.Id,
+                    Message= " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
+                    PartyLeader= partyLeader,
+                    KillId= command.Data.Options.First().Value.ToString(),
+                    Reason= reason
+                });
 
                 var converter = new HtmlConverter();
-                var html = gearImg;
+                var html = marketDataAndGearImg[0];
                 var bytes = converter.FromHtmlString(html);
 
                 using (System.IO.MemoryStream imgStream = new System.IO.MemoryStream(bytes))
