@@ -24,10 +24,14 @@ using AlbionData.Models;
 using DiscordBot.Enums;
 using GoogleSheetsData;
 using System.Configuration;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using InteractionHandlerService;
+using DiscordbotLogging.Log;
 
 namespace FreeBeerBot
 {
-    public class Program : InteractionModuleBase<SocketInteractionContext>
+    public class Program
     {
         private DiscordSocketClient _client;
         private SocketGuildUser _user;
@@ -35,90 +39,94 @@ namespace FreeBeerBot
         private int TotalRegearSilverAmount { get; set; }
         private PlayerDataHandler.Rootobject PlayerEventData { get; set;}
 
-        ulong GuildID = ulong.Parse(ConfigurationManager.AppSettings.Get("guildID"));
+        ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
 
-        public static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
+        // Program entry point
+        public static Task Main(string[] args) => new Program().MainAsync();
 
         public async Task MainAsync()
         {
-            //TODO: Redo then entire command handler system. This one can accidently make the but run twice in the loop
-            //dataBaseService.AddSeedingData();
-            _client = new DiscordSocketClient();
+            var config = new ConfigurationBuilder()
+            // this will be used more later on
+            .SetBasePath(AppContext.BaseDirectory)
+            //.AddJsonFile("DiscordBot.dll.config")   
+            .AddJsonFile("appsettings.json")
+            .Build();
 
-            _client.Ready += Client_Ready;
-            _client.SlashCommandExecuted += SlashCommandHandler;
-            _client.MessageReceived += CommandHandler;
-            _client.ButtonExecuted += ButtonHandler;
-
-            _client.ModalSubmitted += async modal =>
+            using IHost host = Host.CreateDefaultBuilder()
+                .ConfigureServices((_, services) =>
+            services
+            // Add the configuration to the registered services
+            .AddSingleton(config)
+            // Add the DiscordSocketClient, along with specifying the GatewayIntents and user caching
+            .AddSingleton(x => new DiscordSocketClient(new DiscordSocketConfig
             {
-                // Get the values of components.
-                List<SocketMessageComponentData> components =
-                    modal.Data.Components.ToList();
-                string denyreason = components
-                    .First(x => x.CustomId == "deny_reason").Value;
+                GatewayIntents = Discord.GatewayIntents.None, //Toggle intents inside the Discord Developer portal to add more security.
+                AlwaysDownloadUsers = true,
+            }))
+            // Adding console logging
+            .AddTransient<ConsoleLogger>()
+            // Used for slash commands and their registration with Discord
+            .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
+            // Required to subscribe to the various client events used in conjunction with Interactions
+            .AddSingleton<InteractionHandler>())
+            .Build();
 
-                // Build the message to send.
-                string message = "hey @everyone; I just learned " +
-                    $"{denyreason}";
+            InitializeAlbionAPIClient();
+            InitializeAlbionDataProject();
 
-                // Specify the AllowedMentions so we don't actually ping everyone.
-                AllowedMentions mentions = new AllowedMentions();
-                mentions.AllowedTypes = AllowedMentionTypes.Users;
+            await RunAsync(host);
+        }
 
-                // Respond to the modal.
-                await modal.RespondAsync(message, allowedMentions: mentions);
+        public async Task RunAsync(IHost host)
+        {
+            using IServiceScope serviceScope = host.Services.CreateScope();
+            IServiceProvider provider = serviceScope.ServiceProvider;
+
+            var commands = provider.GetRequiredService<InteractionService>();
+            _client = provider.GetRequiredService<DiscordSocketClient>();
+            var config = provider.GetRequiredService<IConfigurationRoot>();
+
+            await provider.GetRequiredService<InteractionHandler>().InitializeAsync();
+
+            // Subscribe to client log events
+            _client.Log += _ => provider.GetRequiredService<ConsoleLogger>().Log(_);
+            // Subscribe to slash command log events
+            commands.Log += _ => provider.GetRequiredService<ConsoleLogger>().Log(_);
+
+            _client.Ready += async () =>
+            {
+                // If running the bot with DEBUG flag, register all commands to guild specified in config
+                if (IsDebug())
+                {
+                    var guild = _client.GetGuild(GuildID);
+                    //_client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+                    //guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
+                    // Id of the test guild can be provided from the Configuration object
+                    await commands.RegisterCommandsToGuildAsync(GuildID);
+                }
+                else
+                    // If not debug, register commands globally
+                    await commands.RegisterCommandsGloballyAsync(true);
             };
 
-            _client.Log += Log;// TODO: Switch to use the logger module.
 
-            await _client.LoginAsync(TokenType.Bot, ConfigurationManager.AppSettings.Get("discordBotToken"));
+            //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);
+            await _client.LoginAsync(TokenType.Bot, System.Configuration.ConfigurationManager.AppSettings.Get("discordBotToken"));
             await _client.StartAsync();
 
-            // Block this task until the program is closed.
+            
+
             await Task.Delay(-1);
         }
 
-        private Task Log(LogMessage msg)
+        static bool IsDebug()
         {
-            Console.WriteLine(msg.ToString());
-            return Task.CompletedTask;
-        }
-
-        private Task CommandHandler(SocketMessage message)
-        {
-            string command = "";
-            int lengthOfCommand = -1;
-            string[] instultsList = { "You suck at Albion", "Votel is better than you" };
-            //filtering messages begin here
-            if (!message.Content.StartsWith('!')) //This is your prefix
-                return Task.CompletedTask;
-
-            if (message.Author.IsBot) //This ignores all commands from bots
-                return Task.CompletedTask;
-
-            if (message.Content.Contains(' '))
-                lengthOfCommand = message.Content.IndexOf(' ');
-            else
-                lengthOfCommand = message.Content.Length;
-
-            command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
-
-           
-            switch (command)
-            {
-                case "botsays":
-                    string restofmessage = message.Content.Remove(0, message.Content.IndexOf(' ') + 1);
-                    message.Channel.DeleteMessageAsync(message.Id);
-                    message.Channel.SendMessageAsync($@"{restofmessage}");
-
-                    break;
-                case "insult":
-                    message.Channel.SendMessageAsync($@"Command Online {message.Author.Mention}");
-                    break;
-            }
-
-            return Task.CompletedTask;
+#if DEBUG
+            return true;
+#else
+            return false;
+#endif
         }
 
         public async Task Client_Ready()
@@ -135,19 +143,6 @@ namespace FreeBeerBot
                 .WithName("regear")
                 .WithDescription("Submit a regear")
                 .AddOption("killnumber", ApplicationCommandOptionType.Integer, "Killboard ID", isRequired: true);
-            await guild.CreateApplicationCommandAsync(guildCommand.Build());
-
-            guildCommand = new SlashCommandBuilder();
-            guildCommand
-                .WithName("recent-deaths")
-                .WithDescription("View recent deaths");
-            await guild.CreateApplicationCommandAsync(guildCommand.Build());
-
-
-            guildCommand = new SlashCommandBuilder();
-            guildCommand
-                .WithName("componets")
-                .WithDescription("test button and menu");
             await guild.CreateApplicationCommandAsync(guildCommand.Build());
 
             //guildCommand = new SlashCommandBuilder();
@@ -206,12 +201,12 @@ namespace FreeBeerBot
                 //    Console.Write("Registering player");
                     break;
                 case "regear":
-                    InitializeClient();
+                    InitializeAlbionAPIClient();
                     await Task.Run(() => { RegearSubmission(command); });
                     Console.Write("Regear complete");
                     break;
                 case "recent-deaths":
-                    InitializeClient();
+                    InitializeAlbionAPIClient();
                     await Task.Run(() => { GetRecentDeaths(command); });
                     break;
                 case "view-paychex":
@@ -225,36 +220,36 @@ namespace FreeBeerBot
             }
         }
 
-        public async Task ButtonHandler(SocketMessageComponent component)
-        {
-            var guildUser = (SocketGuildUser)component.User;
-            switch (component.Data.CustomId)
-            {
-                case "approve":
+        //public async Task ButtonHandler(SocketMessageComponent component)
+        //{
+        //    var guildUser = (SocketGuildUser)component.User;
+        //    switch (component.Data.CustomId)
+        //    {
+        //        case "approve":
                    
-                    if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
-                    {
-                        await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
-                        await component.Channel.DeleteMessageAsync(component.Message.Id);
-                        await component.Channel.SendMessageAsync($"<@{component.User.Id}> your regear has been approved!" + Environment.NewLine + $"{TotalRegearSilverAmount} has been added to your paychex");
-                    }
-                    break;
-                case "deny":
-                    await RegearDenied(component);
-                    break;
-                case "exception":
-                    if (guildUser.Roles.Any(r => r.Name == "AO - Officers"))
-                    {
-                        await component.RespondAsync($"Regear is approved by officer!");
-                        await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
-                    }
-                    else
-                    {
-                        await component.RespondAsync($"Access Denied: Only a officer can use this function!");
-                    } 
-                    break;
-            }
-        }
+        //            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+        //            {
+        //                await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
+        //                await component.Channel.DeleteMessageAsync(component.Message.Id);
+        //                await component.Channel.SendMessageAsync($"<@{component.User.Id}> your regear has been approved!" + Environment.NewLine + $"{TotalRegearSilverAmount} has been added to your paychex");
+        //            }
+        //            break;
+        //        case "deny":
+        //            await RegearDenied(component);
+        //            break;
+        //        case "exception":
+        //            if (guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+        //            {
+        //                await component.RespondAsync($"Regear is approved by officer!");
+        //                await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
+        //            }
+        //            else
+        //            {
+        //                await component.RespondAsync($"Access Denied: Only a officer can use this function!");
+        //            } 
+        //            break;
+        //    }
+        //}
         public async Task RegearDenied(SocketMessageComponent component)
         {
             //Check 
@@ -298,7 +293,7 @@ namespace FreeBeerBot
             string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
 
             int iDeathDisplayCounter = 1;
-            int iVisibleDeathsShown = Int32.Parse(ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths //Add to config
+            int iVisibleDeathsShown = Int32.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths //Add to config
 
             if (IsUserInDatabase())
             {
@@ -418,7 +413,7 @@ namespace FreeBeerBot
 
             int returnValue = 0;
             int returnNotUnderRegearValue = 0;
-            string? sMarketLocation = ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
+            string? sMarketLocation = System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             bool bAddAllQualities = false;
             int iDefaultItemQuality = 2;
 
@@ -809,7 +804,7 @@ namespace FreeBeerBot
 
             int returnValue = 0;
             int returnNotUnderRegearValue = 0;
-            string? sMarketLocation = ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
+            string? sMarketLocation = System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             bool bAddAllQualities = false;
             int iDefaultItemQuality = 2;
 
@@ -917,9 +912,6 @@ namespace FreeBeerBot
 
             }
             
-
-
-
 #if DEBUG
             Console.WriteLine("Mode=Debug");
 #endif
@@ -986,26 +978,17 @@ namespace FreeBeerBot
         [SlashCommand("regear", "Submit a regear")]
         public async void RegearSubmission(SocketSlashCommand command)
         {
+            
             PlayerDataHandler.Rootobject eventData = await GetAlbionEventInfo(command);
             PlayerEventData = eventData;
-            // dataBaseService = new DataBaseService();
-
-            //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
-            //{
-            //    PlayerId = eventData.Victim.Id,
-            //    PlayerName = eventData.Victim.Name
-            //});
-#if DEBUG
-            Console.WriteLine("Mode=Debug: Testing regear icon logic ");
-#endif
-            //var eventData1 = await GetAlbionEventInfo(command);
-            //await PostRegear(command, eventData);
             dataBaseService = new DataBaseService();
-            await dataBaseService.AddPlayerInfo(new Player
+
+            await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
             {
                 PlayerId = eventData.Victim.Id,
                 PlayerName = eventData.Victim.Name
             });
+
             if (CheckIfPlayerHaveReGearIcon(command))
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
@@ -1017,15 +1000,11 @@ namespace FreeBeerBot
             //    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
             //    await PostRegearException(command, eventData, "", "", moneyType);
             //}
-
-
-
-
         }
 
         public async Task PostRegear(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData,string partyLeader,string reason , MoneyTypes moneyTypes)
         {
-            ulong id = ulong.Parse(ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
+            ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
             var chnl = _client.GetChannel(id) as IMessageChannel;
             
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment);
@@ -1105,142 +1084,5 @@ namespace FreeBeerBot
                 throw;
             }
         }
-        public async Task PostRegearException(SocketSlashCommand command, PlayerDataHandler.Rootobject eventData, string partyLeader, string reason, MoneyTypes moneyTypes)
-        {
-            ulong id = ulong.Parse(ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
-            var chnl = _client.GetChannel(id) as IMessageChannel;
-
-            var marketDataAndGearImg = await GetMarketDataAndGearImgException(command, eventData.Victim.Equipment);
-            try
-            {
-                dataBaseService = new DataBaseService();
-                var player = dataBaseService.GetPlayerInfoByName(eventData.Victim.Name);
-                var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
-                await dataBaseService.AddPlayerReGear(new PlayerLoot
-                {
-                    TypeId = moneyType.Id,
-                    CreateDate = DateTime.Now,
-                    Loot = Convert.ToDecimal(marketDataAndGearImg[1]),
-                    PlayerId = player.Id,
-                    Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
-                    PartyLeader = partyLeader,
-                    KillId = command.Data.Options.First().Value.ToString(),
-                    Reason = reason
-                });
-
-                var converter = new HtmlConverter();
-                var html = marketDataAndGearImg[0];
-                var bytes = converter.FromHtmlString(html);
-
-                var approveButton = new ButtonBuilder()
-                {
-                    Label = "Approve",
-                    CustomId = "approve",
-                    Style = ButtonStyle.Success
-                };
-                var denyButton = new ButtonBuilder()
-                {
-                    Label = "Deny",
-                    CustomId = "deny",
-                    Style = ButtonStyle.Danger
-                };
-                var exceptionButton = new ButtonBuilder()
-                {
-                    Label = "Special Exception",
-                    CustomId = "exception",
-                    Style = ButtonStyle.Secondary,
-                };
-
-                var component = new ComponentBuilder();
-                component.WithButton(approveButton);
-                component.WithButton(denyButton);
-                component.WithButton(exceptionButton);
-
-                using (MemoryStream imgStream = new MemoryStream(bytes))
-                {
-                    var embed = new EmbedBuilder()
-                                    .WithTitle($"Regear Submission")
-                                    .AddField("User submitted ", command.User.Username, true)
-                                    .AddField("Victim", eventData.Victim.Name)
-                                    .AddField("Killer", "[" + eventData.Killer.AllianceName + "] " + "[" + eventData.Killer.GuildName + "] " + eventData.Killer.Name)
-                                    .AddField("Death Average IP", eventData.Victim.AverageItemPower)
-
-                                    //.WithImageUrl(GearImageRenderSerivce(command))
-                                    //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
-                                    .WithImageUrl($"attachment://image.jpg")
-                                    .WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}");
-                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User}", false, embed.Build(), null, false, null, null, components: component.Build());
-
-
-                    //await chnl.SendMessageAsync("Regear Submission from....", false, embed.Build()); // 5
-                    //build.WithThumbnailUrl("attachment://anyImageName.png"); //or build.WithImageUrl("")
-                    //await Context.Channel.SendFileAsync(imgStream, "anyImageName.png", "", false, build.Build());
-                    //command.RespondAsync();
-                }
-
-                //HandleComponetCommand(command);
-
-
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-
-        [SlashCommand("componets", "Demo of buttons")]
-        public async Task HandleComponetCommand(SocketMessageComponent componenttest)
-        {
-            var button = new ButtonBuilder()
-            {
-                Label = "Button",
-                CustomId = "button",
-                Style = ButtonStyle.Primary
-            };
-
-            var menu = new SelectMenuBuilder()
-            {
-                CustomId = "menu",
-                Placeholder = "Sample menu"
-            };
-
-            menu.AddOption("First option", "first");
-            menu.AddOption("Second option", "second");
-
-            var component = new ComponentBuilder();
-            component.WithButton(button);
-            component.WithSelectMenu(menu);
-
-
-            await componenttest.RespondAsync("testing", components: component.Build());
-            
-        }
-
-        [ComponentInteraction("button")]
-        public async Task HandleButtonInput()
-        {
-            await RespondWithModalAsync<DemoModal>("demo-modal");
-        }
-
-        [ComponentInteraction("menu")]
-        public async Task HandleMenuSelection(string[] inputs)
-        {
-            await RespondAsync(inputs[0]);
-        }
-
-        [ModalInteraction("demo_modal")]
-        public async Task HandleModalInput(DemoModal modal)
-        {
-            string input = modal.Greeting;
-            await RespondWithModalAsync<DemoModal> ("demo_modal");
-        }
-    }
-
-    public class DemoModal : IModal
-    {
-        public string Title => "Demo Modal";
-        [InputLabel("Send a greeting!")]
-        [ModalTextInput("greeting_input", TextInputStyle.Short, placeholder: "Be nice...", maxLength: 100)]
-        public string Greeting { get; set; }
     }
 }

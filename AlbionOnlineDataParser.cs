@@ -10,7 +10,7 @@ namespace AlbionOnlineDataParser
         public static HttpClient ApiClient { get; set; } = new HttpClient();
         public static HttpClient ApiAlbionDataProject { get; set; } = new HttpClient();
 
-        public static void InitializeClient()
+        public static void InitializeAlbionAPIClient()
         {
             ApiClient = new HttpClient();
             ApiClient.BaseAddress = new Uri("https://gameinfo.albiononline.com/api/gameinfo/");

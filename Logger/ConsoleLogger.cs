@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace DNet_V3_Tutorial.Log
+namespace DiscordbotLogging.Log
 {
     public class ConsoleLogger : Logger
     {
