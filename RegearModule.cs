@@ -17,10 +17,11 @@ using System.Net.Http;
 using Newtonsoft.Json;
 using MarketData;
 using AlbionOnlineDataParser;
+using FreeBeerBot;
 
 namespace DiscordBot.RegearModule
 {
-    public class RegearModule
+    public class RegearModule : Program
     {
         private DataBaseService dataBaseService;
 
@@ -114,23 +115,17 @@ namespace DiscordBot.RegearModule
             }
         }
 
+
         public bool CheckIfPlayerHaveReGearIcon(SocketInteractionContext socketInteractionUser)
         {
             ulong GoldTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegear"));
             ulong SilverTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
 
-            //var guildUser = (SocketGuildUser)socketInteractionUser.User;
-            //var guildUser = socketInteractionUser.User as SocketGuildUser;
 
-            var test3 = socketInteractionUser.User;
-
-            
+            SocketGuild guild = socketInteractionUser.Guild;
 
             if (socketInteractionUser.User is SocketGuildUser guildUser)
             {
-                var test = guildUser.Guild.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID);
-                var test2 = guildUser.Guild.GetRole(GoldTierID);
-
 
                 if (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID))
                 {

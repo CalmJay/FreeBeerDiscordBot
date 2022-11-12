@@ -33,7 +33,7 @@ namespace FreeBeerBot
 {
     public class Program
     {
-        private DiscordSocketClient _client;
+        public static DiscordSocketClient _client;
         private SocketGuildUser _user;
         private DataBaseService dataBaseService;
         private int TotalRegearSilverAmount { get; set; }

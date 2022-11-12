@@ -183,12 +183,13 @@ namespace CommandModule
         [SlashCommand("regear", "Submit a regear")]
         public async Task RegearSubmission(int EventID)
         {
+          
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
             RegearModule regearModule = new RegearModule();
 
-            PlayerDataHandler.Rootobject playerEventData = await eventData.GetAlbionEventInfo(EventID);
-            PlayerEventData = playerEventData;
-            dataBaseService = new DataBaseService();
+            PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
+            //PlayerEventData = playerEventData;
+            //dataBaseService = new DataBaseService();
             
             //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
             //{
@@ -196,13 +197,12 @@ namespace CommandModule
             //    PlayerName = playerEventData.Victim.Name
             //});
 
-           
 
             if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
-                await regearModule.PostRegear(Context, playerEventData, "", "", moneyType);
-                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, playerEventData, regearModule.TotalRegearSilverAmount);
+                await regearModule.PostRegear(Context, PlayerEventData, "", "", moneyType);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, regearModule.TotalRegearSilverAmount);
             }
             //if (FromButton)
             //{
