@@ -189,13 +189,15 @@ namespace CommandModule
             PlayerDataHandler.Rootobject playerEventData = await eventData.GetAlbionEventInfo(EventID);
             PlayerEventData = playerEventData;
             dataBaseService = new DataBaseService();
-
+            
             //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
             //{
             //    PlayerId = playerEventData.Victim.Id,
             //    PlayerName = playerEventData.Victim.Name
             //});
-            
+
+           
+
             if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");

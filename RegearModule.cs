@@ -119,19 +119,30 @@ namespace DiscordBot.RegearModule
             ulong GoldTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegear"));
             ulong SilverTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
 
-           
-            var guildUser = (SocketGuildUser)socketInteractionUser.User;
-            var guildID = guildUser.Roles;
+            //var guildUser = (SocketGuildUser)socketInteractionUser.User;
+            //var guildUser = socketInteractionUser.User as SocketGuildUser;
 
-            if (guildUser.Roles.Any(r=> r.Id == GoldTierID || r.Id == SilverTierID))
+            var test3 = socketInteractionUser.User;
+
+            
+
+            if (socketInteractionUser.User is SocketGuildUser guildUser)
             {
-                return true;
+                var test = guildUser.Guild.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID);
+                var test2 = guildUser.Guild.GetRole(GoldTierID);
+
+
+                if (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID))
+                {
+                    return true;
+                }
+                if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible")) || (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID)))
+                {
+                    return true;
+                }
             }
-            if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible")) || (guildUser.Roles.Any(r=> r.Id == GoldTierID || r.Id == SilverTierID)))
-            {
-                return true;
-            }
- 
+                
+
             return false;
            
         }
