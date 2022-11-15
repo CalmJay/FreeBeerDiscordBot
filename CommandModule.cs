@@ -190,19 +190,22 @@ namespace CommandModule
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
             //PlayerEventData = playerEventData;
             //dataBaseService = new DataBaseService();
-            
+
             //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
             //{
             //    PlayerId = playerEventData.Victim.Id,
             //    PlayerName = playerEventData.Victim.Name
             //});
 
-
             if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
                 await regearModule.PostRegear(Context, PlayerEventData, "", "", moneyType);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, regearModule.TotalRegearSilverAmount);
+            }
+            else
+            {
+                await ReplyAsync("You do not have regear roles to post a regear");
             }
             //if (FromButton)
             //{
