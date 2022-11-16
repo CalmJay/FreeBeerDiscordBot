@@ -189,17 +189,17 @@ namespace CommandModule
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
             //PlayerEventData = playerEventData;
-            //dataBaseService = new DataBaseService();
+            dataBaseService = new DataBaseService();
 
-            //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
-            //{
-            //    PlayerId = playerEventData.Victim.Id,
-            //    PlayerName = playerEventData.Victim.Name
-            //});
+            await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
+            {
+                PlayerId = PlayerEventData.Victim.Id,
+                PlayerName = PlayerEventData.Victim.Name
+            });
 
             if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
             {
-                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
+                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
                 await regearModule.PostRegear(Context, PlayerEventData, "", "", moneyType);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, regearModule.TotalRegearSilverAmount);
             }

@@ -49,19 +49,18 @@ namespace FreeBeerBot
             var config = new ConfigurationBuilder()
             // this will be used more later on
             .SetBasePath(AppContext.BaseDirectory)
-            //.AddJsonFile("DiscordBot.dll.config")   
+            //.AddJsonFile("DiscordBot.dll.config")
             .AddJsonFile("appsettings.json")
             .Build();
 
             using IHost host = Host.CreateDefaultBuilder()
-                .ConfigureServices((_, services) =>
-            services
+                .ConfigureServices((_, services) => services
             // Add the configuration to the registered services
             .AddSingleton(config)
             // Add the DiscordSocketClient, along with specifying the GatewayIntents and user caching
             .AddSingleton(x => new DiscordSocketClient(new DiscordSocketConfig
             {
-                GatewayIntents = Discord.GatewayIntents.None, //Toggle intents inside the Discord Developer portal to add more security.
+                GatewayIntents = Discord.GatewayIntents.AllUnprivileged, //Toggle intents inside the Discord Developer portal to add more security.
                 AlwaysDownloadUsers = true,
             }))
             // Adding console logging

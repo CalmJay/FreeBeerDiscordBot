@@ -25,7 +25,7 @@ namespace DNet_V3_Tutorial
             // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
             await _logger.Log(new LogMessage(LogSeverity.Info, "PingModule : Ping", $"User: {Context.User.Username}, Command: ping", null));
             // Respond to the user
-            await RespondAsync("pong");
+            await RespondAsync("I'm here to serve bitches! Bootup Complete.");
         }
     }
 }
