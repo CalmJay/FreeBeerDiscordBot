@@ -1,7 +1,14 @@
-﻿using Newtonsoft.Json;
+﻿using Discord.WebSocket;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
+using AlbionOnlineDataParser;
+using Discord.Interactions;
 
 namespace PlayerData
 {
@@ -824,5 +831,85 @@ namespace PlayerData
     {
         public List<object> guilds { get; set; }
         public List<PlayerLookupInfo> players { get; set; }
+    }
+    
+
+    public class AlbionAPIDataSearch
+    {
+        public async Task<PlayerLookupInfo> GetPlayerInfo(SocketInteractionContext a_socketInteraction)
+        {
+            
+            string? sPlayerData = null;
+            string? sPlayerAlbionId = null; //either get from google sheet or search in albion API
+            string? sUserNickname = ((a_socketInteraction.User as SocketGuildUser).Nickname != null) ? (a_socketInteraction.User as SocketGuildUser).Nickname : a_socketInteraction.User.Username;
+            PlayerLookupInfo returnValue = null;
+
+            string shotcallertag1 = "!!sl";
+            string shotcallertag2 = "!sl";
+
+            if (sUserNickname.Contains(shotcallertag1))
+            {
+                while (sUserNickname.StartsWith(shotcallertag1))
+                {
+                    sUserNickname = sUserNickname.Substring(shotcallertag1.Length + 1);
+                }
+            }
+            else if (sUserNickname.Contains(shotcallertag2))
+            {
+                while (sUserNickname.StartsWith(shotcallertag2))
+                {
+                    sUserNickname = sUserNickname.Substring(shotcallertag2.Length + 1);
+                }
+
+            }
+
+            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"search?q={sUserNickname}"))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    sPlayerData = await response.Content.ReadAsStringAsync();
+                    var parsedObjects = JObject.Parse(sPlayerData);
+                    PlayersSearch playerSearchData = JsonConvert.DeserializeObject<PlayersSearch>(sPlayerData);
+
+                    //USE THIS LOGIC TO CREATE METHOD TO ADD USER TO DATABASE
+                    if (playerSearchData.players.FirstOrDefault() != null)
+                    {
+                        returnValue = playerSearchData.players.FirstOrDefault();
+                        Console.WriteLine("Guild Nickname Matches Albion Username");
+                    }
+                    else
+                    {
+                        //await a_socketInteraction.Channel.SendMessageAsync("Hey idiot. Does your discord nickname match your in-game name?");
+                        Console.WriteLine($"Player not found. Discord name doesnt match in-game name. Discord user: {a_socketInteraction.User.Username}");
+                        returnValue = null;
+                    }
+                }
+                else
+                {
+                    throw new Exception(response.ReasonPhrase);
+                }
+            }
+            return returnValue;
+        }
+
+        public async Task<PlayerDataHandler.Rootobject> GetAlbionEventInfo(int a_iEventID)
+        {
+            string playerData = null;
+
+            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"events/{a_iEventID}"))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    playerData = await response.Content.ReadAsStringAsync();
+                }
+                else
+                {
+                    throw new Exception(response.ReasonPhrase);
+                }
+            }
+
+            var eventData = JsonConvert.DeserializeObject<PlayerDataHandler.Rootobject>(playerData);
+            return eventData;
+        }
     }
 }

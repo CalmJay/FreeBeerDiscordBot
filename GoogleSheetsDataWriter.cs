@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Enums;
 using Google.Apis.Auth.OAuth2;
@@ -163,7 +164,7 @@ namespace GoogleSheetsData
             // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
         }
 
-        public static async Task WriteToRegearSheet(SocketMessageComponent a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund)
+        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund)
         {
             string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString(): a_command.User.Username;
 

@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using static System.Guid;
 
-namespace DNet_V3_Tutorial.Log
+namespace DiscordbotLogging.Log
 {
     public abstract class Logger : ILogger
     {

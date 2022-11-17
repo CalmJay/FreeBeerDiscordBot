@@ -5,7 +5,7 @@ using System.Reflection;
 using System;
 using System.Threading.Tasks;
 
-namespace DNet_V3_Tutorial
+namespace InteractionHandlerService
 {
     public class InteractionHandler
     {
@@ -33,6 +33,8 @@ namespace DNet_V3_Tutorial
             _commands.SlashCommandExecuted += SlashCommandExecuted;
             _commands.ContextCommandExecuted += ContextCommandExecuted;
             _commands.ComponentCommandExecuted += ComponentCommandExecuted;
+            _commands.ModalCommandExecuted += ModalCommandExecuted;
+            
         }
 
         private Task ComponentCommandExecuted(ComponentCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
@@ -49,6 +51,11 @@ namespace DNet_V3_Tutorial
         {
             return Task.CompletedTask;
         }
+        private Task ModalCommandExecuted(ModalCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
+        {
+            return Task.CompletedTask;
+        }
+
         private async Task HandleInteraction(SocketInteraction arg)
         {
             try
