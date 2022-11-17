@@ -100,7 +100,7 @@ namespace CommandModule
 
             int iDeathDisplayCounter = 1;
             int iVisibleDeathsShown = Int32.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths //Add to config
-            
+
             if (sPlayerAlbionId.Result != null)
             {
                 using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"players/{sPlayerAlbionId.Result.Id}/deaths"))
@@ -132,7 +132,8 @@ namespace CommandModule
                         {
                             if (i <= iVisibleDeathsShown)
                             {
-                                embed.AddField($"Death{iDeathDisplayCounter}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                                embed.AddField($"Death {iDeathDisplayCounter} : {searchDeaths[i] }", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                                
                                 //regearbutton.Label = $"Regear Death{iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
                                 //regearbutton.CustomId = searchDeaths[i].ToString();
                                 //component.WithButton(regearbutton);
@@ -141,7 +142,7 @@ namespace CommandModule
                             }
                         }
                         //await RespondAsync(null, null, false, true, null, null, component.Build(), embed.Build()); //Enable once buttons are working
-                        await RespondAsync(null, null, false, false, null, null, null, embed.Build());
+                        await RespondAsync(null, null, false, true, null, null, null, embed.Build());
 
                     }
                     else
@@ -154,7 +155,7 @@ namespace CommandModule
             {
                 await RespondAsync("Hey idiot. Does your discord nickname match your in-game name?");
             }
-            
+
 
         }
 
@@ -183,25 +184,25 @@ namespace CommandModule
         [SlashCommand("regear", "Submit a regear")]
         public async Task RegearSubmission(int EventID)
         {
-          
+
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
             RegearModule regearModule = new RegearModule();
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
             //PlayerEventData = playerEventData;
-            dataBaseService = new DataBaseService();
+            //dataBaseService = new DataBaseService();
 
-            await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
-            {
-                PlayerId = PlayerEventData.Victim.Id,
-                PlayerName = PlayerEventData.Victim.Name
-            });
+            //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
+            //{
+            //    PlayerId = PlayerEventData.Victim.Id,
+            //    PlayerName = PlayerEventData.Victim.Name
+            //});
 
             if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
                 await regearModule.PostRegear(Context, PlayerEventData, "", "", moneyType);
-                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, regearModule.TotalRegearSilverAmount);
+                //await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, regearModule.TotalRegearSilverAmount); // ONLY WRITES IF ACCEPT BUTTON CLICKED
             }
             else
             {
@@ -213,7 +214,39 @@ namespace CommandModule
             //    await PostRegearException(command, eventData, "", "", moneyType);
             //}
         }
+        [ComponentInteraction("deny")]
+        public async Task Denied()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+            var interaction = Context.Interaction as IComponentInteraction;
 
-        
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            {
+                
+
+                await RespondAsync("Regear Denied", null, false, false, null, null, null, null);
+                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Command: regear", null));
+
+                await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+            }
+            else
+            {
+                await RespondAsync($"HEY EVERYONE!!! {guildUser} was trying to deny a regear. Stop pressing random buttons idiot. That aint your job.");
+            }
+        }
+        [ComponentInteraction("approve")]
+        public async Task RegearApprove()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+            var interaction = Context.Interaction as IComponentInteraction;
+
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            {
+                //await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
+                await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+                await Context.Channel.SendMessageAsync($"<@{Context.User.Id}> your regear has been approved!");// + Environment.NewLine + $"{TotalRegearSilverAmount} has been added to your paychex");
+
+            }
+        }
     }
 }

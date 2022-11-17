@@ -21,7 +21,7 @@ using FreeBeerBot;
 
 namespace DiscordBot.RegearModule
 {
-    public class RegearModule : Program
+    public class RegearModule
     {
         private DataBaseService dataBaseService;
 
@@ -31,14 +31,15 @@ namespace DiscordBot.RegearModule
         public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject eventData, string partyLeader, string reason, MoneyTypes moneyTypes)
         {
             ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
-            
+
             var chnl = command.Client.GetChannel(id) as IMessageChannel;
-            
+
 
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment);
 
             try
             {
+#if !DEBUG
                 dataBaseService = new DataBaseService();
                 var player = dataBaseService.GetPlayerInfoByName(eventData.Victim.Name);
                 var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
@@ -54,7 +55,7 @@ namespace DiscordBot.RegearModule
                     KillId = command.Interaction.Data.ToString(),//THIS NEEDS FIXING
                     Reason = reason
                 });
-
+#endif
                 var converter = new HtmlConverter();
                 var html = marketDataAndGearImg[0];
                 var bytes = converter.FromHtmlString(html);
@@ -71,17 +72,17 @@ namespace DiscordBot.RegearModule
                     CustomId = "deny",
                     Style = ButtonStyle.Danger
                 };
-                var exceptionButton = new ButtonBuilder()
-                {
-                    Label = "Special Exception",
-                    CustomId = "exception",
-                    Style = ButtonStyle.Secondary,
-                };
+                //var exceptionButton = new ButtonBuilder()
+                //{
+                //    Label = "Special Exception",
+                //    CustomId = "exception",
+                //    Style = ButtonStyle.Secondary,
+                //};
 
                 var component = new ComponentBuilder();
                 component.WithButton(approveButton);
                 component.WithButton(denyButton);
-                component.WithButton(exceptionButton);
+                //component.WithButton(exceptionButton);
 
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
@@ -95,19 +96,9 @@ namespace DiscordBot.RegearModule
                                     //.WithImageUrl(GearImageRenderSerivce(command))
                                     //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
                                     .WithImageUrl($"attachment://image.jpg");
-                                    //.WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}"); GET KILL ID FROM HANDLER
+                    //.WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}"); GET KILL ID FROM HANDLER
                     await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User}", false, embed.Build(), null, false, null, null, components: component.Build());
-
-
-                    //await chnl.SendMessageAsync("Regear Submission from....", false, embed.Build()); // 5
-                    //build.WithThumbnailUrl("attachment://anyImageName.png"); //or build.WithImageUrl("")
-                    //await Context.Channel.SendFileAsync(imgStream, "anyImageName.png", "", false, build.Build());
-                    //command.RespondAsync();
                 }
-
-                //HandleComponetCommand(command);
-
-
             }
             catch (Exception ex)
             {
@@ -115,14 +106,10 @@ namespace DiscordBot.RegearModule
             }
         }
 
-
         public bool CheckIfPlayerHaveReGearIcon(SocketInteractionContext socketInteractionUser)
         {
             ulong GoldTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegear"));
             ulong SilverTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
-
-
-            SocketGuild guild = socketInteractionUser.Guild;
 
             if (socketInteractionUser.User is SocketGuildUser guildUser)
             {
@@ -136,10 +123,8 @@ namespace DiscordBot.RegearModule
                     return true;
                 }
             }
-                
-
             return false;
-           
+
         }
 
         public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Equipment1 victimEquipment)
