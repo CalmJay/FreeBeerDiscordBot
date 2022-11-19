@@ -26,7 +26,8 @@ namespace DiscordBot.RegearModule
         private DataBaseService dataBaseService;
 
         public int TotalRegearSilverAmount { get; set; }
-
+        private int silverTierRegearCap = 1300000;
+        private int goldTierRegearCap = 1700000;
 
         public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject eventData, string partyLeader, string reason, MoneyTypes moneyTypes)
         {
@@ -91,7 +92,9 @@ namespace DiscordBot.RegearModule
                                     .AddField("User submitted ", command.User.Username, true)
                                     .AddField("Victim", eventData.Victim.Name)
                                     .AddField("Killer", "[" + eventData.Killer.AllianceName + "] " + "[" + eventData.Killer.GuildName + "] " + eventData.Killer.Name)
-                                    .AddField("Death Average IP", eventData.Victim.AverageItemPower)
+                                    .AddField("Death Average IP ", eventData.Victim.AverageItemPower)
+                                    .AddField("Refund Amount: ", TotalRegearSilverAmount)
+                                    .AddField("KillID: ", eventData.EventId)
 
                                     //.WithImageUrl(GearImageRenderSerivce(command))
                                     //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
@@ -113,15 +116,11 @@ namespace DiscordBot.RegearModule
 
             if (socketInteractionUser.User is SocketGuildUser guildUser)
             {
-
-                if (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID))
-                {
-                    return true;
-                }
                 if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible")) || (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID)))
                 {
                     return true;
                 }
+                //ADD BRONZE REGEAR LOGIC
             }
             return false;
 
@@ -161,6 +160,7 @@ namespace DiscordBot.RegearModule
             List<string> underRegearList = new List<string>();
             List<string> notUnderRegearList = new List<string>();
             List<string> notAvailableInMarketList = new List<string>();
+
             if (victimEquipment.Head != null)
             {
                 if (victimEquipment.Head.Type.Contains("T5") || victimEquipment.Head.Type.Contains("T6") || victimEquipment.Head.Type.Contains("T7") || victimEquipment.Head.Type.Contains("T8"))
@@ -466,11 +466,6 @@ namespace DiscordBot.RegearModule
                 }
             }
 
-
-
-#if DEBUG
-            Console.WriteLine("Mode=Debug");
-#endif
             var guildUser = (SocketGuildUser)command.User;
 
             if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 1031731037149081630
@@ -517,6 +512,92 @@ namespace DiscordBot.RegearModule
 
             //returnValue = marketData.FirstOrDefault().sell_price_min; 
             return new List<string> { gearImage, returnValue.ToString() };
+        }
+
+        public async Task<int> GetMarketData(SocketSlashCommand command, PlayerDataHandler.Equipment1 victimEquipment)
+        {
+            AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProject();
+
+            int returnValue = 0;
+            string? sMarketLocation = System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
+            bool bAddAllQualities = false;
+            int iDefaultItemQuality = 2;
+
+
+            string? head = (victimEquipment.Head != null) ? $"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality }" : null;
+            string? weapon = (victimEquipment.MainHand != null) ? $"{victimEquipment.MainHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.MainHand.Quality}" : null;
+            string? offhand = (victimEquipment.OffHand != null) ? $"{victimEquipment.OffHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.OffHand.Quality}" : null;
+            string? cape = (victimEquipment.Cape != null) ? $"{victimEquipment.Cape.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Cape.Quality}" : null;
+            string? armor = (victimEquipment.Armor != null) ? $"{victimEquipment.Armor.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Armor.Quality}" : null;
+            string? boots = (victimEquipment.Shoes != null) ? $"{victimEquipment.Shoes.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Shoes.Quality}" : null;
+            string? mount = (victimEquipment.Mount != null) ? $"{victimEquipment.Mount.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Mount.Quality}" : null;
+
+            List<string> equipmentList = new List<string>();
+
+            equipmentList.Add(head);
+            equipmentList.Add(weapon);
+            equipmentList.Add(offhand);
+            equipmentList.Add(cape);
+            equipmentList.Add(armor);
+            equipmentList.Add(boots);
+            equipmentList.Add(mount);
+
+
+            //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3.json?locations=Martlock&qualities=4 brought back only 1
+            //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3?Locations=Martlock brought back all qualities
+
+            //MarketResponse testMarketdata = new MarketResponse() // THIS IS THE CONSTRUCTORS TO THE AlbionData.MODELS
+
+            //SUDO
+            //IF Market entry is zero change quality. If still zero send message back to user to update the market with the https://www.albion-online-data.com/ project and update the market items
+
+            string jsonMarketData = null;
+
+            foreach (var item in equipmentList)
+            {
+                if (item != null)
+                {
+                    using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiAlbionDataProject.GetAsync(item))
+                    {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            jsonMarketData = await response.Content.ReadAsStringAsync();
+                        }
+                        else
+                        {
+                            throw new Exception(response.ReasonPhrase);
+                        }
+                    }
+                    var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData);
+
+                    returnValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
+                }
+            }
+            var guildUser = (SocketGuildUser)command.User;
+
+            if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 1031731037149081630
+            {
+                returnValue = Math.Min(1300000, returnValue);
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1031731127431479428
+            {
+                returnValue = returnValue = Math.Min(1700000, returnValue);
+            }
+
+            //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
+
+            return returnValue;
+        }
+
+
+
+
+
+
+            private int getRegearRefundAmount()
+        {
+
+            return 0;
         }
     }
 }
