@@ -212,7 +212,7 @@ namespace GoogleSheetsData
 
             if (values == null || !values.Any())
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sDiscordName, a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", "Unknown", "123456789", msgRef.MessageId.ToString() } } };
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_playerData.Victim.Name, "@"+ a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", "Party Leader name", msgRef.MessageId.ToString(), a_playerData.EventId} } };
                 var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 await update.ExecuteAsync();

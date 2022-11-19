@@ -187,6 +187,8 @@ namespace CommandModule
 
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
             RegearModule regearModule = new RegearModule();
+            var guildUser = (SocketGuildUser)Context.User;
+            var interaction = Context.Interaction as IComponentInteraction;
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
             //PlayerEventData = playerEventData;
@@ -201,12 +203,19 @@ namespace CommandModule
             if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-                await regearModule.PostRegear(Context, PlayerEventData, "", "", moneyType);
-                //await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, regearModule.TotalRegearSilverAmount); // ONLY WRITES IF ACCEPT BUTTON CLICKED
+
+                if(PlayerEventData.Victim.Name == Context.User.Username || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                {
+                    await regearModule.PostRegear(Context, PlayerEventData, "", "", moneyType);
+                }
+                else
+                {
+                    await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
+                }
             }
             else
             {
-                await ReplyAsync("You do not have regear roles to post a regear");
+                await ReplyAsync("You do not have regear roles or permissions to post a regear");
             }
             //if (FromButton)
             //{
@@ -220,6 +229,8 @@ namespace CommandModule
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
 
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 
@@ -231,7 +242,7 @@ namespace CommandModule
             }
             else
             {
-                await RespondAsync($"HEY EVERYONE!!! {guildUser} was trying to deny a regear. Stop pressing random buttons idiot. That aint your job.");
+                await RespondAsync($"HEY EVERYONE!!! <@{Context.User.Id}> was trying to deny a regear. Stop pressing random buttons idiot. That aint your job.");
             }
         }
         [ComponentInteraction("approve")]
@@ -239,13 +250,22 @@ namespace CommandModule
         {
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
+            int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+
+            AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
+            PlayerEventData = await eventData.GetAlbionEventInfo(killId);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
-                //await GoogleSheetsDataWriter.WriteToRegearSheet(component, PlayerEventData, TotalRegearSilverAmount);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
-                await Context.Channel.SendMessageAsync($"<@{Context.User.Id}> your regear has been approved!");// + Environment.NewLine + $"{TotalRegearSilverAmount} has been added to your paychex");
-
+                await Context.Channel.SendMessageAsync($"@{victimName} your regear has been approved! {refundAmount} has been added to your paychex");
+            }
+            else
+            {
+                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.");
             }
         }
     }
