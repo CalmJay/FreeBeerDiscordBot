@@ -132,8 +132,8 @@ namespace CommandModule
                         {
                             if (i <= iVisibleDeathsShown)
                             {
-                                embed.AddField($"Death {iDeathDisplayCounter} : {searchDeaths[i] }", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
-                                
+                                embed.AddField($"Death {iDeathDisplayCounter} : {searchDeaths[i]}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+
                                 //regearbutton.Label = $"Regear Death{iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
                                 //regearbutton.CustomId = searchDeaths[i].ToString();
                                 //component.WithButton(regearbutton);
@@ -182,7 +182,7 @@ namespace CommandModule
         }
 
         [SlashCommand("regear", "Submit a regear")]
-        public async Task RegearSubmission(int EventID)
+        public async Task RegearSubmission(int EventID, string callerName)
         {
 
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
@@ -191,7 +191,6 @@ namespace CommandModule
             var interaction = Context.Interaction as IComponentInteraction;
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
-            //PlayerEventData = playerEventData;
             //dataBaseService = new DataBaseService();
 
             //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
@@ -204,9 +203,26 @@ namespace CommandModule
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-                if(PlayerEventData.Victim.Name == Context.User.Username || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+
+                if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                 {
-                    await regearModule.PostRegear(Context, PlayerEventData, "", "", moneyType);
+                    if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != 0)
+                    {
+                        await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
+
+                    }
+                    else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != 0)
+                    {
+                        await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType);
+
+                    }
+                    else if (PlayerEventData.BattleId == 0)
+                    {
+                        await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
+
+                    }
+
                 }
                 else
                 {
@@ -233,7 +249,7 @@ namespace CommandModule
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
-                
+
 
                 await RespondAsync("Regear Denied", null, false, false, null, null, null, null);
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Command: regear", null));
