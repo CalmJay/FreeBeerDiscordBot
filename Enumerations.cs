@@ -51,4 +51,20 @@ namespace DiscordBot.Enums
         Other,
         ReGear
     }
+
+    public enum GearLocation
+    {
+        Head,
+        Armor,
+        Chest,
+        Shoes,
+        Cape,
+        MainHand,
+        OffHand,
+        Bag,
+        Mount,
+        Potion,
+        Food,
+        Inventory
+    }
 }

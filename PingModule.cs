@@ -33,7 +33,8 @@ namespace DNet_V3_Tutorial
             // Respond to the user
             //await Context.Channel.SendMessageAsync();
             //await RespondAsync(message);
-            await chnl.SendMessageAsync(message);
+            await ReplyAsync(message);
+            //await chnl.SendMessageAsync(message);
         }
         [SlashCommand("insult", "Receive a insult!")]
         public async Task Getinsult()
@@ -60,7 +61,7 @@ namespace DNet_V3_Tutorial
                 $"TwoLiner",
                 $"SuperBad",
                 $"Bum",
-                $"<@{Context.User.Id}> I checked your stats. I think your in the wrong guild? Here let me point you to the correct one. https://discord.gg/x488p442AX",
+                $"<@{Context.User.Id}> I checked your stats. I think your in the wrong guild? Here let me point you to the correct one. https://discord.com/invite/v7XCS9ZVaU",
                 $"I'm not saying you're fat <@{Context.User.Id}>, but it looks like you were poured into your clothes and forgot to say when",
                 $"You couldn't pour the water out of a boot if the instructions were written on the heel.",
                 $"Everyone who's ever loved you was wrong.",
@@ -75,9 +76,7 @@ namespace DNet_V3_Tutorial
             // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
             await _logger.Log(new LogMessage(LogSeverity.Info, "Insult Time!!!", $"User: {Context.User.Username}, Command: insult", null));
             // Respond to the user
-            //await Context.Channel.SendMessageAsync();
-            //await RespondAsync(message);
-            //$"You’re my favorite person. Besides every other person I’ve ever met."
+
             switch((string)insultList[r])
             {
                 case "TwoLiner":
@@ -87,8 +86,9 @@ namespace DNet_V3_Tutorial
                     break;
                 case "SuperBad":
                     await RespondAsync($"Hahahah Your gonna hate me. Lemme whisper you something <@{Context.User.Id}>!");
-
+                    System.Threading.Thread.Sleep(2000);
                     await FollowupAsync("YOU FUCKING SUCK", null, false, true, null, null, null, null);
+                    
                     break;
 
 

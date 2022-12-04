@@ -132,7 +132,7 @@ namespace CommandModule
                         {
                             if (i <= iVisibleDeathsShown)
                             {
-                                embed.AddField($"Death {iDeathDisplayCounter} : {searchDeaths[i]}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                                embed.AddField($"Death {iDeathDisplayCounter} : {searchDeaths[i] }", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
 
                                 //regearbutton.Label = $"Regear Death{iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
                                 //regearbutton.CustomId = searchDeaths[i].ToString();
@@ -189,6 +189,9 @@ namespace CommandModule
             RegearModule regearModule = new RegearModule();
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+
+            await _logger.Log(new LogMessage(LogSeverity.Info, "RegearSubmission : Regear", $"User: {Context.User.Username}, Command: regear", null));
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
             //dataBaseService = new DataBaseService();
@@ -199,8 +202,8 @@ namespace CommandModule
             //    PlayerName = PlayerEventData.Victim.Name
             //});
 
-            if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
-            {
+            //if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
+            //{
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
                 string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
@@ -228,11 +231,11 @@ namespace CommandModule
                 {
                     await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
                 }
-            }
-            else
-            {
-                await ReplyAsync("You do not have regear roles or permissions to post a regear");
-            }
+            //}
+            //else
+            //{
+            //    await ReplyAsync("You do not have regear roles or permissions to post a regear");
+            //}
             //if (FromButton)
             //{
             //    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
@@ -245,7 +248,7 @@ namespace CommandModule
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
 
-            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
@@ -268,7 +271,7 @@ namespace CommandModule
             var interaction = Context.Interaction as IComponentInteraction;
             int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
-            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
 
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
             PlayerEventData = await eventData.GetAlbionEventInfo(killId);
@@ -278,11 +281,67 @@ namespace CommandModule
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
                 await Context.Channel.SendMessageAsync($"@{victimName} your regear has been approved! {refundAmount} has been added to your paychex");
+
             }
             else
             {
                 await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.");
             }
         }
+
+        [ComponentInteraction("audit")]
+        public async Task AuditRegear()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+            var interaction = Context.Interaction as IComponentInteraction;
+
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
+            PlayerEventData = await eventData.GetAlbionEventInfo(killId);
+            string sBattleID = (PlayerEventData.EventId == PlayerEventData.BattleId) ? "No battle found" : PlayerEventData.BattleId.ToString();
+
+            string sKillerGuildName = (PlayerEventData.Killer.GuildName == "" || PlayerEventData.Killer.GuildName == null) ? "No Guild" : PlayerEventData.Killer.GuildName;
+
+
+
+
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            {
+                var embed = new EmbedBuilder()
+                .WithTitle($"Regear audit on {PlayerEventData.Victim.Name}")
+                .AddField("Event ID", PlayerEventData.EventId, true)
+                
+                //.AddField("Location",(PlayerEventData.Location != null) ? PlayerEventData.Location : "Location Not found",true)
+                .AddField("Victim", PlayerEventData.Victim.Name, true)
+                .AddField("Average IP", PlayerEventData.Victim.AverageItemPower, true)
+                
+                //.AddField("Category", PlayerEventData.Category, true)
+                .AddField("Killer Name", PlayerEventData.Killer.Name, true)
+                .AddField("Killer Guild Name", sKillerGuildName, true)
+                .AddField("Killer Avg IP", PlayerEventData.Killer.AverageItemPower, true)
+                .AddField("Kill Area", PlayerEventData.KillArea, true)
+                .AddField("Number of participants", PlayerEventData.numberOfParticipants, false)
+                .AddField("Time Stamp", PlayerEventData.TimeStamp, true)
+                //.AddField("Time Stamp", PlayerEventData.Type, true)
+                .WithUrl($"https://albiononline.com/en/killboard/kill/{PlayerEventData.EventId}");
+                //.WithColor();
+
+                if (PlayerEventData.EventId != PlayerEventData.BattleId)
+                {
+                    embed.AddField("BattleID", sBattleID);
+                    embed.AddField("BattleBoard Name", $"https://albionbattles.com/battles/{sBattleID}", false);
+                    embed.AddField("Battle Killboard", $"https://albiononline.com/en/killboard/battles/{sBattleID}",false);
+                }
+
+                await RespondAsync($"Audit report for event {PlayerEventData.EventId}.", null, false, true, null, null, null, embed.Build());
+            }
+            else
+            {
+                await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.");
+            }
+                
+            
+        }
+
     }
 }
