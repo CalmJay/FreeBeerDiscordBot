@@ -54,7 +54,9 @@ namespace FreeBeerBot
             .Build();
 
             InitializeAlbionAPIClient();
-            InitializeAlbionDataProject();
+            InitializeAlbionDataProjectCurrentPrices();
+            InitializeAlbion24HourDataMarketPricesHistory();
+
 
             await RunAsync(host);
         }
