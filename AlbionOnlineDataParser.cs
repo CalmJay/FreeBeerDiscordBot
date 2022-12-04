@@ -17,7 +17,15 @@ namespace AlbionOnlineDataParser
             ApiClient.DefaultRequestHeaders.Accept.Clear();
             ApiClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }
+        public static void InitializeAlbionDataProject()
+        {
 
+            ApiAlbionDataProject = new HttpClient();
+            ApiAlbionDataProject.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/prices/");
+            ApiAlbionDataProject.DefaultRequestHeaders.Accept.Clear();
+            ApiAlbionDataProject.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+        }
         public static void InitializeAlbionDataProjectCurrentPrices()
         {
 

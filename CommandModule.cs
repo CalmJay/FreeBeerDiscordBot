@@ -206,8 +206,6 @@ namespace CommandModule
             //{
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-                string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
-
                 if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                 {
                     if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)

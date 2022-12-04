@@ -578,7 +578,6 @@ namespace DiscordBot.RegearModule
             return new List<string> { gearImage, returnValue.ToString() };
         }
 
-        
 
         private bool IsRegearTankClass()
         {
