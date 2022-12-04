@@ -207,12 +207,12 @@ namespace CommandModule
 
                 if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                 {
-                    if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != 0)
+                    if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                     {
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
 
                     }
-                    else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != 0)
+                    else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                     {
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType);
 
