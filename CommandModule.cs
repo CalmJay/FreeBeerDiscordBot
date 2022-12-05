@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 using PlayerData;
 using Newtonsoft.Json;
 using DiscordBot.RegearModule;
+using MarketData;
+using System.Collections.Generic;
 
 namespace CommandModule
 {
@@ -159,26 +161,83 @@ namespace CommandModule
 
         }
 
-        [SlashCommand("blacklist", "Put a player on the shit list")]
-        public async Task BlacklistPlayer(string a_sDiscordUsername, string? a_sIngameName)
+        [SlashCommand("fetchprice", "Testing market item finder")]
+        public async Task FetchMarketPrice(int PriceOption, string a_sItemType, int a_iQuality, string? a_sMarketLocation = "")
         {
-            //.AddOption("discordusername", ApplicationCommandOptionType.Mentionable, "Discord username", false)
-            //.AddOption("ingame-name", ApplicationCommandOptionType.String, "In-game name or discord nickname", true)
-            //.AddOption("reason", ApplicationCommandOptionType.String, "Reason for being blacklisted.", false)
-            //.AddOption("fine", ApplicationCommandOptionType.String, "What's the fine?", false)
-            //.AddOption("notes", ApplicationCommandOptionType.String, "Additional notes on blacklist?", false);
+            //Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(a_sItemType);
+            Task<List<EquipmentMarketData>> marketData = null;
+            string combinedInfo = "";
+            //1 = 24 day average
+            //2 = daily average
+            //3 = current price
+            //
+            int itemCost = 0;
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Price Check", $"User: {Context.User.Username}, Command: Price check", null));
 
-            var sDiscordUsername = a_sDiscordUsername;
-            string? sDiscordNickname = a_sIngameName;
-            //string? sDiscordNickname = command.Data.Options.FirstOrDefault(x => x.Name == "ingame-name").Value.ToString();
-            //string? sReason = command.Data.Options.FirstOrDefault(x => x.Name == "reason").Value.ToString();
-            //string? sFine = command.Data.Options.FirstOrDefault(x => x.Name == "fine").Value.ToString();
-            //string? sNotes = command.Data.Options.FirstOrDefault(x => x.Name == "notes").Value.ToString();
+            switch (PriceOption)
+            {
+                case 1:
+                    combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
+                    marketData = new MarketDataFetching().GetMarketPrice24dayAverage(combinedInfo);
+                    break;
+
+                case 2:
+
+                    combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
+                    marketData = new MarketDataFetching().GetMarketPriceDailyAverage(combinedInfo);
+
+                    break;
+
+                case 3:
+                    combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
+                    marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
+
+                    break;
+
+                default:
+                    await ReplyAsync($"<@{Context.User.Id}> Option doesn't exist");
+                    break;
+            }
+
+
+
+            if(marketData.Result != null)
+            {
+                if (marketData.Result.Count > 0 && marketData.Result.FirstOrDefault().sell_price_min > 0)
+                {
+                    await ReplyAsync($"<@{Context.User.Id}> Price for {a_sItemType} is: " + marketData.Result.FirstOrDefault().sell_price_min);
+                }
+                else
+                {
+                    await ReplyAsync($"<@{Context.User.Id}> Price not found");
+                }
+            }
+            else
+            {
+                await ReplyAsync($"<@{Context.User.Id}> Price not found");
+            }
+
+
+        }
+
+
+
+        [SlashCommand("blacklist", "Put a player on the shit list")]
+        public async Task BlacklistPlayer(string DiscordUsername, string? IngameName = null, string Reason = null, string Fine = null, string AdditionalNotes = null)
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+
+            var sDiscordUsername = DiscordUsername;
+            string? sDiscordNickname = IngameName;
+            string? AlbionInGameName = IngameName;
+            string? sReason = Reason;
+            string? sFine = Fine;
+            string? sNotes = AdditionalNotes;
 
             Console.WriteLine("Dickhead " + sDiscordUsername + " has been blacklisted");
 
-            //await GoogleSheetsDataWriter.WriteToFreeBeerRosterDatabase(sDiscordUsername.ToString(), sDiscordNickname, sReason, sFine, sNotes);
-            //await command.Channel.SendMessageAsync(sDiscordUsername.ToString() + " has been blacklisted");
+            await GoogleSheetsDataWriter.WriteToFreeBeerRosterDatabase(sDiscordUsername.ToString(), sDiscordNickname, sReason, sFine, sNotes);
+            ReplyAsync(sDiscordUsername.ToString() + " has been blacklisted");
         }
 
         [SlashCommand("regear", "Submit a regear")]
@@ -265,18 +324,20 @@ namespace CommandModule
         [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
-            var guildUser = (SocketGuildUser)Context.User;
+            var guildUser = (SocketGuildUser)Context.User;     
             var interaction = Context.Interaction as IComponentInteraction;
-            int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
-            string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
-            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[1].Value);
 
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
+            string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
+            string callername = interaction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString();
+            int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+            
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
             PlayerEventData = await eventData.GetAlbionEventInfo(killId);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
-                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
                 await Context.Channel.SendMessageAsync($"@{victimName} your regear has been approved! {refundAmount} has been added to your paychex");
 

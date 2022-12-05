@@ -86,7 +86,7 @@ namespace MarketData
         {
             string jsonCurrentMarketData = null;
             List<EquipmentMarketData> marketDataCurrentPricing;
-
+            //"T5_HEAD_PLATE_KEEPER@3?Locations=&qualities=2"
             try
             {
 
