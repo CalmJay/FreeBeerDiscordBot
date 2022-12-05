@@ -107,6 +107,7 @@ namespace DiscordBot.RegearModule
                                     .AddField("Killer", "[" + eventData.Killer.AllianceName + "] " + "[" + eventData.Killer.GuildName + "] " + eventData.Killer.Name)
                                     .AddField("Death Average IP ", eventData.Victim.AverageItemPower)
                                     .AddField("Refund Amount: ", TotalRegearSilverAmount)
+                                    .AddField("Discord User: ", command.User.Id)
                                     
                                     //.AddField("Death Location: ", eventData.KillArea)
 
@@ -145,7 +146,9 @@ namespace DiscordBot.RegearModule
 
         public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Equipment1 victimEquipment, string victimName)
         {
-            AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProjectCurrentPrices();
+            //AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProjectCurrentPrices();
+            //AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbion24HourDataMarketPricesHistory();
+            //AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionData24DayAveragePrices();
 
             int returnValue = 0;
             int returnNotUnderRegearValue = 0;

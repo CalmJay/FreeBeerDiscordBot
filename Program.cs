@@ -56,6 +56,7 @@ namespace FreeBeerBot
             InitializeAlbionAPIClient();
             InitializeAlbionDataProjectCurrentPrices();
             InitializeAlbion24HourDataMarketPricesHistory();
+            InitializeAlbionData24DayAveragePrices();
 
 
             await RunAsync(host);

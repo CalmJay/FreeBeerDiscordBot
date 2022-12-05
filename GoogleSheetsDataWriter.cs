@@ -164,10 +164,10 @@ namespace GoogleSheetsData
             // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
         }
 
-        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund)
+        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund, string a_sCallerName)
         {
             string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString(): a_command.User.Username;
-
+            
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
             
             var numberOfRow = GetSheetsService().Spreadsheets.Values.Get(RegearSheetID, "Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
@@ -205,14 +205,14 @@ namespace GoogleSheetsData
                 }
                
 #endif
-
+                
                 ReadRange = $"Dumps!B{col1}";
                 WriteRange = $"Dumps!A{col1}:I{col2}";
             }
 
             if (values == null || !values.Any())
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_playerData.Victim.Name, "@"+ a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", "Party Leader name", msgRef.MessageId.ToString(), a_playerData.EventId} } };
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_playerData.Victim.Name, "@"+ a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId} } };
                 var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 await update.ExecuteAsync();
