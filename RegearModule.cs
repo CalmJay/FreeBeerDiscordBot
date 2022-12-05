@@ -18,6 +18,7 @@ using Newtonsoft.Json;
 using MarketData;
 using AlbionOnlineDataParser;
 using FreeBeerBot;
+using AlbionData.Models;
 
 namespace DiscordBot.RegearModule
 {
@@ -26,8 +27,9 @@ namespace DiscordBot.RegearModule
         private DataBaseService dataBaseService;
 
         public int TotalRegearSilverAmount { get; set; }
-        private int silverTierRegearCap = 1300000;
         private int goldTierRegearCap = 1700000;
+        private int silverTierRegearCap = 1300000;
+        private int bronzeTierRegearCap = 8000000;
         private int iTankMinimumIP = 1400;
         private int iDPSMinimumIP = 1450;
         private int iHealerMinmumIP = 1350;
@@ -98,14 +100,14 @@ namespace DiscordBot.RegearModule
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                    .WithTitle($"Regear Submission")
-                                    .AddField("User submitted ", command.User.Username, true)
-                                    .AddField("Victim", eventData.Victim.Name)
+                                    .WithTitle($"Regear Submission from {command.User.Username}")
+                                    .AddField("KillID: ", eventData.EventId, true)
+                                    .AddField("Victim", eventData.Victim.Name, true)
                                     .AddField("Caller Name: ", partyLeader)
                                     .AddField("Killer", "[" + eventData.Killer.AllianceName + "] " + "[" + eventData.Killer.GuildName + "] " + eventData.Killer.Name)
                                     .AddField("Death Average IP ", eventData.Victim.AverageItemPower)
                                     .AddField("Refund Amount: ", TotalRegearSilverAmount)
-                                    .AddField("KillID: ", eventData.EventId)
+                                    
                                     //.AddField("Death Location: ", eventData.KillArea)
 
                                     //.WithImageUrl(GearImageRenderSerivce(command))
@@ -129,51 +131,52 @@ namespace DiscordBot.RegearModule
             ulong GoldTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegear"));
             ulong SilverTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
 
-            //if (socketInteractionUser.User is SocketGuildUser guildUser)
-            //{
-            //    if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible")) || (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID)))
-            //    {
-            //        return true;
-            //    }
-            //    //ADD BRONZE REGEAR LOGIC
-            //}
+            if (socketInteractionUser.User is SocketGuildUser guildUser)
+            {
+                if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible")) || (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID)))
+                {
+                    return true;
+                }
+                //ADD BRONZE REGEAR LOGIC
+            }
             return true;
 
         }
 
         public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Equipment1 victimEquipment, string victimName)
         {
-            AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProject();
+            AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProjectCurrentPrices();
 
             int returnValue = 0;
             int returnNotUnderRegearValue = 0;
-            string? sMarketLocation = System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
+            string? sMarketLocation = "";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             bool bAddAllQualities = false;
             int iDefaultItemQuality = 2;
+            var guildUser = (SocketGuildUser)command.User;
+            var regearIconType = "";
 
+            
 
-            string? head = (victimEquipment.Head != null) ? $"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality}" : null;
-            string? weapon = (victimEquipment.MainHand != null) ? $"{victimEquipment.MainHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.MainHand.Quality}" : null;
-            string? offhand = (victimEquipment.OffHand != null) ? $"{victimEquipment.OffHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.OffHand.Quality}" : null;
-            string? cape = (victimEquipment.Cape != null) ? $"{victimEquipment.Cape.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Cape.Quality}" : null;
-            string? armor = (victimEquipment.Armor != null) ? $"{victimEquipment.Armor.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Armor.Quality}" : null;
-            string? boots = (victimEquipment.Shoes != null) ? $"{victimEquipment.Shoes.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Shoes.Quality}" : null;
-            string? mount = (victimEquipment.Mount != null) ? $"{victimEquipment.Mount.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Mount.Quality}" : null;
+            //string? head = (victimEquipment.Head != null) ? $"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality}" : null;
+            //string? mainhand = (victimEquipment.MainHand != null) ? $"{victimEquipment.MainHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.MainHand.Quality}" : null;
+            //string? offhand = (victimEquipment.OffHand != null) ? $"{victimEquipment.OffHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.OffHand.Quality}" : null;
+            //string? cape = (victimEquipment.Cape != null) ? $"{victimEquipment.Cape.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Cape.Quality}" : null;
+            //string? armor = (victimEquipment.Armor != null) ? $"{victimEquipment.Armor.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Armor.Quality}" : null;
+            //string? boots = (victimEquipment.Shoes != null) ? $"{victimEquipment.Shoes.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Shoes.Quality}" : null;
+            //string? mount = (victimEquipment.Mount != null) ? $"{victimEquipment.Mount.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Mount.Quality}" : null;
 
-            var placeholder = "https://render.albiononline.com/v1/item/T1_WOOD.png";
-            var headImg = (victimEquipment.Head != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Head.Type + "?quality=" + victimEquipment.Head.Quality}" : placeholder;
-            var weaponImg = (victimEquipment.MainHand != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.MainHand.Type + "?quality=" + victimEquipment.MainHand.Quality}" : placeholder;
-            var offhandImg = (victimEquipment.OffHand != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.OffHand.Type + "?quality=" + victimEquipment.OffHand.Quality}" : placeholder;
-            var capeImg = (victimEquipment.Cape != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Cape.Type + "?quality=" + victimEquipment.Cape.Quality}" : placeholder;
-            var armorImg = (victimEquipment.Armor != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Armor.Type + "?quality=" + victimEquipment.Armor.Quality}" : placeholder;
-            var bootsImg = (victimEquipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Shoes.Type + "?quality=" + victimEquipment.Shoes.Quality}" : placeholder;
-            var mountImg = (victimEquipment.Mount != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Mount.Type + "?quality=" + victimEquipment.Mount.Quality}" : placeholder;
+            //var placeholder = "https://render.albiononline.com/v1/item/T1_WOOD.png";
+            //var headImg = (victimEquipment.Head != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Head.Type + "?quality=" + victimEquipment.Head.Quality}" : placeholder;
+            //var weaponImg = (victimEquipment.MainHand != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.MainHand.Type + "?quality=" + victimEquipment.MainHand.Quality}" : placeholder;
+            //var offhandImg = (victimEquipment.OffHand != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.OffHand.Type + "?quality=" + victimEquipment.OffHand.Quality}" : placeholder;
+            //var capeImg = (victimEquipment.Cape != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Cape.Type + "?quality=" + victimEquipment.Cape.Quality}" : placeholder;
+            //var armorImg = (victimEquipment.Armor != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Armor.Type + "?quality=" + victimEquipment.Armor.Quality}" : placeholder;
+            //var bootsImg = (victimEquipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Shoes.Type + "?quality=" + victimEquipment.Shoes.Quality}" : placeholder;
+            //var mountImg = (victimEquipment.Mount != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Mount.Type + "?quality=" + victimEquipment.Mount.Quality}" : placeholder;
 
 
             List<string> equipmentList = new List<string>();
-            //List<string> notUnderRegearEquipmentList = new List<string>();
             List<Equipment> underRegearList = new List<Equipment>();
-            //List<string> notUnderRegearList = new List<string>();
             List<string> notAvailableInMarketList = new List<string>();
             #region test
             //if (victimEquipment.Head != null)
@@ -406,140 +409,132 @@ namespace DiscordBot.RegearModule
             //    underRegearList.Add(mountImg);
             //}
             #endregion
-            equipmentList.Add(head);
-            underRegearList.Add(new Equipment
-            {
-                Image = headImg,
-                Type = "HEAD"
-            });
-            equipmentList.Add(weapon);
-            underRegearList.Add(new Equipment
-            {
-                Image = weaponImg,
-                Type = "MAIN"
-            });
-            equipmentList.Add(offhand);
-            underRegearList.Add(new Equipment
-            {
-                Image = offhandImg,
-                Type = "OFF"
-            });
-            equipmentList.Add(armor);
-            underRegearList.Add(new Equipment
-            {
-                Image = armorImg,
-                Type = "ARMOR"
-            });
-            equipmentList.Add(boots);
-            underRegearList.Add(new Equipment
-            {
-                Image = bootsImg,
-                Type = "SHOES"
-            });
-            equipmentList.Add(cape);
-            underRegearList.Add(new Equipment
-            {
-                Image = capeImg,
-                Type = "CAPEITEM"
-            });
-            equipmentList.Add(mount);
-            underRegearList.Add(new Equipment
-            {
-                Image = mountImg,
-                Type = "MOUNT"
-            });
-            //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3.json?locations=Martlock&qualities=4 brought back only 1
-            //https://www.albion-online-data.com/api/v2/stats/prices/T4_MAIN_ROCKMACE_KEEPER@3?Locations=Martlock brought back all qualities
 
-            //MarketResponse testMarketdata = new MarketResponse() // THIS IS THE CONSTRUCTORS TO THE AlbionData.MODELS
-            //AVERGE PRICE TESTING
+            if (victimEquipment.Head != null)
+            {
+                equipmentList.Add($"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality}");
+                underRegearList.Add(new Equipment
+                {
+                    Image = $"https://render.albiononline.com/v1/item/{victimEquipment.Head.Type + "?quality=" + victimEquipment.Head.Quality}",
+                    Type = "HEAD"
+                });
+            }
 
-            //T6_2H_MACE@1
-            //// Root myDeserializedClass = JsonConvert.DeserializeObject<List<Root>>(myJsonResponse);
+            if (victimEquipment.MainHand != null)
+            {
+                equipmentList.Add($"{victimEquipment.MainHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.MainHand.Quality}");
+                underRegearList.Add(new Equipment
+                {
+                    Image = $"https://render.albiononline.com/v1/item/{victimEquipment.MainHand.Type + "?quality=" + victimEquipment.MainHand.Quality}",
+                    Type = "MAIN"
+                });
+            }
+            if (victimEquipment.OffHand != null)
+            {
+                equipmentList.Add($"{victimEquipment.OffHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.OffHand.Quality}");
+                underRegearList.Add(new Equipment
+                {
+                    Image = $"https://render.albiononline.com/v1/item/{victimEquipment.OffHand.Type + "?quality=" + victimEquipment.OffHand.Quality}",
+                    Type = "OFF"
+                });
+            }
 
-            //SUDO
-            //IF Market entry is zero change quality. If still zero send message back to user to update the market with the https://www.albion-online-data.com/ project and update the market items
+            if (victimEquipment.Armor != null)
+            {
+                equipmentList.Add($"{victimEquipment.Armor.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Armor.Quality}");
+                underRegearList.Add(new Equipment
+                {
+                    Image = $"https://render.albiononline.com/v1/item/{victimEquipment.Armor.Type + "?quality=" + victimEquipment.Armor.Quality}",
+                    Type = "ARMOR"
+                });
+            }
 
-            string jsonMarketData = null;
-            string jsonMarketData2 = null;
+            if (victimEquipment.Shoes != null)
+            {
+                equipmentList.Add($"{victimEquipment.Shoes.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Shoes.Quality}");
+                underRegearList.Add(new Equipment
+                {
+                    Image = $"https://render.albiononline.com/v1/item/{victimEquipment.Shoes.Type + "?quality=" + victimEquipment.Shoes.Quality}",
+                    Type = "SHOES"
+                });
+            }
+
+            if (victimEquipment.Cape != null)
+            {
+                equipmentList.Add($"{victimEquipment.Cape.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Cape.Quality}");
+                underRegearList.Add(new Equipment
+                {
+                    Image = $"https://render.albiononline.com/v1/item/{victimEquipment.Cape.Type + "?quality=" + victimEquipment.Cape.Quality}",
+                    Type = "CAPEITEM"
+                });
+            }
+            if (victimEquipment.Mount != null)
+            {
+                equipmentList.Add($"{victimEquipment.Mount.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Mount.Quality}");
+                underRegearList.Add(new Equipment
+                {
+                    Image = $"https://render.albiononline.com/v1/item/{victimEquipment.Mount.Type + "?quality=" + victimEquipment.Mount.Quality}",
+                    Type = "MOUNT"
+                });
+            }
 
             foreach (var item in equipmentList)
             {
-                if (item != null)
-                {
-                    using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiAlbionDataProject.GetAsync(item))
-                    {
-                        if (response.IsSuccessStatusCode)
-                        {
-                            jsonMarketData = await response.Content.ReadAsStringAsync();
-                        }
-                        else
-                        {
-                            throw new Exception(response.ReasonPhrase);
-                        }
-                    }
-                    var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData);
-                    var itemType = item.Split('_')[1];
-                    var underRegearItem = underRegearList.Where(x => x.Type.Contains(itemType)).FirstOrDefault();
+                string itemType = (item.Split('_')[1] == "2H") ? "MAIN" : item.Split('_')[1];
+                Equipment underRegearItem = underRegearList.Where(x => x.Type.Contains(itemType)).FirstOrDefault();
 
-                    if (marketData.FirstOrDefault().sell_price_min != 0)
+
+                //Check for 24 Day Average
+                Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(item);
+                //await Task.Delay(1000);
+
+                if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.FirstOrDefault().sell_price_min == 0)
+                {
+                    //Check for Daily Average
+                    marketData = new MarketDataFetching().GetMarketPriceDailyAverage(item);
+                    //await Task.Delay(1000);
+
+                    
+                    if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.FirstOrDefault().sell_price_min == 0)
                     {
-                        returnValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
-                        underRegearItem.ItemPrice = marketData.FirstOrDefault().sell_price_min.ToString() + "$";
-                    }
-                    else
-                    {
-                        notAvailableInMarketList.Add(marketData.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
-                        underRegearItem.ItemPrice = "0$ (Not Found)";
+                        //Check for Current Price
+                         marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(item);
+                        //await Task.Delay(1000);
+
+                        if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.FirstOrDefault().sell_price_min == 0)
+                        {
+                            notAvailableInMarketList.Add(marketData.Result.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
+                            underRegearItem.ItemPrice = "$0 (Not Found)";
+                        }
                     }
                 }
 
+                if (marketData.Result.FirstOrDefault().sell_price_min != 0)
+                {
+                    returnValue += marketData.Result.FirstOrDefault().sell_price_min; 
+                    underRegearItem.ItemPrice = "$" + marketData.Result.FirstOrDefault().sell_price_min.ToString();
+                }
+                //else
+                //{
+                        
+                //    notAvailableInMarketList.Add(marketData.Result.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
+                //    underRegearItem.ItemPrice = "$0 (Not Found)";
+                //}
             }
-            //foreach (var item in notUnderRegearEquipmentList)
-            //{
-            //    if (item != null)
-            //    {
-            //        using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiAlbionDataProject.GetAsync(item))
-            //        {
-            //            if (response.IsSuccessStatusCode)
-            //            {
-            //                jsonMarketData2 = await response.Content.ReadAsStringAsync();
-            //            }
-            //            else
-            //            {
-            //                throw new Exception(response.ReasonPhrase);
-            //            }
-            //        }
-
-            //        var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonMarketData2);
-
-
-            //        if (marketData.FirstOrDefault().sell_price_min != 0)
-            //        {
-            //            returnNotUnderRegearValue += marketData.FirstOrDefault().sell_price_min; //CHANGE TO AVERAGE SELL PRICE
-            //        }
-            //        else
-            //        {
-            //            notAvailableInMarketList.Add(marketData.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
-            //        }
-            //    }
-            //}
-
-            var guildUser = (SocketGuildUser)command.User;
-            var regearIconType = "";
+        
             if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 1031731037149081630
             {
-                returnValue = Math.Min(1300000, returnValue);
+                returnValue = Math.Min(silverTierRegearCap, returnValue);
                 regearIconType = "Silver Tier Regear - Elligible";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1031731127431479428
             {
-                returnValue = returnValue = Math.Min(1700000, returnValue);
+                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Elligible";
             }
             else
             {
-                returnValue = returnValue = Math.Min(800000, returnValue);
+                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Elligible";
             }
 
@@ -552,56 +547,57 @@ namespace DiscordBot.RegearModule
                     $"<img style='width:150px;height:150px' src='{item.Image}'/>" +
                     $"<p >{item.ItemPrice}</p></div>";
             }
+
             gearImage += $"<div style='font-weight : bold;'>Refund amt. : {returnValue}</div></center></div>";
-            //gearImage += $"<div><center><h3>Not Regearable</h3>";
-            //foreach (var item in notUnderRegearList)
-            //{
-            //    gearImage += $"<img style='display: inline;width:100px;height:100px' src='{item}'/>";
-            //}
             gearImage += $"<center><br/><h3> Items not found or price is too high </h3>";
+
             foreach (var item in notAvailableInMarketList)
             {
                 gearImage += $"{item}<br/>";
             }
+
             gearImage += $"</center></div>";
-            //var img1 = $"<div style='width: auto'><img style='display: inline;width:100px;height:100px' src='{head}'/>";
-            //var img2 = $"<img style='display: inline;width:100px;height:100px' src='{weapon}'/>";
-            //var img3 = $"<img style='display: inline;width:100px;height:100px' src='{offhand}'/>";
-            //var img4 = $"<img style='display: inline;width:100px;height:100px' src='{cape}'/>";
-            //var img5 = $"<img style='display: inline;width:100px;height:100px' src='{armor}'/>";
-            //var img6 = $"<img style='display: inline;width:100px;height:100px' src='{mount}'/>";
-            //var img7 = $"<img style='display: inline;width:100px;height:100px' src='{boots}'/><div style:'text-align : right;'>Items Price : {gearPrice}</div></div>";
 
-            //TODO: Add a selection to pick the cheapest item on the market if the quality is better (example. If regear submits a normal T6 Heavy mace and it costs 105k but there's a excellent quality for 100k. Submit the better quaility price
-
-            //returnValue = marketData.FirstOrDefault().sell_price_min; 
             return new List<string> { gearImage, returnValue.ToString() };
         }
 
-
-        private bool IsRegearTankClass()
+        private bool IsRegearTankClass(string a_sGearItem)
         {
-
+            if (a_sGearItem.Contains("HAMMER") || a_sGearItem.Contains("MACE") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("FLAIL"))
+            {
+                return true;
+            }
             return false;
         }
 
-        private bool IsRegearDPSClass()
+        private bool IsRegearDPSClass(string a_sGearItem)
         {
-
+            if (!IsRegearTankClass(a_sGearItem) && !IsRegearHealerClass(a_sGearItem) && !IsRegearSupportClass(a_sGearItem))
+            {
+                return true;
+            }
             return false;
         }
 
-        private bool IsRegearHealerClass()
+        private bool IsRegearHealerClass(string a_sGearItem)
         {
-
+            if (a_sGearItem.Contains("HOLY") || a_sGearItem.Contains("NATURE") || a_sGearItem.Contains("WILD") || a_sGearItem.Contains("DIVINE"))
+            {
+                return true;
+            }
             return false;
         }
 
-        private bool IsRegearSupportClass()
+        private bool IsRegearSupportClass(string a_sGearItem)
         {
 
+            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("FLAIL"))
+            {
+                return true;
+            }
             return false;
         }
+
         public class Equipment
         {
             private string image;

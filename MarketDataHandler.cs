@@ -1,6 +1,13 @@
-﻿using System;
+﻿using Discord;
+using Discord.Interactions;
+using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
+using DiscordbotLogging.Log;
+using Newtonsoft.Json;
+using System.Linq;
 
 namespace MarketData
 {
@@ -75,19 +82,98 @@ namespace MarketData
 
     public class MarketDataFetching
     {
-        public int GetMarketPriceCurrent()
+        public async Task<List<EquipmentMarketData>> GetMarketPriceCurrentAsync(string a_sEquipmentItem)
         {
-            return 0;
+            string jsonCurrentMarketData = null;
+            List<EquipmentMarketData> marketDataCurrentPricing;
+
+            try
+            {
+
+                using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiAlbionDataProjectCurrentPrices.GetAsync(a_sEquipmentItem))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        jsonCurrentMarketData = await response.Content.ReadAsStringAsync();
+                    }
+                    else
+                    {
+                        throw new Exception(response.ReasonPhrase);
+                    }
+                }
+                marketDataCurrentPricing = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonCurrentMarketData);
+            }
+            catch (Exception ex)
+            {
+                //await _logger.Log(new LogMessage(LogSeverity.Info, "Insult Time!!!", $"User: {context.User.Username}, Command: insult", null));
+                throw;
+            }
+
+            return marketDataCurrentPricing;
         }
 
-        public int GetMarketPriceDailyAverage()
+        public async Task<List<EquipmentMarketData>> GetMarketPriceDailyAverage(string a_sEquipmentItem)
         {
-            return 0;
+            string jsonCurrentMarketData = null;
+            List<EquipmentMarketData> marketData;
+
+            try
+            {
+
+                using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiAlbionDataProjectDailyPrices.GetAsync(a_sEquipmentItem + "&time-scale=24"))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        jsonCurrentMarketData = await response.Content.ReadAsStringAsync();
+                    }
+                    else
+                    {
+                        throw new Exception(response.ReasonPhrase);
+                    }
+                }
+                marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonCurrentMarketData);
+
+            }
+            catch (Exception ex)
+            {
+                //await _logger.Log(new LogMessage(LogSeverity.Info, "Insult Time!!!", $"User: {context.User.Username}, Command: insult", null));
+                throw;
+            }
+
+            return marketData;
         }
 
-        public int GetMarketPrice24dayAverage()
+        public async Task<List<EquipmentMarketData>> GetMarketPrice24dayAverage(string a_sEquipmentItem)
         {
-            return 0;
+            string jsonCurrentMarketData = null;
+            List<EquipmentMarketData> marketData = null;
+            //https://www.albion-online-data.com/api/v2/stats/charts/T8_HEAD_PLATE_SET2?date=11-1-2022&end_date=11-20-2022&locations=Martlock&qualities=4&time-scale=24
+
+
+            DateTime endDate = DateTime.Today.AddDays(-1);
+            DateTime startDate = endDate.AddDays(-24);
+
+            string startDateString = startDate.ToString("MM-dd-yyyy");
+            var endDateString = endDate.ToString("MM-dd-yyyy");
+
+            var combinedString = a_sEquipmentItem + $"&time-scale=24&date={startDateString}&end_date={endDateString}";
+
+            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiAlbionDataProjectDailyPrices.GetAsync(a_sEquipmentItem + $"&time-scale=24&date={startDateString}&end_date={endDateString}"))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    jsonCurrentMarketData = await response.Content.ReadAsStringAsync();
+                }
+                else
+                {
+                    throw new Exception(response.ReasonPhrase);
+                }
+            }
+            marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(jsonCurrentMarketData);
+
+
+
+            return marketData;
         }
     }
 

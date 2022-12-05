@@ -246,7 +246,7 @@ namespace CommandModule
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
 
-            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
@@ -269,7 +269,7 @@ namespace CommandModule
             var interaction = Context.Interaction as IComponentInteraction;
             int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
-            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[1].Value);
 
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
             PlayerEventData = await eventData.GetAlbionEventInfo(killId);
@@ -293,7 +293,7 @@ namespace CommandModule
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
 
-            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
             PlayerEventData = await eventData.GetAlbionEventInfo(killId);
             string sBattleID = (PlayerEventData.EventId == PlayerEventData.BattleId) ? "No battle found" : PlayerEventData.BattleId.ToString();
@@ -308,21 +308,15 @@ namespace CommandModule
                 var embed = new EmbedBuilder()
                 .WithTitle($"Regear audit on {PlayerEventData.Victim.Name}")
                 .AddField("Event ID", PlayerEventData.EventId, true)
-                
-                //.AddField("Location",(PlayerEventData.Location != null) ? PlayerEventData.Location : "Location Not found",true)
                 .AddField("Victim", PlayerEventData.Victim.Name, true)
                 .AddField("Average IP", PlayerEventData.Victim.AverageItemPower, true)
-                
-                //.AddField("Category", PlayerEventData.Category, true)
                 .AddField("Killer Name", PlayerEventData.Killer.Name, true)
                 .AddField("Killer Guild Name", sKillerGuildName, true)
                 .AddField("Killer Avg IP", PlayerEventData.Killer.AverageItemPower, true)
                 .AddField("Kill Area", PlayerEventData.KillArea, true)
                 .AddField("Number of participants", PlayerEventData.numberOfParticipants, false)
                 .AddField("Time Stamp", PlayerEventData.TimeStamp, true)
-                //.AddField("Time Stamp", PlayerEventData.Type, true)
                 .WithUrl($"https://albiononline.com/en/killboard/kill/{PlayerEventData.EventId}");
-                //.WithColor();
 
                 if (PlayerEventData.EventId != PlayerEventData.BattleId)
                 {
