@@ -491,6 +491,10 @@ namespace DiscordBot.RegearModule
 
                 //Check for 24 Day Average
                 Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(item);
+                //Task<List<EquipmentMarketData>> marketData1 = new MarketDataFetching().GetMarketPriceCurrentAsync(item);
+                //Task<List<EquipmentMarketData>> marketData2 = new MarketDataFetching().GetMarketPriceDailyAverage(item);
+
+
                 //await Task.Delay(1000);
 
                 if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
@@ -513,12 +517,16 @@ namespace DiscordBot.RegearModule
                         }
                     }
                 }
-                
-                if (marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
+                var itemsData = marketData.Result.Where(x => x.sell_price_min != 0);
+                if (itemsData.Count()!=0)
                 {
-                    returnValue += marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min; 
-                    underRegearItem.ItemPrice = "$" + marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min.ToString();
+                    if (marketData.Result.Count() != 0 && marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
+                    {
+                        returnValue += marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min;
+                        underRegearItem.ItemPrice = "$" + marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min.ToString();
+                    }
                 }
+
                 //else
                 //{
                         
