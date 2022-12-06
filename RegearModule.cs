@@ -100,14 +100,15 @@ namespace DiscordBot.RegearModule
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                    .WithTitle($"Regear Submission from {command.User.Username}")
+                                    .WithTitle($"Regear Submission from {eventData.Victim.Name}")
                                     .AddField("KillID: ", eventData.EventId, true)
                                     .AddField("Victim", eventData.Victim.Name, true)
                                     .AddField("Caller Name: ", partyLeader)
                                     .AddField("Killer", "[" + eventData.Killer.AllianceName + "] " + "[" + eventData.Killer.GuildName + "] " + eventData.Killer.Name)
                                     .AddField("Death Average IP ", eventData.Victim.AverageItemPower)
                                     .AddField("Refund Amount: ", TotalRegearSilverAmount)
-                                    .AddField("Discord User: ", command.User.Id)
+                                    .AddField("Discord User ID: ", command.User.Id)
+                                    .AddField("Discord Username" , command.User.Username)
                                     
                                     //.AddField("Death Location: ", eventData.KillArea)
 
@@ -484,6 +485,15 @@ namespace DiscordBot.RegearModule
             foreach (var item in equipmentList)
             {
                 string itemType = (item.Split('_')[1] == "2H") ? "MAIN" : item.Split('_')[1];
+
+                if (itemType.Contains("CAPE") )
+                {
+                    if(itemType != "CAPEITEM")
+                    {
+                        itemType = "CAPE";
+                    }
+                }
+
                 Equipment underRegearItem = underRegearList.Where(x => x.Type.Contains(itemType)).FirstOrDefault();
 
 
