@@ -100,14 +100,15 @@ namespace DiscordBot.RegearModule
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                    .WithTitle($"Regear Submission from {command.User.Username}")
+                                    .WithTitle($"Regear Submission from {eventData.Victim.Name}")
                                     .AddField("KillID: ", eventData.EventId, true)
                                     .AddField("Victim", eventData.Victim.Name, true)
                                     .AddField("Caller Name: ", partyLeader)
                                     .AddField("Killer", "[" + eventData.Killer.AllianceName + "] " + "[" + eventData.Killer.GuildName + "] " + eventData.Killer.Name)
                                     .AddField("Death Average IP ", eventData.Victim.AverageItemPower)
                                     .AddField("Refund Amount: ", TotalRegearSilverAmount)
-                                    .AddField("Discord User: ", command.User.Id)
+                                    .AddField("Discord User ID: ", command.User.Id)
+                                    .AddField("Discord Username" , command.User.Username)
                                     
                                     //.AddField("Death Location: ", eventData.KillArea)
 
@@ -468,7 +469,7 @@ namespace DiscordBot.RegearModule
                 underRegearList.Add(new Equipment
                 {
                     Image = $"https://render.albiononline.com/v1/item/{victimEquipment.Cape.Type + "?quality=" + victimEquipment.Cape.Quality}",
-                    Type = "CAPEITEM"
+                    Type = "CAPE"
                 });
             }
             if (victimEquipment.Mount != null)
@@ -484,38 +485,39 @@ namespace DiscordBot.RegearModule
             foreach (var item in equipmentList)
             {
                 string itemType = (item.Split('_')[1] == "2H") ? "MAIN" : item.Split('_')[1];
-                Equipment underRegearItem = underRegearList.Where(x => x.Type.Contains(itemType)).FirstOrDefault();
-
+                
+                //Equipment underRegearItem = underRegearList.Where(x => x.Type.Contains(itemType)).FirstOrDefault();
+                Equipment underRegearItem = underRegearList.Where(x => itemType.Contains(x.Type)).FirstOrDefault();
 
                 //Check for 24 Day Average
                 Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(item);
                 //await Task.Delay(1000);
 
-                if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.FirstOrDefault().sell_price_min == 0)
+                if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
                 {
                     //Check for Daily Average
                     marketData = new MarketDataFetching().GetMarketPriceDailyAverage(item);
                     //await Task.Delay(1000);
 
                     
-                    if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.FirstOrDefault().sell_price_min == 0)
+                    if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
                     {
                         //Check for Current Price
                          marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(item);
                         //await Task.Delay(1000);
 
-                        if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.FirstOrDefault().sell_price_min == 0)
+                        if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
                         {
                             notAvailableInMarketList.Add(marketData.Result.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
                             underRegearItem.ItemPrice = "$0 (Not Found)";
                         }
                     }
                 }
-
-                if (marketData.Result.FirstOrDefault().sell_price_min != 0)
+                
+                if (marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
                 {
-                    returnValue += marketData.Result.FirstOrDefault().sell_price_min; 
-                    underRegearItem.ItemPrice = "$" + marketData.Result.FirstOrDefault().sell_price_min.ToString();
+                    returnValue += marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min; 
+                    underRegearItem.ItemPrice = "$" + marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min.ToString();
                 }
                 //else
                 //{
@@ -563,6 +565,12 @@ namespace DiscordBot.RegearModule
 
             return new List<string> { gearImage, returnValue.ToString() };
         }
+
+        private bool DoesContainPrice()
+        {
+            return false;
+        }
+
 
         private bool IsRegearTankClass(string a_sGearItem)
         {

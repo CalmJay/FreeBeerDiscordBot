@@ -136,9 +136,9 @@ namespace CommandModule
                             {
                                 embed.AddField($"Death {iDeathDisplayCounter} : {searchDeaths[i] }", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
 
-                                //regearbutton.Label = $"Regear Death{iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
-                                //regearbutton.CustomId = searchDeaths[i].ToString();
-                                //component.WithButton(regearbutton);
+                                regearbutton.Label = $"Regear Death{iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
+                                regearbutton.CustomId = searchDeaths[i].ToString();
+                                component.WithButton(regearbutton);
 
                                 iDeathDisplayCounter++;
                             }
@@ -220,8 +220,6 @@ namespace CommandModule
 
         }
 
-
-
         [SlashCommand("blacklist", "Put a player on the shit list")]
         public async Task BlacklistPlayer(string DiscordUsername, string? IngameName = null, string Reason = null, string Fine = null, string AdditionalNotes = null)
         {
@@ -253,6 +251,7 @@ namespace CommandModule
             await _logger.Log(new LogMessage(LogSeverity.Info, "RegearSubmission : Regear", $"User: {Context.User.Username}, Command: regear", null));
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
+
             //dataBaseService = new DataBaseService();
 
             //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
@@ -261,8 +260,13 @@ namespace CommandModule
             //    PlayerName = PlayerEventData.Victim.Name
             //});
 
+
+            //CheckToSeeIfRegearHasAlreadyBeenClaimed
+
             //if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
             //{
+            if (PlayerEventData != null)
+            {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
                 if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
@@ -282,12 +286,16 @@ namespace CommandModule
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
 
                     }
-
                 }
                 else
                 {
                     await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
                 }
+            }
+            else
+            {
+                await ReplyAsync("Event info not found. Please verify Kill ID or event has expired.");
+            }
             //}
             //else
             //{
@@ -396,5 +404,14 @@ namespace CommandModule
             
         }
 
+
+        private bool isRegearDuplicate(int a_iEventID)
+        {
+
+            //await GoogleSheetsDataWriter.ReadAsync();
+
+
+            return false;
+        }
     }
 }

@@ -895,20 +895,16 @@ namespace PlayerData
         public async Task<PlayerDataHandler.Rootobject> GetAlbionEventInfo(int a_iEventID)
         {
             string playerData = null;
-
+            PlayerDataHandler.Rootobject eventData = null;
             using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"events/{a_iEventID}"))
             {
                 if (response.IsSuccessStatusCode)
                 {
                     playerData = await response.Content.ReadAsStringAsync();
-                }
-                else
-                {
-                    throw new Exception(response.ReasonPhrase);
+                    eventData = JsonConvert.DeserializeObject<PlayerDataHandler.Rootobject>(playerData);
                 }
             }
 
-            var eventData = JsonConvert.DeserializeObject<PlayerDataHandler.Rootobject>(playerData);
             return eventData;
         }
     }
