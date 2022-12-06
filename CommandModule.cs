@@ -269,8 +269,8 @@ namespace CommandModule
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-                //if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
-                //{
+                if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                {
                     if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                     {
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
@@ -286,11 +286,11 @@ namespace CommandModule
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
 
                     }
-                //}
-                //else
-                //{
-                //    await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
-                //}
+                }
+                else
+                {
+                    await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
+                }
             }
             else
             {
