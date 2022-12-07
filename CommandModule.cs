@@ -285,11 +285,12 @@ namespace CommandModule
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
 
                     }
+
                     await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true);
                 }
                 else
                 {
-                    await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
+                    await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
                 }
             }
             else
