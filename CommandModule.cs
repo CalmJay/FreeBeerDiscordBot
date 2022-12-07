@@ -157,8 +157,6 @@ namespace CommandModule
             {
                 await RespondAsync("Hey idiot. Does your discord nickname match your in-game name?");
             }
-
-
         }
 
         [SlashCommand("fetchprice", "Testing market item finder")]
@@ -249,7 +247,8 @@ namespace CommandModule
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "RegearSubmission : Regear", $"User: {Context.User.Username}, Command: regear", null));
-
+            await DeferAsync();
+            
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
             //dataBaseService = new DataBaseService();
@@ -269,8 +268,8 @@ namespace CommandModule
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-                //if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
-                //{
+                if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                {
                     if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                     {
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
@@ -286,40 +285,38 @@ namespace CommandModule
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
 
                     }
-                //}
-                //else
-                //{
-                //    await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
-                //}
+                    await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true);
+                }
+                else
+                {
+                    await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
+                }
             }
             else
             {
-                await ReplyAsync("Event info not found. Please verify Kill ID or event has expired.");
+                await RespondAsync("Event info not found. Please verify Kill ID or event has expired.");
             }
+            
             //}
             //else
             //{
             //    await ReplyAsync("You do not have regear roles or permissions to post a regear");
             //}
-            //if (FromButton)
-            //{
-            //    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
-            //    await PostRegearException(command, eventData, "", "", moneyType);
-            //}
+
         }
         [ComponentInteraction("deny")]
         public async Task Denied()
         {
             var guildUser = (SocketGuildUser)Context.User;
+            
             var interaction = Context.Interaction as IComponentInteraction;
 
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
+            ulong regearPoster =  Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
-
-
-                await RespondAsync("Regear Denied", null, false, false, null, null, null, null);
+                await RespondAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}", null, false, true, null, null, null, null);
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Command: regear", null));
 
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
@@ -361,16 +358,14 @@ namespace CommandModule
         {
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
-
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
+
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
             PlayerEventData = await eventData.GetAlbionEventInfo(killId);
+
             string sBattleID = (PlayerEventData.EventId == PlayerEventData.BattleId) ? "No battle found" : PlayerEventData.BattleId.ToString();
 
             string sKillerGuildName = (PlayerEventData.Killer.GuildName == "" || PlayerEventData.Killer.GuildName == null) ? "No Guild" : PlayerEventData.Killer.GuildName;
-
-
-
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {

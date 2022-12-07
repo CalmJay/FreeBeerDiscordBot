@@ -27,24 +27,25 @@ namespace DiscordBot.RegearModule
         private DataBaseService dataBaseService;
 
         public int TotalRegearSilverAmount { get; set; }
+        public ulong RegearQueueID  { get; set; }
+
         private int goldTierRegearCap = 1700000;
         private int silverTierRegearCap = 1300000;
-        private int bronzeTierRegearCap = 8000000;
+        private int bronzeTierRegearCap = 1000000;
         private int iTankMinimumIP = 1400;
         private int iDPSMinimumIP = 1450;
         private int iHealerMinmumIP = 1350;
         private int iSupportMinimumIP = 1350;
 
-        public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject eventData, string partyLeader, string reason, MoneyTypes moneyTypes)
+        private string regearRoleIcon { get; set; }
+
+
+    public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject eventData, string partyLeader, string reason, MoneyTypes moneyTypes)
         {
             ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
 
             var chnl = command.Client.GetChannel(id) as IMessageChannel;
-
-
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment, eventData.Victim.Name);
-
-            //var gearImage = GetGearImg(command, marketData);
 
             var converter = new HtmlConverter();
             var html = marketDataAndGearImg[0];
@@ -68,7 +69,6 @@ namespace DiscordBot.RegearModule
                 CustomId = "audit",
                 Style = ButtonStyle.Secondary
             };
-
 
             var component = new ComponentBuilder();
             component.WithButton(approveButton);
@@ -94,13 +94,10 @@ namespace DiscordBot.RegearModule
                     Reason = reason
                 });
 #endif
-               
-
-
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                    .WithTitle($"Regear Submission from {eventData.Victim.Name}")
+                                    .WithTitle($" {regearRoleIcon} Regear Submission from {eventData.Victim.Name}{regearRoleIcon}")
                                     .AddField("KillID: ", eventData.EventId, true)
                                     .AddField("Victim", eventData.Victim.Name, true)
                                     .AddField("Caller Name: ", partyLeader)
@@ -108,18 +105,17 @@ namespace DiscordBot.RegearModule
                                     .AddField("Death Average IP ", eventData.Victim.AverageItemPower)
                                     .AddField("Refund Amount: ", TotalRegearSilverAmount)
                                     .AddField("Discord User ID: ", command.User.Id)
-                                    .AddField("Discord Username" , command.User.Username)
-                                    
-                                    //.AddField("Death Location: ", eventData.KillArea)
-
+                                    .AddField("Discord Username", command.User.Username, true)
+                                    //<:emoji_name:emoji_id> or <a:animated_emoji_name:emoji_id>
                                     //.WithImageUrl(GearImageRenderSerivce(command))
                                     //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
                                     .WithImageUrl($"attachment://image.jpg");
                     //.WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}"); GET KILL ID FROM HANDLER
-
+                    var pinEmote = new Emoji("📌");
                     
+                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
 
-                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User}", false, embed.Build(), null, false, null, null, components: component.Build());
+                    RegearQueueID = command.Interaction.Id;
                 }
             }
             catch (Exception ex)
@@ -132,10 +128,11 @@ namespace DiscordBot.RegearModule
         {
             ulong GoldTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegear"));
             ulong SilverTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
+            ulong BronzeTierID = Convert.ToUInt64(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegear"));
 
             if (socketInteractionUser.User is SocketGuildUser guildUser)
             {
-                if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible")) || (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID)))
+                if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible" || r.Name == "Bronze Tier Regear - Elligible")) || (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID)))
                 {
                     return true;
                 }
@@ -147,42 +144,16 @@ namespace DiscordBot.RegearModule
 
         public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Equipment1 victimEquipment, string victimName)
         {
-            //AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionDataProjectCurrentPrices();
-            //AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbion24HourDataMarketPricesHistory();
-            //AlbionOnlineDataParser.AlbionOnlineDataParser.InitializeAlbionData24DayAveragePrices();
-
             int returnValue = 0;
-            int returnNotUnderRegearValue = 0;
-            string? sMarketLocation = "";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
-            bool bAddAllQualities = false;
-            int iDefaultItemQuality = 2;
+            string sMarketLocation = "";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             var guildUser = (SocketGuildUser)command.User;
             var regearIconType = "";
-
-            
-
-            //string? head = (victimEquipment.Head != null) ? $"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality}" : null;
-            //string? mainhand = (victimEquipment.MainHand != null) ? $"{victimEquipment.MainHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.MainHand.Quality}" : null;
-            //string? offhand = (victimEquipment.OffHand != null) ? $"{victimEquipment.OffHand.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.OffHand.Quality}" : null;
-            //string? cape = (victimEquipment.Cape != null) ? $"{victimEquipment.Cape.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Cape.Quality}" : null;
-            //string? armor = (victimEquipment.Armor != null) ? $"{victimEquipment.Armor.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Armor.Quality}" : null;
-            //string? boots = (victimEquipment.Shoes != null) ? $"{victimEquipment.Shoes.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Shoes.Quality}" : null;
-            //string? mount = (victimEquipment.Mount != null) ? $"{victimEquipment.Mount.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Mount.Quality}" : null;
-
-            //var placeholder = "https://render.albiononline.com/v1/item/T1_WOOD.png";
-            //var headImg = (victimEquipment.Head != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Head.Type + "?quality=" + victimEquipment.Head.Quality}" : placeholder;
-            //var weaponImg = (victimEquipment.MainHand != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.MainHand.Type + "?quality=" + victimEquipment.MainHand.Quality}" : placeholder;
-            //var offhandImg = (victimEquipment.OffHand != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.OffHand.Type + "?quality=" + victimEquipment.OffHand.Quality}" : placeholder;
-            //var capeImg = (victimEquipment.Cape != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Cape.Type + "?quality=" + victimEquipment.Cape.Quality}" : placeholder;
-            //var armorImg = (victimEquipment.Armor != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Armor.Type + "?quality=" + victimEquipment.Armor.Quality}" : placeholder;
-            //var bootsImg = (victimEquipment.Shoes != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Shoes.Type + "?quality=" + victimEquipment.Shoes.Quality}" : placeholder;
-            //var mountImg = (victimEquipment.Mount != null) ? $"https://render.albiononline.com/v1/item/{victimEquipment.Mount.Type + "?quality=" + victimEquipment.Mount.Quality}" : placeholder;
-
 
             List<string> equipmentList = new List<string>();
             List<Equipment> underRegearList = new List<Equipment>();
             List<string> notAvailableInMarketList = new List<string>();
-            #region test
+
+            #region OldTierCode
             //if (victimEquipment.Head != null)
             //{
             //    if (victimEquipment.Head.Type.Contains("T5") || victimEquipment.Head.Type.Contains("T6") || victimEquipment.Head.Type.Contains("T7") || victimEquipment.Head.Type.Contains("T8"))
@@ -486,29 +457,20 @@ namespace DiscordBot.RegearModule
             {
                 string itemType = (item.Split('_')[1] == "2H") ? "MAIN" : item.Split('_')[1];
                 
-                //Equipment underRegearItem = underRegearList.Where(x => x.Type.Contains(itemType)).FirstOrDefault();
                 Equipment underRegearItem = underRegearList.Where(x => itemType.Contains(x.Type)).FirstOrDefault();
 
                 //Check for 24 Day Average
                 Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(item);
-                //Task<List<EquipmentMarketData>> marketData1 = new MarketDataFetching().GetMarketPriceCurrentAsync(item);
-                //Task<List<EquipmentMarketData>> marketData2 = new MarketDataFetching().GetMarketPriceDailyAverage(item);
-
-
-                //await Task.Delay(1000);
 
                 if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
                 {
                     //Check for Daily Average
                     marketData = new MarketDataFetching().GetMarketPriceDailyAverage(item);
-                    //await Task.Delay(1000);
-
-                    
+          
                     if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
                     {
                         //Check for Current Price
                          marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(item);
-                        //await Task.Delay(1000);
 
                         if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
                         {
@@ -518,37 +480,81 @@ namespace DiscordBot.RegearModule
                     }
                 }
                 var itemsData = marketData.Result.Where(x => x.sell_price_min != 0);
-                if (itemsData.Count()!=0)
+
+                if (itemsData.Count() != 0)
                 {
+                    //grab prices on all options below and pick the lowest.
+                    
                     if (marketData.Result.Count() != 0 && marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
                     {
-                        returnValue += marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min;
-                        underRegearItem.ItemPrice = "$" + marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min.ToString();
-                    }
-                }
+                       
+                        if (marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min > 5000000)
+                        {
+                            foreach (var price in marketData.Result)
+                            {
+                                if (price.sell_price_min < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+                                {
+                                    if(price.sell_price_min != 0)
+                                    {
+                                        returnValue += price.sell_price_min;
+                                        underRegearItem.ItemPrice = "$" + price.sell_price_min.ToString();
 
-                //else
-                //{
+                                        var selectedCity = price.city;
+                                        var selectedPrice = price.sell_price_min;
+
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        underRegearItem.ItemPrice = "$0 (Price not found)";
+                                    }
+                                    
+                                }
+                                else
+                                {
+                                    underRegearItem.ItemPrice = "$0 (Price too High)";
+                                }
+                            }
+                            
+                        }
+                        else
+                        {
+                            returnValue += marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min;
+                            underRegearItem.ItemPrice = "$" + marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min.ToString();
+                        }
+
+
+
                         
-                //    notAvailableInMarketList.Add(marketData.Result.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
-                //    underRegearItem.ItemPrice = "$0 (Not Found)";
-                //}
+                    }
+                    
+
+                }
             }
-        
-            if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 1031731037149081630
-            {
-                returnValue = Math.Min(silverTierRegearCap, returnValue);
-                regearIconType = "Silver Tier Regear - Elligible";
-            }
-            else if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1031731127431479428
+
+            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1049889855619989515
             {
                 returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Elligible";
+                regearRoleIcon = "<:Gold:1009104748542185512>";
             }
-            else
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 970083338591289364
+            {
+                returnValue = Math.Min(silverTierRegearCap, returnValue);
+                regearIconType = "Silver Tier Regear - Elligible";
+                regearRoleIcon = "<:Silver:1009104762484047982>";
+            }        
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) //Role ID 970083088241672245
             {
                 returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Elligible";
+                regearRoleIcon = "<:Bronze_Bar:1019676753666527342>";
+            }
+            else
+            {
+                returnValue = returnValue = Math.Min(500000, returnValue);
+                regearIconType = "Shit Tier Regear - Elligible";
+                regearRoleIcon = ":poop:";
             }
 
             TotalRegearSilverAmount = returnValue;
