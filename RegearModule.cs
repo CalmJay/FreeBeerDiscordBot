@@ -2,23 +2,15 @@
 using Discord;
 using Discord.WebSocket;
 using DiscordBot.Enums;
-using DiscordBot.Models;
 using DiscordBot.Services;
 using PlayerData;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using PlayerData;
 using Discord.Interactions;
-using System.Net.Http;
-using Newtonsoft.Json;
 using MarketData;
-using AlbionOnlineDataParser;
-using FreeBeerBot;
-using AlbionData.Models;
 
 namespace DiscordBot.RegearModule
 {
@@ -26,30 +18,35 @@ namespace DiscordBot.RegearModule
     {
         private DataBaseService dataBaseService;
 
-        public int TotalRegearSilverAmount { get; set; }
-        public ulong RegearQueueID  { get; set; }
-
         private int goldTierRegearCap = 1700000;
         private int silverTierRegearCap = 1300000;
         private int bronzeTierRegearCap = 1000000;
+        private int shitTierRegearCap = 1000000;
         private int iTankMinimumIP = 1400;
         private int iDPSMinimumIP = 1450;
         private int iHealerMinmumIP = 1350;
         private int iSupportMinimumIP = 1350;
 
+        public int TotalRegearSilverAmount { get; set; }
+        public ulong RegearQueueID { get; set; }
+        private ClassType eRegearClassType { get; set; }
+
         private string regearRoleIcon { get; set; }
 
 
-    public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject eventData, string partyLeader, string reason, MoneyTypes moneyTypes)
+        public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, string reason, MoneyTypes moneyTypes)
         {
             ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
-
+            
             var chnl = command.Client.GetChannel(id) as IMessageChannel;
-            var marketDataAndGearImg = await GetMarketDataAndGearImg(command, eventData.Victim.Equipment, eventData.Victim.Name);
+
+            var marketDataAndGearImg = await GetMarketDataAndGearImg(command, a_EventData);
 
             var converter = new HtmlConverter();
             var html = marketDataAndGearImg[0];
             var bytes = converter.FromHtmlString(html);
+
+            RegearQueueID = command.Interaction.Id;
 
             var approveButton = new ButtonBuilder()
             {
@@ -97,12 +94,12 @@ namespace DiscordBot.RegearModule
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                    .WithTitle($" {regearRoleIcon} Regear Submission from {eventData.Victim.Name}{regearRoleIcon}")
-                                    .AddField("KillID: ", eventData.EventId, true)
-                                    .AddField("Victim", eventData.Victim.Name, true)
+                                    .WithTitle($" {regearRoleIcon} Regear Submission from {a_EventData.Victim.Name}{regearRoleIcon}")
+                                    .AddField("KillID: ", a_EventData.EventId, true)
+                                    .AddField("Victim", a_EventData.Victim.Name, true)
                                     .AddField("Caller Name: ", partyLeader)
-                                    .AddField("Killer", "[" + eventData.Killer.AllianceName + "] " + "[" + eventData.Killer.GuildName + "] " + eventData.Killer.Name)
-                                    .AddField("Death Average IP ", eventData.Victim.AverageItemPower)
+                                    .AddField("Killer", "[" + a_EventData.Killer.AllianceName + "] " + "[" + a_EventData.Killer.GuildName + "] " + a_EventData.Killer.Name)
+                                    .AddField("Death Average IP ", a_EventData.Victim.AverageItemPower)
                                     .AddField("Refund Amount: ", TotalRegearSilverAmount)
                                     .AddField("Discord User ID: ", command.User.Id)
                                     .AddField("Discord Username", command.User.Username, true)
@@ -111,11 +108,17 @@ namespace DiscordBot.RegearModule
                                     //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
                                     .WithImageUrl($"attachment://image.jpg");
                     //.WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}"); GET KILL ID FROM HANDLER
-                    var pinEmote = new Emoji("📌");
+
+                    CheckRegearRequirments(a_EventData, out bool requirementsMet, out string? errorMessage);
                     
+                    if(!requirementsMet)
+                    {
+                        embed.AddField($"WARNING" , ":warning:"+ errorMessage + ":warning:");
+                    }
+
                     await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
 
-                    RegearQueueID = command.Interaction.Id;
+                    
                 }
             }
             catch (Exception ex)
@@ -142,12 +145,13 @@ namespace DiscordBot.RegearModule
 
         }
 
-        public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Equipment1 victimEquipment, string victimName)
+        public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Rootobject a_Playerdata)
         {
             int returnValue = 0;
             string sMarketLocation = "";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             var guildUser = (SocketGuildUser)command.User;
             var regearIconType = "";
+            PlayerDataHandler.Equipment1 victimEquipment = a_Playerdata.Victim.Equipment;
 
             List<string> equipmentList = new List<string>();
             List<Equipment> underRegearList = new List<Equipment>();
@@ -384,7 +388,7 @@ namespace DiscordBot.RegearModule
             //    underRegearList.Add(mountImg);
             //}
             #endregion
-
+            
             if (victimEquipment.Head != null)
             {
                 equipmentList.Add($"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality}");
@@ -552,14 +556,14 @@ namespace DiscordBot.RegearModule
             }
             else
             {
-                returnValue = returnValue = Math.Min(500000, returnValue);
+                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "Shit Tier Regear - Elligible";
                 regearRoleIcon = ":poop:";
             }
 
             TotalRegearSilverAmount = returnValue;
 
-            var gearImage = $"<div style='background-color: #c7a98f;'> <div> <center><h3>Regear Submitted By {victimName} ({regearIconType})</h3>";
+            var gearImage = $"<div style='background-color: #c7a98f;'> <div> <center><h3>Regear Submitted By {a_Playerdata.Victim.Name} ({regearIconType})</h3>";
             foreach (var item in underRegearList)
             {
                 gearImage += $"<div style='display: inline-block;line-height: .1;'>" +
@@ -580,9 +584,91 @@ namespace DiscordBot.RegearModule
             return new List<string> { gearImage, returnValue.ToString() };
         }
 
-        private bool DoesContainPrice()
+        private ClassType GetRegearClassType(string a_sGearItem)
         {
-            return false;
+            ClassType returnvalue = ClassType.Unknown;
+
+            if (IsRegearTankClass(a_sGearItem))
+            {
+                returnvalue = ClassType.Tank;
+            }
+            else if(IsRegearDPSClass(a_sGearItem))
+            {
+                returnvalue = ClassType.DPS;
+            }
+            else if(IsRegearHealerClass(a_sGearItem))
+            {
+                returnvalue = ClassType.Healer;
+            }
+            else if (IsRegearSupportClass(a_sGearItem))
+            {
+                returnvalue = ClassType.Support;
+            }
+
+            return returnvalue;
+        }
+
+        public void CheckRegearRequirments(PlayerDataHandler.Rootobject a_EventData,out bool requirementsMet, out string? ErrorMessage)
+        {
+
+            requirementsMet = true;
+            ErrorMessage = null;
+
+            ClassType eClassTypeEnum = GetRegearClassType(a_EventData.Victim.Equipment.MainHand.ToString());
+
+            switch(eClassTypeEnum)
+            {
+                case ClassType.Tank:
+
+                    if (a_EventData.Victim.AverageItemPower < iTankMinimumIP)
+                    {
+                        ErrorMessage = $"Tank Regear doesn't meet the minimum IP requirments of at least {iTankMinimumIP}";
+                        requirementsMet = false;
+                    }
+                    
+                    break;
+
+                case ClassType.DPS:
+                    if (a_EventData.Victim.AverageItemPower >= iDPSMinimumIP)
+                    {
+                        ErrorMessage = $"DPS Regear doesn't meet the minimum IP requirments of at least {iDPSMinimumIP}";
+                        requirementsMet = false;
+                    }
+                    break;
+
+                case ClassType.Healer:
+                    if (a_EventData.Victim.AverageItemPower >= iHealerMinmumIP)
+                    {
+                        ErrorMessage = $"Healing Regear doesn't meet the minimum IP requirments of at least {iHealerMinmumIP}";
+                        requirementsMet = false;
+                    }
+                    break;
+
+                case ClassType.Support:
+                    if (a_EventData.Victim.AverageItemPower >= iSupportMinimumIP)
+                    {
+                        ErrorMessage = $"Support Regear doesn't meet the minimum IP requirments of at least {iSupportMinimumIP}";
+                        requirementsMet = false;
+                    }
+                    break;
+                default:
+                    ErrorMessage = "REGEAR CLASS NOT FOUND.";
+                    requirementsMet = false;
+                    break;
+            }
+
+            if(a_EventData.Victim.Equipment.Cape.ToString().Contains("@3"))
+            {
+                ErrorMessage = $"Cape doesn't meet the minimum requriments of being at least 4.3";
+                requirementsMet = true;
+            }
+
+            //string mountTier = a_EventData.Victim.Equipment.Mount.Type.ToString().Split('_')[0];
+            //if (!a_EventData.Victim.Equipment.Mount.ToString().Contains("UNIQUE_MOUNT") || mountTier != "T5" || mountTier != "T6" || mountTier != "T7" || mountTier != "T8")
+            //{
+            //    ErrorMessage = $"Mount is not T5 equivalent or higher";
+            //    requirementsMet = false;
+            //}
         }
 
 

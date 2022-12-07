@@ -67,4 +67,13 @@ namespace DiscordBot.Enums
         Food,
         Inventory
     }
+
+    public enum ClassType
+    {
+        Tank,
+        DPS,
+        Support,
+        Healer,
+        Unknown
+    }
 }

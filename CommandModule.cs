@@ -261,9 +261,10 @@ namespace CommandModule
 
 
             //CheckToSeeIfRegearHasAlreadyBeenClaimed
-
+            
             //if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
             //{
+
             if (PlayerEventData != null)
             {
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
@@ -285,8 +286,8 @@ namespace CommandModule
                         await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
 
                     }
-
-                    await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true);
+                    
+                    await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true, null, null, null, null);
                 }
                 else
                 {
