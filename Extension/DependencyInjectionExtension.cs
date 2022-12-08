@@ -13,7 +13,7 @@ namespace DiscordBot.Extension
         {
 
             //DbContext
-            services.AddTransient<FreeBeerdbContext>();
+            services.AddTransient<FreeBeerdbTestContext>();
 
         }
     }

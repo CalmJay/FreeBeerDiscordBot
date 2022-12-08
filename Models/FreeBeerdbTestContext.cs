@@ -1,7 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using System.Configuration;
 
 // Code scaffolded by EF Core assumes nullable reference types (NRTs) are not used or disabled.
 // If you have enabled NRTs for your project, then un-comment the following line:
@@ -9,13 +8,13 @@ using System.Configuration;
 
 namespace DiscordBot.Models
 {
-    public partial class FreeBeerdbContext : DbContext
+    public partial class FreeBeerdbTestContext : DbContext
     {
-        public FreeBeerdbContext()
+        public FreeBeerdbTestContext()
         {
         }
 
-        public FreeBeerdbContext(DbContextOptions<FreeBeerdbContext> options)
+        public FreeBeerdbTestContext(DbContextOptions<FreeBeerdbTestContext> options)
             : base(options)
         {
         }
@@ -29,7 +28,7 @@ namespace DiscordBot.Models
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. See http://go.microsoft.com/fwlink/?LinkId=723263 for guidance on storing connection strings.
-                optionsBuilder.UseSqlServer("Data Source=.;Database=FreeBeerdbTest;Integrated Security=True");
+                optionsBuilder.UseSqlServer("Server=MURADAWAD;Database=FreeBeerdbTest;Trusted_Connection=True;");
             }
         }
 
@@ -38,11 +37,6 @@ namespace DiscordBot.Models
             modelBuilder.Entity<MoneyType>(entity =>
             {
                 entity.Property(e => e.Id).HasColumnName("id");
-
-                entity.Property(e => e.Type)
-                    .IsRequired()
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
             });
 
             modelBuilder.Entity<Player>(entity =>
@@ -60,12 +54,9 @@ namespace DiscordBot.Models
 
             modelBuilder.Entity<PlayerLoot>(entity =>
             {
-                entity.HasKey(e => new { e.TypeId, e.PlayerId })
-                    .HasName("PK_Person");
+                entity.Property(e => e.Id).HasColumnName("Id");
 
-                entity.Property(e => e.TypeId).HasColumnName("TypeID");
-
-                entity.Property(e => e.PlayerId).HasColumnName("PlayerID");
+                entity.HasIndex(e => e.PlayerId);
 
                 entity.Property(e => e.CreateDate)
                     .HasColumnType("datetime")
@@ -88,6 +79,8 @@ namespace DiscordBot.Models
                     .HasMaxLength(250)
                     .IsUnicode(false);
 
+                entity.Property(e => e.PlayerId).HasColumnName("PlayerID");
+
                 entity.Property(e => e.QueueId)
                     .IsRequired()
                     .HasMaxLength(250)
@@ -97,6 +90,8 @@ namespace DiscordBot.Models
                     .IsRequired()
                     .HasMaxLength(250)
                     .IsUnicode(false);
+
+                entity.Property(e => e.TypeId).HasColumnName("TypeID");
 
                 entity.HasOne(d => d.Player)
                     .WithMany(p => p.PlayerLoot)

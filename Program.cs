@@ -10,13 +10,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using InteractionHandlerService;
 using DiscordbotLogging.Log;
+using DiscordBot.Services;
 
 namespace FreeBeerBot
 {
     public class Program
     {
         public static DiscordSocketClient _client;
-        //private DataBaseService dataBaseService;
+        private DataBaseService dataBaseService;
         private int TotalRegearSilverAmount { get; set; }
         private PlayerDataHandler.Rootobject PlayerEventData { get; set;}
 
@@ -58,6 +59,8 @@ namespace FreeBeerBot
             InitializeAlbion24HourDataMarketPricesHistory();
             InitializeAlbionData24DayAveragePrices();
 
+            dataBaseService = new DataBaseService();
+            await dataBaseService.AddSeedingData();
 
             await RunAsync(host);
         }

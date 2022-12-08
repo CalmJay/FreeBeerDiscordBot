@@ -9,6 +9,7 @@ namespace DiscordBot.Models
 {
     public partial class PlayerLoot
     {
+        public int Id { get; set; }
         public int TypeId { get; set; }
         public int PlayerId { get; set; }
         public decimal Loot { get; set; }
