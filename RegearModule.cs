@@ -91,7 +91,7 @@ namespace DiscordBot.RegearModule
                     QueueId = "0"
                 });
 
-               
+
 
 
                 using (MemoryStream imgStream = new MemoryStream(bytes))
@@ -100,23 +100,30 @@ namespace DiscordBot.RegearModule
                                     .WithTitle($" {regearRoleIcon} Regear Submission from {a_EventData.Victim.Name}{regearRoleIcon}")
                                     .AddField("KillID: ", a_EventData.EventId, true)
                                     .AddField("Victim", a_EventData.Victim.Name, true)
-                                    .AddField("Caller Name: ", partyLeader)
                                     .AddField("Killer", "[" + a_EventData.Killer.AllianceName + "] " + "[" + a_EventData.Killer.GuildName + "] " + a_EventData.Killer.Name)
-                                    .AddField("Death Average IP ", a_EventData.Victim.AverageItemPower)
-                                    .AddField("Refund Amount: ", TotalRegearSilverAmount)
+                                    .AddField("Caller Name: ", partyLeader, true)
+                                    .AddField("Refund Amount: ", TotalRegearSilverAmount, true)
+                                    .AddField("Death Average IP ", a_EventData.Victim.AverageItemPower, true)
                                     .AddField("Discord User ID: ", command.User.Id)
                                     .AddField("Discord Username", command.User.Username, true)
+                                    .WithUrl($"https://albiononline.com/en/killboard/kill/a_EventData.EventId")
+                                    .WithCurrentTimestamp()
                                     //<:emoji_name:emoji_id> or <a:animated_emoji_name:emoji_id>
                                     //.WithImageUrl(GearImageRenderSerivce(command))
                                     //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
                                     .WithImageUrl($"attachment://image.jpg");
-                    //.WithUrl($"https://albiononline.com/en/killboard/kill/{command.Data.Options.First().Value}"); GET KILL ID FROM HANDLER
 
                     CheckRegearRequirments(a_EventData, out bool requirementsMet, out string? errorMessage);
-                    
-                    if(!requirementsMet)
+
+                    if (!requirementsMet)
                     {
-                        embed.AddField($"WARNING" , ":warning:"+ errorMessage + ":warning:");
+                        embed.WithDescription($"<a:red_siren:1050052736206508132> WARNING: {errorMessage} <a:red_siren:1050052736206508132> ");
+                        embed.Color = Color.Red;
+                    }
+                    else
+                    {
+                        embed.WithDescription($":thumbsup:  Requreiments Met: This regear meets Free Beer Standards  :thumbsup: ");
+                        embed.Color = Color.Green;
                     }
 
                     await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
@@ -622,7 +629,7 @@ namespace DiscordBot.RegearModule
             requirementsMet = true;
             ErrorMessage = null;
 
-            ClassType eClassTypeEnum = GetRegearClassType(a_EventData.Victim.Equipment.MainHand.ToString());
+            ClassType eClassTypeEnum = GetRegearClassType(a_EventData.Victim.Equipment.MainHand.Type.ToString());
 
             switch(eClassTypeEnum)
             {
@@ -637,7 +644,7 @@ namespace DiscordBot.RegearModule
                     break;
 
                 case ClassType.DPS:
-                    if (a_EventData.Victim.AverageItemPower >= iDPSMinimumIP)
+                    if (a_EventData.Victim.AverageItemPower < iDPSMinimumIP)
                     {
                         ErrorMessage = $"DPS Regear doesn't meet the minimum IP requirments of at least {iDPSMinimumIP}";
                         requirementsMet = false;
@@ -645,7 +652,7 @@ namespace DiscordBot.RegearModule
                     break;
 
                 case ClassType.Healer:
-                    if (a_EventData.Victim.AverageItemPower >= iHealerMinmumIP)
+                    if (a_EventData.Victim.AverageItemPower < iHealerMinmumIP)
                     {
                         ErrorMessage = $"Healing Regear doesn't meet the minimum IP requirments of at least {iHealerMinmumIP}";
                         requirementsMet = false;
@@ -653,7 +660,7 @@ namespace DiscordBot.RegearModule
                     break;
 
                 case ClassType.Support:
-                    if (a_EventData.Victim.AverageItemPower >= iSupportMinimumIP)
+                    if (a_EventData.Victim.AverageItemPower < iSupportMinimumIP)
                     {
                         ErrorMessage = $"Support Regear doesn't meet the minimum IP requirments of at least {iSupportMinimumIP}";
                         requirementsMet = false;
@@ -668,11 +675,11 @@ namespace DiscordBot.RegearModule
             if(a_EventData.Victim.Equipment.Cape.ToString().Contains("@3"))
             {
                 ErrorMessage = $"Cape doesn't meet the minimum requriments of being at least 4.3";
-                requirementsMet = true;
+                requirementsMet = false;
             }
 
             //string mountTier = a_EventData.Victim.Equipment.Mount.Type.ToString().Split('_')[0];
-            //if (!a_EventData.Victim.Equipment.Mount.ToString().Contains("UNIQUE_MOUNT") || mountTier != "T5" || mountTier != "T6" || mountTier != "T7" || mountTier != "T8")
+            //if (!a_EventData.Victim.Equipment.Mount.Type.ToString().Contains("UNIQUE_MOUNT") || mountTier != "T5" || mountTier != "T6" || mountTier != "T7" || mountTier != "T8")
             //{
             //    ErrorMessage = $"Mount is not T5 equivalent or higher";
             //    requirementsMet = false;
@@ -710,7 +717,7 @@ namespace DiscordBot.RegearModule
         private bool IsRegearSupportClass(string a_sGearItem)
         {
 
-            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("FLAIL"))
+            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("FLAIL") || a_sGearItem.Contains("ENIGMATICORB"))
             {
                 return true;
             }
