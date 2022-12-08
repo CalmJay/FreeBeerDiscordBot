@@ -74,7 +74,6 @@ namespace DiscordBot.RegearModule
 
             try
             {
-#if !DEBUG
                 dataBaseService = new DataBaseService();
                 var player = dataBaseService.GetPlayerInfoByName(eventData.Victim.Name);
                 var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
@@ -86,11 +85,14 @@ namespace DiscordBot.RegearModule
                     PlayerId = player.Id,
                     Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
                     PartyLeader = partyLeader,
-                    //KillId = command.Data.Options.First().Value.ToString(),
-                    KillId = command.Interaction.Data.ToString(),//THIS NEEDS FIXING
-                    Reason = reason
+                    KillId = killId.ToString(),//THIS NEEDS FIXING
+                    Reason = reason,
+                    QueueId = "0"
                 });
-#endif
+
+               
+
+
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
@@ -572,7 +574,12 @@ namespace DiscordBot.RegearModule
             }
 
             gearImage += $"<div style='font-weight : bold;'>Refund amt. : {returnValue}</div></center></div>";
-            gearImage += $"<center><br/><h3> Items not found or price is too high </h3>";
+
+            gearImage += $"<center><br/>";
+            if (notAvailableInMarketList.Count() !=0)
+            {
+                gearImage += $"<center><br/><h3> Items not found or price is too high </h3>";
+            }
 
             foreach (var item in notAvailableInMarketList)
             {

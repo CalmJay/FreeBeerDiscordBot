@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace DiscordBot.Migrations
 {
-    [DbContext(typeof(FreeBeerdbContext))]
+    [DbContext(typeof(FreeBeerdbTestContext))]
     partial class FreeBeerdbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
