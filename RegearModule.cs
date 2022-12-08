@@ -35,7 +35,7 @@ namespace DiscordBot.RegearModule
         private int iHealerMinmumIP = 1350;
         private int iSupportMinimumIP = 1350;
 
-        public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject eventData, string partyLeader, string reason, MoneyTypes moneyTypes)
+        public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject eventData, string partyLeader, string reason, MoneyTypes moneyTypes,int killId)
         {
             ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
 
@@ -77,7 +77,6 @@ namespace DiscordBot.RegearModule
 
             try
             {
-#if !DEBUG
                 dataBaseService = new DataBaseService();
                 var player = dataBaseService.GetPlayerInfoByName(eventData.Victim.Name);
                 var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
@@ -89,11 +88,11 @@ namespace DiscordBot.RegearModule
                     PlayerId = player.Id,
                     Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
                     PartyLeader = partyLeader,
-                    //KillId = command.Data.Options.First().Value.ToString(),
-                    KillId = command.Interaction.Data.ToString(),//THIS NEEDS FIXING
-                    Reason = reason
+                    KillId = killId.ToString(),//THIS NEEDS FIXING
+                    Reason = reason,
+                    QueueId = "0"
                 });
-#endif
+
                
 
 
@@ -562,7 +561,12 @@ namespace DiscordBot.RegearModule
             }
 
             gearImage += $"<div style='font-weight : bold;'>Refund amt. : {returnValue}</div></center></div>";
-            gearImage += $"<center><br/><h3> Items not found or price is too high </h3>";
+
+            gearImage += $"<center><br/>";
+            if (notAvailableInMarketList.Count() !=0)
+            {
+                gearImage += $"<center><br/><h3> Items not found or price is too high </h3>";
+            }
 
             foreach (var item in notAvailableInMarketList)
             {

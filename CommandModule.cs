@@ -252,55 +252,62 @@ namespace CommandModule
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
-            //dataBaseService = new DataBaseService();
+            dataBaseService = new DataBaseService();
 
-            //await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
-            //{
-            //    PlayerId = PlayerEventData.Victim.Id,
-            //    PlayerName = PlayerEventData.Victim.Name
-            //});
+            await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
+            {
+                PlayerId = PlayerEventData.Victim.Id,
+                PlayerName = PlayerEventData.Victim.Name
+            });
 
 
             //CheckToSeeIfRegearHasAlreadyBeenClaimed
-
-            //if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
-            //{
-            if (PlayerEventData != null)
+            if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
             {
-                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-
-                if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
                 {
-                    if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                    if (PlayerEventData != null)
                     {
-                        await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
+                        var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
+                        if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                        {
+                            if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                            {
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType, EventID);
+
+                            }
+                            else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                            {
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType, EventID);
+
+                            }
+                            else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
+                            {
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType, EventID);
+
+                            }
+                        }
+                        else
+                        {
+                            await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
+                        }
                     }
-                    else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                    else
                     {
-                        await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType);
-
-                    }
-                    else if (PlayerEventData.BattleId == 0)
-                    {
-                        await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
-
+                        await ReplyAsync("Event info not found. Please verify Kill ID or event has expired.");
                     }
                 }
                 else
                 {
-                    await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
+                    await ReplyAsync("You do not have regear roles or permissions to post a regear");
                 }
             }
             else
             {
-                await ReplyAsync("Event info not found. Please verify Kill ID or event has expired.");
+                await ReplyAsync($"your dumbass <@{Context.User.Id}> ,Don't try to scam your guild and theft the money, u cant get other regear for same death");
             }
-            //}
-            //else
-            //{
-            //    await ReplyAsync("You do not have regear roles or permissions to post a regear");
-            //}
+
             //if (FromButton)
             //{
             //    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
@@ -318,7 +325,8 @@ namespace CommandModule
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
 
-
+                dataBaseService = new DataBaseService();
+                dataBaseService.DeletePlayerLootByKillId(killId.ToString());
                 await RespondAsync("Regear Denied", null, false, false, null, null, null, null);
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Command: regear", null));
 
