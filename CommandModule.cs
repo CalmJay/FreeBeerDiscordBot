@@ -273,56 +273,42 @@ namespace CommandModule
                         {
                             if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                             {
-                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType, EventID);
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
                                 await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
 
 
                             }
                             else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                             {
-                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType, EventID);
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType);
                                 await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
 
 
                             }
                             else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
                             {
-                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType, EventID);
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
                                 await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
 
 
-                    }
-                    
-                    await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true, null, null, null, null);
-                }
-                else
-                {
-                    await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
-                }
-            }
-            else
-            {
-                await RespondAsync("Event info not found. Please verify Kill ID or event has expired.");
                             }
-                        }
-                        else
-                        {
-                            await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
+                    
+                             await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true, null, null, null, null);
                         }
                     }
                     else
                     {
-                        await ReplyAsync("Event info not found. Please verify Kill ID or event has expired.");
+                        await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
                     }
                 }
                 else
                 {
-                    await ReplyAsync("You do not have regear roles or permissions to post a regear");
+                    await FollowupAsync("Event info not found. Please verify Kill ID or event has expired.");
                 }
             }
             else
             {
-                await ReplyAsync($"your dumbass <@{Context.User.Id}> ,Don't try to scam your guild and theft the money, u cant get other regear for same death");
+                await FollowupAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam your guild and theft the money. You can't get another regear for same death");
             }
 
             //if (FromButton)

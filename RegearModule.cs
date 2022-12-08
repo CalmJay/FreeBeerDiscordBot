@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Discord.Interactions;
 using MarketData;
+using DiscordBot.Models;
 
 namespace DiscordBot.RegearModule
 {
@@ -75,7 +76,7 @@ namespace DiscordBot.RegearModule
             try
             {
                 dataBaseService = new DataBaseService();
-                var player = dataBaseService.GetPlayerInfoByName(eventData.Victim.Name);
+                var player = dataBaseService.GetPlayerInfoByName(a_EventData.Victim.Name);
                 var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
                 await dataBaseService.AddPlayerReGear(new PlayerLoot
                 {
@@ -85,7 +86,7 @@ namespace DiscordBot.RegearModule
                     PlayerId = player.Id,
                     Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
                     PartyLeader = partyLeader,
-                    KillId = killId.ToString(),//THIS NEEDS FIXING
+                    KillId = a_EventData.EventId.ToString(),
                     Reason = reason,
                     QueueId = "0"
                 });
