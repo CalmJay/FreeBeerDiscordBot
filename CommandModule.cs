@@ -58,6 +58,7 @@ namespace CommandModule
         {
             // try setting a breakpoint here to see what kind of data is supplied in a ComponentInteraction.
             var c = Context;
+
             await RespondAsync($"You pressed a button!");
         }
 
@@ -263,54 +264,48 @@ namespace CommandModule
             //CheckToSeeIfRegearHasAlreadyBeenClaimed
             if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
             {
-                if (regearModule.CheckIfPlayerHaveReGearIcon(Context))
+                if (PlayerEventData != null)
                 {
-                    if (PlayerEventData != null)
+                    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
+
+                    if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                     {
-                        var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-
-                        if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                        if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                         {
-                            if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
-                            {
-                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType, EventID);
-                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                            await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
+                            await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
 
 
-                            }
-                            else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
-                            {
-                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType, EventID);
-                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
-
-
-                            }
-                            else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
-                            {
-                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType, EventID);
-                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
-
-
-                            }
                         }
-                        else
+                        else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                         {
-                            await ReplyAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask an Officer if there's an issue. ");
+                            await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType);
+                            await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+
+
                         }
+                        else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
+                        {
+                            await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
+                            await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+
+
+                        }
+                            //await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true, null, null, null, null);
                     }
                     else
                     {
-                        await ReplyAsync("Event info not found. Please verify Kill ID or event has expired.");
+                        await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
                     }
                 }
                 else
                 {
-                    await ReplyAsync("You do not have regear roles or permissions to post a regear");
+                    await FollowupAsync("Event info not found. Please verify Kill ID or event has expired.", null, false, true);
                 }
             }
             else
             {
-                await ReplyAsync($"your dumbass <@{Context.User.Id}> ,Don't try to scam your guild and theft the money, u cant get other regear for same death");
+                await FollowupAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam your guild and theft the money. You can't get another regear for same death", null, false, true);
             }
 
             //if (FromButton)
@@ -360,23 +355,24 @@ namespace CommandModule
             var interaction = Context.Interaction as IComponentInteraction;
 
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
+            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             string callername = interaction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString();
             int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
             
             AlbionAPIDataSearch eventData = new AlbionAPIDataSearch();
-            PlayerEventData = await eventData.GetAlbionEventInfo(killId);
-
+            
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
+                PlayerEventData = await eventData.GetAlbionEventInfo(killId);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
-                await Context.Channel.SendMessageAsync($"@{victimName} your regear has been approved! {refundAmount} has been added to your paychex");
+                await Context.Channel.SendMessageAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> your regear has been approved! {refundAmount} has been added to your paychex");
 
             }
             else
             {
-                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.");
+                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.",null,false,true);
             }
         }
 
