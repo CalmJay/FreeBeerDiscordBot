@@ -60,7 +60,7 @@ namespace DiscordBot.Models
 
                 entity.Property(e => e.CreateDate)
                     .HasColumnType("datetime")
-                    .HasDefaultValueSql("(getdate())");
+                    .HasDefaultValueSql("(GETUTCDATE())");
 
                 entity.Property(e => e.KillId)
                     .IsRequired()
