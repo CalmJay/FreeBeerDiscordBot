@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DiscordBot.Enums;
+using Discord;
 
 namespace DiscordBot.Services
 {
@@ -23,6 +24,30 @@ namespace DiscordBot.Services
         public async Task<Boolean> CheckPlayerIsExist(string playerName)
         {
             return await freeBeerdbContext.Player.AnyAsync(x => x.PlayerName == playerName);
+        }
+        public async Task<Boolean> CheckPlayerIsDid5RegearBefore(string playerName)
+        {
+            List<PlayerLoot> playerLoots = new List<PlayerLoot>();
+            var playerLoot =  freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
+            foreach (var item in playerLoot)
+            {
+                if (item.CreateDate.Value.ToString("YYYY-MM-DD") == DateTime.UtcNow.ToString("YYYY-MM-DD"))
+                {
+                    playerLoots.Add(item);
+                }
+            }
+            if (playerLoots == null)
+            {
+                return false;
+            }
+            else if(playerLoots.Count > 5)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
         public async Task<Boolean> CheckKillIdIsRegeared(string killId)
         {

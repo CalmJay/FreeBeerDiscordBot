@@ -260,61 +260,69 @@ namespace CommandModule
                 PlayerName = PlayerEventData.Victim.Name
             });
 
-
-            //CheckToSeeIfRegearHasAlreadyBeenClaimed
-            if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
+            //Check If The Player Got 5 Regear Or Not
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname))
             {
-                if (PlayerEventData != null)
+                //CheckToSeeIfRegearHasAlreadyBeenClaimed
+                if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
                 {
-                    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-
-                    if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                    if (PlayerEventData != null)
                     {
-                        if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                        var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
+
+                        if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
-                            await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
-                            await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                            if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                            {
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "ZVZ content", moneyType);
+                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
 
 
-                        }
-                        else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
-                        {
-                            await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType);
-                            await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                            }
+                            else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                            {
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Small group content", moneyType);
+                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
 
 
-                        }
-                        else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
-                        {
-                            await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
-                            await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                            }
+                            else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
+                            {
+                                await regearModule.PostRegear(Context, PlayerEventData, callerName, "Solo or small group content", moneyType);
+                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
 
 
-                        }
+                            }
                             //await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true, null, null, null, null);
+                        }
+                        else
+                        {
+                            await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                        }
                     }
                     else
                     {
-                        await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                        await FollowupAsync("Event info not found. Please verify Kill ID or event has expired.", null, false, true);
                     }
                 }
                 else
                 {
-                    await FollowupAsync("Event info not found. Please verify Kill ID or event has expired.", null, false, true);
+                    await FollowupAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam your guild and theft the money. You can't get another regear for same death", null, false, true);
                 }
             }
             else
             {
-                await FollowupAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam your guild and theft the money. You can't get another regear for same death", null, false, true);
+                await FollowupAsync($"<@{Context.User.Id}>, you are the stupidest person here, trying to  scam the guild and theft the money, You can't get more than 5 regear in one day", null, false, true);
             }
+
 
             //if (FromButton)
             //{
             //    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "");
             //    await PostRegearException(command, eventData, "", "", moneyType);
 
-           
-            
+
+
             //}
             //else
             //{
