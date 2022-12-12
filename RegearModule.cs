@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Discord.Interactions;
 using MarketData;
 using DiscordBot.Models;
+using Newtonsoft.Json;
 
 namespace DiscordBot.RegearModule
 {
@@ -104,8 +105,9 @@ namespace DiscordBot.RegearModule
                                     .AddField("Caller Name: ", partyLeader, true)
                                     .AddField("Refund Amount: ", TotalRegearSilverAmount, true)
                                     .AddField("Death Average IP ", a_EventData.Victim.AverageItemPower, true)
-                                    .AddField("Discord User ID: ", command.User.Id)
+                                    .AddField("Discord User ID: ", command.User.Id,true)
                                     .AddField("Discord Username", command.User.Username, true)
+                                    //.AddField("Date of death", a_EventData.TimeStamp)
                                     .WithUrl($"https://albiononline.com/en/killboard/kill/a_EventData.EventId")
                                     .WithCurrentTimestamp()
                                     //<:emoji_name:emoji_id> or <a:animated_emoji_name:emoji_id>
@@ -474,75 +476,43 @@ namespace DiscordBot.RegearModule
                 Equipment underRegearItem = underRegearList.Where(x => itemType.Contains(x.Type)).FirstOrDefault();
 
                 //Check for 24 Day Average
-                Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(item);
+                Task<List<EquipmentMarketDataMonthylyAverage>> marketDataMonthly =  null;//new MarketDataFetching().GetMarketPriceMonthlyAverage(item);
 
-                if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
+                if (marketDataMonthly == null || (marketDataMonthly.Result == null || marketDataMonthly.Result.Count == 0))
                 {
                     //Check for Daily Average
-                    marketData = new MarketDataFetching().GetMarketPriceDailyAverage(item);
-          
-                    if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
+                    Task<List<AverageItemPrice>> marketDataDaily = null;//new MarketDataFetching().GetMarketPriceDailyAverage(item);
+
+                    if (marketDataDaily == null || (marketDataDaily.Result == null || marketDataDaily.Result.Count == 0))
                     {
                         //Check for Current Price
-                         marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(item);
+                        Task<List<EquipmentMarketData>> marketDataCurrent = new MarketDataFetching().GetMarketPriceCurrentAsync(item);
 
-                        if ((marketData.Result == null || marketData.Result.Count == 0) || marketData.Result.Where(x => x.sell_price_min != 0).Count() == 0)
+                        if (marketDataCurrent.Result == null || marketDataCurrent.Result.Count == 0)
                         {
-                            notAvailableInMarketList.Add(marketData.Result.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
+                            notAvailableInMarketList.Add(marketDataCurrent.Result.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
                             underRegearItem.ItemPrice = "$0 (Not Found)";
-                        }
-                    }
-                }
-                var itemsData = marketData.Result.Where(x => x.sell_price_min != 0);
-
-                if (itemsData.Count() != 0)
-                {
-                    //grab prices on all options below and pick the lowest.
-                    
-                    if (marketData.Result.Count() != 0 && marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
-                    {
-                       
-                        if (marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min > 5000000)
-                        {
-                            foreach (var price in marketData.Result)
-                            {
-                                if (price.sell_price_min < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
-                                {
-                                    if(price.sell_price_min != 0)
-                                    {
-                                        returnValue += price.sell_price_min;
-                                        underRegearItem.ItemPrice = "$" + price.sell_price_min.ToString();
-
-                                        var selectedCity = price.city;
-                                        var selectedPrice = price.sell_price_min;
-
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        underRegearItem.ItemPrice = "$0 (Price not found)";
-                                    }
-                                    
-                                }
-                                else
-                                {
-                                    underRegearItem.ItemPrice = "$0 (Price too High)";
-                                }
-                            }
-                            
                         }
                         else
                         {
-                            returnValue += marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min;
-                            underRegearItem.ItemPrice = "$" + marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min.ToString();
+                            //get current prices
+                            var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
+
+                            returnValue += equipmentFetchPrice;
+                            underRegearItem.ItemPrice = (errorMessage != null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                         }
-
-
-
-                        
                     }
-                    
+                    else
+                    {
+                        //get daily prices
+                        var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
 
+                    }
+                }
+                else
+                {
+                    //get monthly prices
+                    var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
                 }
             }
 
@@ -628,10 +598,16 @@ namespace DiscordBot.RegearModule
 
             requirementsMet = true;
             ErrorMessage = null;
+            ClassType eClassTypeEnum = ClassType.Unknown;
 
-            ClassType eClassTypeEnum = GetRegearClassType(a_EventData.Victim.Equipment.MainHand.Type.ToString());
 
-            switch(eClassTypeEnum)
+            if (a_EventData.Victim.Equipment.MainHand != null)
+            {
+                eClassTypeEnum = GetRegearClassType(a_EventData.Victim.Equipment.MainHand.Type.ToString());
+            }
+
+
+            switch (eClassTypeEnum)
             {
                 case ClassType.Tank:
 
@@ -672,18 +648,22 @@ namespace DiscordBot.RegearModule
                     break;
             }
 
-            if(a_EventData.Victim.Equipment.Cape.ToString().Contains("@3"))
+            if(a_EventData.Victim.Equipment.Cape != null && a_EventData.Victim.Equipment.Cape.ToString().Contains("@3"))
             {
                 ErrorMessage = $"Cape doesn't meet the minimum requriments of being at least 4.3";
                 requirementsMet = false;
             }
 
-            //string mountTier = a_EventData.Victim.Equipment.Mount.Type.ToString().Split('_')[0];
-            //if (!a_EventData.Victim.Equipment.Mount.Type.ToString().Contains("UNIQUE_MOUNT") || mountTier != "T5" || mountTier != "T6" || mountTier != "T7" || mountTier != "T8")
-            //{
-            //    ErrorMessage = $"Mount is not T5 equivalent or higher";
-            //    requirementsMet = false;
-            //}
+            string mountTier = a_EventData.Victim.Equipment.Mount.Type.ToString().Split('_')[0];
+            if (a_EventData.Victim.Equipment.Mount.Type.ToString().Contains("UNIQUE_MOUNT") || mountTier == "T5" || mountTier == "T6" || mountTier == "T7" || mountTier == "T8")
+            {
+                
+            }
+            else
+            {
+                ErrorMessage = $"Mount is not T5 equivalent or higher";
+                requirementsMet = false;
+            }
         }
 
 
@@ -722,6 +702,76 @@ namespace DiscordBot.RegearModule
                 return true;
             }
             return false;
+        }
+
+        public int FetchItemPrice<T>(T test, out string? ErrorMessage)
+        {
+            int returnValue = 0;
+            ErrorMessage = null;
+
+            var x = JsonConvert.SerializeObject(test);
+
+
+
+            if (test.GetType() == typeof(List<EquipmentMarketData>))
+            {
+                var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(x);
+
+            }
+            if (test.GetType() == typeof(List<AverageItemPrice>))
+            {
+
+
+            }
+            if (test.GetType() == typeof(List<EquipmentMarketData>))
+            {
+
+
+            }
+            //Task<List<EquipmentMarketData>> marketdata = test;
+
+            //var itemsData = marketData.Result.Where(x => x.sell_price_min != 0);
+
+            //if (itemsData.Count() != 0)
+            //{
+            //    if (marketData.Result.Count() != 0 && marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
+            //    {
+            //        foreach (var price in marketData.Result)
+            //        {
+            //            if (price.sell_price_min < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+            //            {
+            //                if (price.sell_price_min != 0)
+            //                {
+            //                    returnValue = price.sell_price_min;
+            //                    break;
+            //                }
+            //            }
+            //            else
+            //            {
+            //                ErrorMessage = $"$0 (Price to high - {price.sell_price_min}";
+            //            }
+            //        }
+            //    }
+            //}
+            //else
+            //{
+            //    ErrorMessage = "$0 (Price not found)";
+            //}
+           return returnValue;
+        }
+
+        public int FetchItemPrice(Task<List<AverageItemPrice>> marketData, out string? ErrorMessage)
+        {
+            ErrorMessage = "";
+
+            return 0;
+        }
+
+        public int FetchItemPrice(Task<List<EquipmentMarketDataMonthylyAverage>> marketData, out string? ErrorMessage)
+        {
+            ErrorMessage = "";
+
+            return 0;
         }
 
         public class Equipment

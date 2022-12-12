@@ -8,7 +8,7 @@ namespace AlbionOnlineDataParser
     public static class AlbionOnlineDataParser
     {
         public static HttpClient ApiClient { get; set; } = new HttpClient();
-        public static HttpClient ApiAlbionDataProject { get; set; } = new HttpClient();
+        public static HttpClient ApiAlbionDataProjectMonthlyPrices { get; set; } = new HttpClient();
         public static HttpClient ApiAlbionDataProjectCurrentPrices { get; set; } = new HttpClient();
         public static HttpClient ApiAlbionDataProjectDailyPrices { get; set; } = new HttpClient();
         public static void InitializeAlbionAPIClient()
@@ -37,10 +37,10 @@ namespace AlbionOnlineDataParser
         }
         public static void InitializeAlbionData24DayAveragePrices()
         {
-            ApiAlbionDataProject = new HttpClient();
-            ApiAlbionDataProject.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/prices/");
-            ApiAlbionDataProject.DefaultRequestHeaders.Accept.Clear();
-            ApiAlbionDataProject.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+            ApiAlbionDataProjectMonthlyPrices = new HttpClient();
+            ApiAlbionDataProjectMonthlyPrices.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/prices/");
+            ApiAlbionDataProjectMonthlyPrices.DefaultRequestHeaders.Accept.Clear();
+            ApiAlbionDataProjectMonthlyPrices.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }
     }
 }
