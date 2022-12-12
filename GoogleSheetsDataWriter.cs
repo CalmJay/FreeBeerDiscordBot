@@ -27,7 +27,7 @@ namespace GoogleSheetsData
 
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
         public static string GuildSpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
-        public static string RegearSheetID = "1Yf1BnzHVIal_mj9c99cIAXgMN-EnmFeUcp59bTHSOb4"; //Developer Copy of regear sheet
+        public static string RegearSheetID = "1icWg0pqsC-SF2uwamF2W93NsIGfmqqtrDw--jaju0nU";//"1Yf1BnzHVIal_mj9c99cIAXgMN-EnmFeUcp59bTHSOb4"; //Developer Copy of regear sheet
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
         public bool enableGoogleApi = true; //ADD TO CONFIG
@@ -170,14 +170,14 @@ namespace GoogleSheetsData
             
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
             
-            var numberOfRow = GetSheetsService().Spreadsheets.Values.Get(RegearSheetID, "Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
+            var numberOfRow = GetSheetsService().Spreadsheets.Values.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
             var col1 = numberOfRow;
             var col2 = numberOfRow;
             int googleIterations = 0;
 
 
-            ReadRange = $"Dumps!B{col1}";
-            WriteRange = $"Dumps!A{col1}:I{col2}";
+            ReadRange = $"Current Season Dumps!B{col1}";
+            WriteRange = $"Current Season Dumps!A{col1}:I{col2}";
             ValueRange GetResponse = null;
             IList<IList<object>> values = null;
 
@@ -206,8 +206,8 @@ namespace GoogleSheetsData
                
 #endif
                 
-                ReadRange = $"Dumps!B{col1}";
-                WriteRange = $"Dumps!A{col1}:I{col2}";
+                ReadRange = $"Current Season Dumps!B{col1}";
+                WriteRange = $"Current Season Dumps!A{col1}:I{col2}";
             }
 
             if (values == null || !values.Any())
