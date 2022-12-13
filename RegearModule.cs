@@ -23,8 +23,8 @@ namespace DiscordBot.RegearModule
         private int goldTierRegearCap = 1700000;
         private int silverTierRegearCap = 1300000;
         private int bronzeTierRegearCap = 1000000;
-        private int shitTierRegearCap = 1000000;
-        private int iTankMinimumIP = 1400;
+        private int shitTierRegearCap = 500000;
+        private int iTankMinimumIP = 1450;
         private int iDPSMinimumIP = 1450;
         private int iHealerMinmumIP = 1350;
         private int iSupportMinimumIP = 1350;
@@ -499,14 +499,13 @@ namespace DiscordBot.RegearModule
                             var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
 
                             returnValue += equipmentFetchPrice;
-                            underRegearItem.ItemPrice = (errorMessage != null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
+                            underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
                         }
                     }
                     else
                     {
                         //get daily prices
                         var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
-
                     }
                 }
                 else
@@ -515,6 +514,7 @@ namespace DiscordBot.RegearModule
                     var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
                 }
             }
+
 
             if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1049889855619989515
             {
@@ -527,12 +527,18 @@ namespace DiscordBot.RegearModule
                 returnValue = Math.Min(silverTierRegearCap, returnValue);
                 regearIconType = "Silver Tier Regear - Elligible";
                 regearRoleIcon = "<:Silver:1009104762484047982>";
-            }        
+            }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) //Role ID 970083088241672245
             {
                 returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Elligible";
                 regearRoleIcon = "<:Bronze_Bar:1019676753666527342>";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Elligible")) // Role ID 1052241667329118349
+            {
+                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                regearIconType = "Free Regear - Elligible";
+                regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
             {
@@ -551,7 +557,7 @@ namespace DiscordBot.RegearModule
                     $"<p >{item.ItemPrice}</p></div>";
             }
 
-            gearImage += $"<div style='font-weight : bold;'>Refund amt. : {returnValue}</div></center></div>";
+            gearImage += $"<div style='font-weight : bold;'>Refund amount. : {returnValue.ToString("N0")}</div></center></div>";
 
             gearImage += $"<center><br/>";
             if (notAvailableInMarketList.Count() !=0)
@@ -566,7 +572,7 @@ namespace DiscordBot.RegearModule
 
             gearImage += $"</center></div>";
 
-            return new List<string> { gearImage, returnValue.ToString() };
+            return new List<string> { gearImage, returnValue.ToString("N0") };
         }
 
         private ClassType GetRegearClassType(string a_sGearItem)
@@ -704,66 +710,74 @@ namespace DiscordBot.RegearModule
             return false;
         }
 
-        public int FetchItemPrice<T>(T test, out string? ErrorMessage)
+        public int FetchItemPrice(Task<List<EquipmentMarketData>> marketData, out string? ErrorMessage)
         {
             int returnValue = 0;
             ErrorMessage = null;
 
-            var x = JsonConvert.SerializeObject(test);
+            var itemsData = marketData.Result.Where(x => x.sell_price_min != 0);
 
-
-
-            if (test.GetType() == typeof(List<EquipmentMarketData>))
+            if (itemsData.Count() != 0)
             {
-                var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(x);
-
+                if (marketData.Result.Count() != 0 && marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
+                {
+                    foreach (var price in marketData.Result)
+                    {
+                        if (price.sell_price_min < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+                        {
+                            if (price.sell_price_min != 0)
+                            {
+                                returnValue = price.sell_price_min;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            ErrorMessage = $"$0 (Price to high - {price.sell_price_min}";
+                        }
+                    }
+                }
             }
-            if (test.GetType() == typeof(List<AverageItemPrice>))
+            else
             {
-
-
+                ErrorMessage = "$0 (Price not found)";
             }
-            if (test.GetType() == typeof(List<EquipmentMarketData>))
-            {
-
-
-            }
-            //Task<List<EquipmentMarketData>> marketdata = test;
-
-            //var itemsData = marketData.Result.Where(x => x.sell_price_min != 0);
-
-            //if (itemsData.Count() != 0)
-            //{
-            //    if (marketData.Result.Count() != 0 && marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
-            //    {
-            //        foreach (var price in marketData.Result)
-            //        {
-            //            if (price.sell_price_min < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
-            //            {
-            //                if (price.sell_price_min != 0)
-            //                {
-            //                    returnValue = price.sell_price_min;
-            //                    break;
-            //                }
-            //            }
-            //            else
-            //            {
-            //                ErrorMessage = $"$0 (Price to high - {price.sell_price_min}";
-            //            }
-            //        }
-            //    }
-            //}
-            //else
-            //{
-            //    ErrorMessage = "$0 (Price not found)";
-            //}
-           return returnValue;
+            return returnValue;
         }
 
         public int FetchItemPrice(Task<List<AverageItemPrice>> marketData, out string? ErrorMessage)
         {
             ErrorMessage = "";
 
+            ErrorMessage = null;
+
+            var itemsData = marketData.Result.Where(x => x.data.FirstOrDefault().avg_price != 0);
+
+            if (itemsData.Count() != 0)
+            {
+                if (marketData.Result.Count() != 0 && marketData.Result.Where(x => x.data.FirstOrDefault().avg_price != 0).FirstOrDefault().data.FirstOrDefault().avg_price != 0)
+                {
+                    foreach (var price in marketData.Result)
+                    {
+                        //if (price.data < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+                        //{
+                        //    if (price.sell_price_min != 0)
+                        //    {
+                        //        returnValue = price.sell_price_min;
+                        //        break;
+                        //    }
+                        //}
+                        //else
+                        //{
+                        //    ErrorMessage = $"$0 (Price to high - {price.sell_price_min}";
+                        //}
+                    }
+                }
+            }
+            else
+            {
+                ErrorMessage = "$0 (Price not found)";
+            }
             return 0;
         }
 
