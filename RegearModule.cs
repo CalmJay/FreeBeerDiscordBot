@@ -13,6 +13,8 @@ using Discord.Interactions;
 using MarketData;
 using DiscordBot.Models;
 using Newtonsoft.Json;
+using static System.Net.Mime.MediaTypeNames;
+using System.Diagnostics;
 
 namespace DiscordBot.RegearModule
 {
@@ -29,7 +31,7 @@ namespace DiscordBot.RegearModule
         private int iHealerMinmumIP = 1350;
         private int iSupportMinimumIP = 1350;
 
-        public int TotalRegearSilverAmount { get; set; }
+        public double TotalRegearSilverAmount { get; set; }
         public ulong RegearQueueID { get; set; }
         private ClassType eRegearClassType { get; set; }
 
@@ -39,7 +41,7 @@ namespace DiscordBot.RegearModule
         public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, string reason, MoneyTypes moneyTypes)
         {
             ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
-            
+
             var chnl = command.Client.GetChannel(id) as IMessageChannel;
 
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, a_EventData);
@@ -105,7 +107,7 @@ namespace DiscordBot.RegearModule
                                     .AddField("Caller Name: ", partyLeader, true)
                                     .AddField("Refund Amount: ", TotalRegearSilverAmount, true)
                                     .AddField("Death Average IP ", a_EventData.Victim.AverageItemPower, true)
-                                    .AddField("Discord User ID: ", command.User.Id,true)
+                                    .AddField("Discord User ID: ", command.User.Id, true)
                                     .AddField("Discord Username", command.User.Username, true)
                                     //.AddField("Date of death", a_EventData.TimeStamp)
                                     .WithUrl($"https://albiononline.com/en/killboard/kill/a_EventData.EventId")
@@ -130,7 +132,7 @@ namespace DiscordBot.RegearModule
 
                     await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
 
-                    
+
                 }
             }
             catch (Exception ex)
@@ -159,7 +161,7 @@ namespace DiscordBot.RegearModule
 
         public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Rootobject a_Playerdata)
         {
-            int returnValue = 0;
+            double returnValue = 0;
             string sMarketLocation = "";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             var guildUser = (SocketGuildUser)command.User;
             var regearIconType = "";
@@ -400,7 +402,7 @@ namespace DiscordBot.RegearModule
             //    underRegearList.Add(mountImg);
             //}
             #endregion
-            
+
             if (victimEquipment.Head != null)
             {
                 equipmentList.Add($"{victimEquipment.Head.Type + $"?Locations={sMarketLocation}&qualities=" + victimEquipment.Head.Quality}");
@@ -472,25 +474,25 @@ namespace DiscordBot.RegearModule
             foreach (var item in equipmentList)
             {
                 string itemType = (item.Split('_')[1] == "2H") ? "MAIN" : item.Split('_')[1];
-                
+
                 Equipment underRegearItem = underRegearList.Where(x => itemType.Contains(x.Type)).FirstOrDefault();
-
+                MarketDataFetching marketDataFetching = new MarketDataFetching();
                 //Check for 24 Day Average
-                Task<List<EquipmentMarketDataMonthylyAverage>> marketDataMonthly =  null;//new MarketDataFetching().GetMarketPriceMonthlyAverage(item);
+                List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(item);
 
-                if (marketDataMonthly == null || (marketDataMonthly.Result == null || marketDataMonthly.Result.Count == 0))
+                if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
                 {
                     //Check for Daily Average
-                    Task<List<AverageItemPrice>> marketDataDaily = null;//new MarketDataFetching().GetMarketPriceDailyAverage(item);
+                    List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(item);
 
-                    if (marketDataDaily == null || (marketDataDaily.Result == null || marketDataDaily.Result.Count == 0))
+                    if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
                     {
                         //Check for Current Price
-                        Task<List<EquipmentMarketData>> marketDataCurrent = new MarketDataFetching().GetMarketPriceCurrentAsync(item);
+                        List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(item);
 
-                        if (marketDataCurrent.Result == null || marketDataCurrent.Result.Count == 0)
+                        if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
                         {
-                            notAvailableInMarketList.Add(marketDataCurrent.Result.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
+                            notAvailableInMarketList.Add(marketDataCurrent.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
                             underRegearItem.ItemPrice = "$0 (Not Found)";
                         }
                         else
@@ -499,13 +501,15 @@ namespace DiscordBot.RegearModule
                             var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
 
                             returnValue += equipmentFetchPrice;
-                            underRegearItem.ItemPrice = (errorMessage != null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
+                            underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                         }
                     }
                     else
                     {
                         //get daily prices
                         var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
+                        returnValue += equipmentFetchPrice;
+                        underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
 
                     }
                 }
@@ -513,6 +517,9 @@ namespace DiscordBot.RegearModule
                 {
                     //get monthly prices
                     var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
+                    returnValue += equipmentFetchPrice;
+                    underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
+
                 }
             }
 
@@ -527,7 +534,7 @@ namespace DiscordBot.RegearModule
                 returnValue = Math.Min(silverTierRegearCap, returnValue);
                 regearIconType = "Silver Tier Regear - Elligible";
                 regearRoleIcon = "<:Silver:1009104762484047982>";
-            }        
+            }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) //Role ID 970083088241672245
             {
                 returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
@@ -554,7 +561,7 @@ namespace DiscordBot.RegearModule
             gearImage += $"<div style='font-weight : bold;'>Refund amt. : {returnValue}</div></center></div>";
 
             gearImage += $"<center><br/>";
-            if (notAvailableInMarketList.Count() !=0)
+            if (notAvailableInMarketList.Count() != 0)
             {
                 gearImage += $"<center><br/><h3> Items not found or price is too high </h3>";
             }
@@ -577,11 +584,11 @@ namespace DiscordBot.RegearModule
             {
                 returnvalue = ClassType.Tank;
             }
-            else if(IsRegearDPSClass(a_sGearItem))
+            else if (IsRegearDPSClass(a_sGearItem))
             {
                 returnvalue = ClassType.DPS;
             }
-            else if(IsRegearHealerClass(a_sGearItem))
+            else if (IsRegearHealerClass(a_sGearItem))
             {
                 returnvalue = ClassType.Healer;
             }
@@ -593,7 +600,7 @@ namespace DiscordBot.RegearModule
             return returnvalue;
         }
 
-        public void CheckRegearRequirments(PlayerDataHandler.Rootobject a_EventData,out bool requirementsMet, out string? ErrorMessage)
+        public void CheckRegearRequirments(PlayerDataHandler.Rootobject a_EventData, out bool requirementsMet, out string? ErrorMessage)
         {
 
             requirementsMet = true;
@@ -616,7 +623,7 @@ namespace DiscordBot.RegearModule
                         ErrorMessage = $"Tank Regear doesn't meet the minimum IP requirments of at least {iTankMinimumIP}";
                         requirementsMet = false;
                     }
-                    
+
                     break;
 
                 case ClassType.DPS:
@@ -648,7 +655,7 @@ namespace DiscordBot.RegearModule
                     break;
             }
 
-            if(a_EventData.Victim.Equipment.Cape != null && a_EventData.Victim.Equipment.Cape.ToString().Contains("@3"))
+            if (a_EventData.Victim.Equipment.Cape != null && a_EventData.Victim.Equipment.Cape.ToString().Contains("@3"))
             {
                 ErrorMessage = $"Cape doesn't meet the minimum requriments of being at least 4.3";
                 requirementsMet = false;
@@ -657,7 +664,7 @@ namespace DiscordBot.RegearModule
             string mountTier = a_EventData.Victim.Equipment.Mount.Type.ToString().Split('_')[0];
             if (a_EventData.Victim.Equipment.Mount.Type.ToString().Contains("UNIQUE_MOUNT") || mountTier == "T5" || mountTier == "T6" || mountTier == "T7" || mountTier == "T8")
             {
-                
+
             }
             else
             {
@@ -704,75 +711,109 @@ namespace DiscordBot.RegearModule
             return false;
         }
 
-        public int FetchItemPrice<T>(T test, out string? ErrorMessage)
+        public double FetchItemPrice<T>(T Test, out string? ErrorMessage)
         {
-            int returnValue = 0;
+            double returnValue = 0;
             ErrorMessage = null;
 
-            var x = JsonConvert.SerializeObject(test);
-
-
-
-            if (test.GetType() == typeof(List<EquipmentMarketData>))
+            if (Test.GetType() == typeof(List<EquipmentMarketData>))
             {
-                var marketData = JsonConvert.DeserializeObject<List<EquipmentMarketData>>(x);
+                var marketData = (List<EquipmentMarketData>)(object)Test;
+                var itemsData = marketData.Where(x => x.sell_price_min != 0);
+
+                if (itemsData != null)
+                {
+                    if (marketData.Count() != 0 && marketData.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
+                    {
+                        var value = marketData.Min(x => x.sell_price_min);
+
+                        if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+                        {
+                            returnValue = value;
+                        }
+                        else
+                        {
+                            ErrorMessage = $"$0 (Price to high - {value}";
+                        }
+                    }
+                }
+                else
+                {
+                    ErrorMessage = "$0 (Price not found)";
+                }
+                return returnValue;
+            }
+            if (Test.GetType() == typeof(List<AverageItemPrice>))
+            {
+                var marketData = (List<AverageItemPrice>)(object)Test;
+                var itemsData = marketData.Where(x => x.data.Any(x => x.avg_price != 0));
+
+                if (itemsData != null)
+                {
+                    if (marketData.Count() != 0 && marketData.Where(x => x.data.Any(x => x.avg_price != 0)).FirstOrDefault().data.FirstOrDefault().avg_price != 0)
+                    {
+                        var value = marketData.Min(x => x.data.Min(x => x.avg_price));
+
+                        if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+                        {
+                            returnValue = value;
+                        }
+                        else
+                        {
+                            ErrorMessage = $"$0 (Price to high - {value}";
+                        }
+                    }
+                }
+                else
+                {
+                    ErrorMessage = "$0 (Price not found)";
+                }
+                return returnValue;
 
             }
-            if (test.GetType() == typeof(List<AverageItemPrice>))
+            if (Test.GetType() == typeof(List<EquipmentMarketDataMonthylyAverage>))
             {
+                var marketData = (List<EquipmentMarketDataMonthylyAverage>)(object)Test;
+                var itemsData = marketData.Where(x => x.prices_avg.Any(x => x != 0));
 
+                if (itemsData != null)
+                {
+                    if (marketData.Count() != 0 && marketData.Where(x => x.prices_avg.Any(x => x != 0)).FirstOrDefault().prices_avg.FirstOrDefault() != 0)
+                    {
+                        var value = marketData.Min(x => x.prices_avg.Min());
 
+                        if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+                        {
+                            returnValue = value;
+                        }
+                        else
+                        {
+                            ErrorMessage = $"$0 (Price to high - {value}";
+                        }
+                    }
+                }
+                else
+                {
+                    ErrorMessage = "$0 (Price not found)";
+                }
             }
-            if (test.GetType() == typeof(List<EquipmentMarketData>))
-            {
+            return returnValue;
 
-
-            }
-            //Task<List<EquipmentMarketData>> marketdata = test;
-
-            //var itemsData = marketData.Result.Where(x => x.sell_price_min != 0);
-
-            //if (itemsData.Count() != 0)
-            //{
-            //    if (marketData.Result.Count() != 0 && marketData.Result.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
-            //    {
-            //        foreach (var price in marketData.Result)
-            //        {
-            //            if (price.sell_price_min < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
-            //            {
-            //                if (price.sell_price_min != 0)
-            //                {
-            //                    returnValue = price.sell_price_min;
-            //                    break;
-            //                }
-            //            }
-            //            else
-            //            {
-            //                ErrorMessage = $"$0 (Price to high - {price.sell_price_min}";
-            //            }
-            //        }
-            //    }
-            //}
-            //else
-            //{
-            //    ErrorMessage = "$0 (Price not found)";
-            //}
-           return returnValue;
         }
 
-        public int FetchItemPrice(Task<List<AverageItemPrice>> marketData, out string? ErrorMessage)
-        {
-            ErrorMessage = "";
+        //public int FetchItemPrice(Task<List<AverageItemPrice>> marketData, out string? ErrorMessage)
+        //{
+        //    ErrorMessage = "";
 
-            return 0;
-        }
+        //    return 0;
+        //}
 
-        public int FetchItemPrice(Task<List<EquipmentMarketDataMonthylyAverage>> marketData, out string? ErrorMessage)
-        {
-            ErrorMessage = "";
+        //public int FetchItemPrice(Task<List<EquipmentMarketDataMonthylyAverage>> marketData, out string? ErrorMessage)
+        //{
+        //    ErrorMessage = "";
 
-            return 0;
-        }
+        //    return 0;
+        //}
 
         public class Equipment
         {
