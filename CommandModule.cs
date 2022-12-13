@@ -12,8 +12,6 @@ using System;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using PlayerData;
-using Newtonsoft.Json;
 using DiscordBot.RegearModule;
 using MarketData;
 using System.Collections.Generic;

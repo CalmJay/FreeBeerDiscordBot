@@ -12,9 +12,6 @@ using System.Threading.Tasks;
 using Discord.Interactions;
 using MarketData;
 using DiscordBot.Models;
-using Newtonsoft.Json;
-using static System.Net.Mime.MediaTypeNames;
-using System.Diagnostics;
 
 namespace DiscordBot.RegearModule
 {
