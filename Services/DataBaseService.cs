@@ -31,7 +31,7 @@ namespace DiscordBot.Services
             var playerLoot =  freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
             foreach (var item in playerLoot)
             {
-                if (item.CreateDate.Value.ToString("YYYY-MM-DD") == DateTime.UtcNow.ToString("YYYY-MM-DD"))
+                if (item.CreateDate.Value.ToString("yyyy-MM-dd").Equals(DateTime.UtcNow.ToString("yyyy-MM-dd")))
                 {
                     playerLoots.Add(item);
                 }

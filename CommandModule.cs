@@ -269,7 +269,7 @@ namespace CommandModule
                     {
                         var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
                         string cleanedUpCallerName = callerName.ToString().Split('#')[0];
-                        
+
                         if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
                             await DeferAsync();
