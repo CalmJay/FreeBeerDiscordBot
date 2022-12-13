@@ -489,7 +489,6 @@ namespace DiscordBot.RegearModule
                     {
                         //Check for Current Price
                         List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(item);
-
                         if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
                         {
                             notAvailableInMarketList.Add(marketDataCurrent.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
@@ -723,9 +722,9 @@ namespace DiscordBot.RegearModule
 
                 if (itemsData != null)
                 {
-                    if (marketData.Count() != 0 && marketData.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
+                    if (itemsData.Count() != 0 && itemsData.Where(x => x.sell_price_min != 0).FirstOrDefault().sell_price_min != 0)
                     {
-                        var value = marketData.Min(x => x.sell_price_min);
+                        var value = itemsData.Min(x => x.sell_price_min);
 
                         if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
                         {
