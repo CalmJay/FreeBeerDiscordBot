@@ -1,13 +1,9 @@
-﻿using Discord;
-using Discord.Interactions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using DiscordbotLogging.Log;
 using Newtonsoft.Json;
-using System.Linq;
 
 namespace MarketData
 {

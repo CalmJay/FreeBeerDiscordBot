@@ -12,8 +12,6 @@ using System;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using PlayerData;
-using Newtonsoft.Json;
 using DiscordBot.RegearModule;
 using MarketData;
 using System.Collections.Generic;
@@ -269,10 +267,11 @@ namespace CommandModule
                     {
                         var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
                         string cleanedUpCallerName = callerName.ToString().Split('#')[0];
-                        //await DeferAsync();
 
                         if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
+                            await DeferAsync();
+
                             if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                             {
                                 await regearModule.PostRegear(Context, PlayerEventData, cleanedUpCallerName, "ZVZ content", moneyType);
