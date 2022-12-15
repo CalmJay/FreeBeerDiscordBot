@@ -35,69 +35,68 @@ namespace CommandModule
         }
 
         // Simple slash command to bring up a message with a button to press
-        [SlashCommand("button", "Button demo command")]
-        public async Task ButtonInput()
-        {
-            var components = new ComponentBuilder();
-            var button = new ButtonBuilder()
-            {
-                Label = "Button",
-                CustomId = "button1",
-                Style = ButtonStyle.Primary
-            };
+        //[SlashCommand("button", "Button demo command")]
+        //public async Task ButtonInput()
+        //{
+        //    var components = new ComponentBuilder();
+        //    var button = new ButtonBuilder()
+        //    {
+        //        Label = "Button",
+        //        CustomId = "button1",
+        //        Style = ButtonStyle.Primary
+        //    };
 
-            // Messages take component lists. Either buttons or select menus. The button can not be directly added to the message. It must be added to the ComponentBuilder.
-            // The ComponentBuilder is then given to the message components property.
-            components.WithButton(button);
+        //    // Messages take component lists. Either buttons or select menus. The button can not be directly added to the message. It must be added to the ComponentBuilder.
+        //    // The ComponentBuilder is then given to the message components property.
+        //    components.WithButton(button);
 
-            await RespondAsync("This message has a button!", components: components.Build());
-        }
+        //    await RespondAsync("This message has a button!", components: components.Build());
+        //}
 
-        // This is the handler for the button created above. It is triggered by nmatching the customID of the button.
-        [ComponentInteraction("button1")]
-        public async Task ButtonHandler()
-        {
-            // try setting a breakpoint here to see what kind of data is supplied in a ComponentInteraction.
-            var c = Context;
+        //// This is the handler for the button created above. It is triggered by nmatching the customID of the button.
+        //[ComponentInteraction("button1")]
+        //public async Task ButtonHandler()
+        //{
+        //    // try setting a breakpoint here to see what kind of data is supplied in a ComponentInteraction.
+        //    var c = Context;
 
-            await RespondAsync($"You pressed a button!");
-        }
+        //    await RespondAsync($"You pressed a button!");
+        //}
 
-        // Simple slash command to bring up a message with a select menu
-        [SlashCommand("menu", "Select Menu demo command")]
-        public async Task MenuInput()
-        {
-            var components = new ComponentBuilder();
-            // A SelectMenuBuilder is created
-            var select = new SelectMenuBuilder()
-            {
-                CustomId = "menu1",
-                Placeholder = "Select something"
-            };
-            // Options are added to the select menu. The option values can be generated on execution of the command. You can then use the value in the Handler for the select menu
-            // to determine what to do next. An example would be including the ID of the user who made the selection in the value.
-            select.AddOption("abc", "abc_value");
-            select.AddOption("def", "def_value");
-            select.AddOption("ghi", "ghi_value");
+        //// Simple slash command to bring up a message with a select menu
+        //[SlashCommand("menu", "Select Menu demo command")]
+        //public async Task MenuInput()
+        //{
+        //    var components = new ComponentBuilder();
+        //    // A SelectMenuBuilder is created
+        //    var select = new SelectMenuBuilder()
+        //    {
+        //        CustomId = "menu1",
+        //        Placeholder = "Select something"
+        //    };
+        //    // Options are added to the select menu. The option values can be generated on execution of the command. You can then use the value in the Handler for the select menu
+        //    // to determine what to do next. An example would be including the ID of the user who made the selection in the value.
+        //    select.AddOption("abc", "abc_value");
+        //    select.AddOption("def", "def_value");
+        //    select.AddOption("ghi", "ghi_value");
 
-            components.WithSelectMenu(select);
+        //    components.WithSelectMenu(select);
 
-            await RespondAsync("This message has a menu!", components: components.Build());
-        }
+        //    await RespondAsync("This message has a menu!", components: components.Build());
+        //}
 
-        // SelectMenu interaction handler. This receives an array of the selections made.
-        [ComponentInteraction("menu1")]
-        public async Task MenuHandler(string[] selections)
-        {
-            // For the sake of demonstration, we only want the first value selected.
-            await RespondAsync($"You selected {selections.First()}");
-        }
+        //// SelectMenu interaction handler. This receives an array of the selections made.
+        //[ComponentInteraction("menu1")]
+        //public async Task MenuHandler(string[] selections)
+        //{
+        //    // For the sake of demonstration, we only want the first value selected.
+        //    await RespondAsync($"You selected {selections.First()}");
+        //}
 
         [SlashCommand("recent-deaths", "View recent deaths")]
         public async Task GetRecentDeaths()
         {
             var testuser = Context.User.Id;
-            //SocketSlashCommand command = test;
             string? sPlayerData = null;
             var sPlayerAlbionId = new AlbionAPIDataSearch().GetPlayerInfo(Context); //either get from google sheet or search in albion API;
             string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).Nickname != null) ? (Context.Interaction.User as SocketGuildUser).Nickname : Context.Interaction.User.Username;
@@ -203,16 +202,16 @@ namespace CommandModule
             {
                 if (marketData.Result.Count > 0 && marketData.Result.FirstOrDefault().sell_price_min > 0)
                 {
-                    await ReplyAsync($"<@{Context.User.Id}> Price for {a_sItemType} is: " + marketData.Result.FirstOrDefault().sell_price_min);
+                    await RespondAsync($"<@{Context.User.Id}> Price for {a_sItemType} is: " + marketData.Result.FirstOrDefault().sell_price_min, null, false, true);
                 }
                 else
                 {
-                    await ReplyAsync($"<@{Context.User.Id}> Price not found");
+                    await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
                 }
             }
             else
             {
-                await ReplyAsync($"<@{Context.User.Id}> Price not found");
+                await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
             }
 
 
@@ -233,7 +232,7 @@ namespace CommandModule
             Console.WriteLine("Dickhead " + sDiscordUsername + " has been blacklisted");
 
             await GoogleSheetsDataWriter.WriteToFreeBeerRosterDatabase(sDiscordUsername.ToString(), sDiscordNickname, sReason, sFine, sNotes);
-            ReplyAsync(sDiscordUsername.ToString() + " has been blacklisted");
+            await RespondAsync(sDiscordUsername.ToString() + " has been blacklisted", null, false, true);
         }
 
         [SlashCommand("regear", "Submit a regear")]
@@ -269,7 +268,7 @@ namespace CommandModule
                     {
                         var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
                         string cleanedUpCallerName = callerName.ToString().Split('#')[0];
-                        //await DeferAsync();
+                        await DeferAsync();
 
                         if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
@@ -294,11 +293,10 @@ namespace CommandModule
 
 
                             }
-                            //await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false ,true, null, null, null, null);
                         }
                         else
                         {
-                            await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                            await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
                         }
                     }
                     else
@@ -339,7 +337,7 @@ namespace CommandModule
             }
             else
             {
-                await RespondAsync($"HEY EVERYONE!!! <@{Context.User.Id}> was trying to deny a regear. Stop pressing random buttons idiot. That aint your job.");
+                await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
             }
         }
         [ComponentInteraction("approve")]
@@ -366,7 +364,7 @@ namespace CommandModule
             }
             else
             {
-                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.",null,false,true);
+                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.",null, false, true);
             }
         }
 
@@ -410,20 +408,8 @@ namespace CommandModule
             }
             else
             {
-                await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.");
-            }
-                
-            
-        }
-
-
-        private bool isRegearDuplicate(int a_iEventID)
-        {
-
-            //await GoogleSheetsDataWriter.ReadAsync();
-
-
-            return false;
+                await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
+            }          
         }
     }
 }
