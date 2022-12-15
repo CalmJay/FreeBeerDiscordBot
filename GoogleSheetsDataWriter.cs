@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using DiscordBot.Enums;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
@@ -12,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,8 +24,8 @@ namespace GoogleSheetsData
         private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
 
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        public static string GuildSpreadsheetId = "1s-W9waiJx97rgFsdOHg602qKf-CgrIvKww_d5dwthyU"; //REAL SHEET //ADD TO CONFIG
-        public static string RegearSheetID = "1icWg0pqsC-SF2uwamF2W93NsIGfmqqtrDw--jaju0nU";//"1Yf1BnzHVIal_mj9c99cIAXgMN-EnmFeUcp59bTHSOb4"; //Developer Copy of regear sheet
+        public static string GuildSpreadsheetId = System.Configuration.ConfigurationManager.AppSettings.Get("guildDataBaseSheetID");
+        public static string RegearSheetID = System.Configuration.ConfigurationManager.AppSettings.Get("regearSpreadSheetID");
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
         public bool enableGoogleApi = true; //ADD TO CONFIG

@@ -12,9 +12,6 @@ using System.Threading.Tasks;
 using Discord.Interactions;
 using MarketData;
 using DiscordBot.Models;
-using Newtonsoft.Json;
-using static System.Net.Mime.MediaTypeNames;
-using System.Diagnostics;
 
 namespace DiscordBot.RegearModule
 {
@@ -26,7 +23,7 @@ namespace DiscordBot.RegearModule
         private int silverTierRegearCap = 1300000;
         private int bronzeTierRegearCap = 1000000;
         private int shitTierRegearCap = 600000;
-        private int iTankMinimumIP = 1400;
+        private int iTankMinimumIP = 1450;
         private int iDPSMinimumIP = 1450;
         private int iHealerMinmumIP = 1350;
         private int iSupportMinimumIP = 1350;
@@ -500,6 +497,7 @@ namespace DiscordBot.RegearModule
                             var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
 
                             returnValue += equipmentFetchPrice;
+                            underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
                             underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                         }
                     }
@@ -522,6 +520,7 @@ namespace DiscordBot.RegearModule
                 }
             }
 
+
             if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1049889855619989515
             {
                 returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
@@ -540,6 +539,12 @@ namespace DiscordBot.RegearModule
                 regearIconType = "Bronze Tier Regear - Elligible";
                 regearRoleIcon = "<:Bronze_Bar:1019676753666527342>";
             }
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Elligible")) // Role ID 1052241667329118349
+            {
+                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                regearIconType = "Free Regear - Elligible";
+                regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
+            }
             else
             {
                 returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
@@ -557,7 +562,7 @@ namespace DiscordBot.RegearModule
                     $"<p >{item.ItemPrice}</p></div>";
             }
 
-            gearImage += $"<div style='font-weight : bold;'>Refund amt. : {returnValue}</div></center></div>";
+            gearImage += $"<div style='font-weight : bold;'>Refund amount. : {returnValue.ToString("N0")}</div></center></div>";
 
             gearImage += $"<center><br/>";
             if (notAvailableInMarketList.Count() != 0)
@@ -572,7 +577,7 @@ namespace DiscordBot.RegearModule
 
             gearImage += $"</center></div>";
 
-            return new List<string> { gearImage, returnValue.ToString() };
+            return new List<string> { gearImage, returnValue.ToString("N0") };
         }
 
         private ClassType GetRegearClassType(string a_sGearItem)
