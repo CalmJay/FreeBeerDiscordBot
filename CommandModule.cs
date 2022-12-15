@@ -265,8 +265,7 @@ namespace CommandModule
                     if (PlayerEventData != null)
                     {
                         var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-                        string cleanedUpCallerName = callerName.ToString().Split('#')[0];
-                        await DeferAsync();
+                        string cleanedUpCallerName = callerName.Nickname.ToString().Split('#')[0];
 
                         if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
@@ -296,7 +295,8 @@ namespace CommandModule
                         }
                         else
                         {
-                            await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                            await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Victim.Name}", null));
                         }
                     }
                     else
@@ -306,12 +306,12 @@ namespace CommandModule
                 }
                 else
                 {
-                    await RespondAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam your guild and theft the money. You can't get another regear for same death", null, false, true);
+                    await RespondAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam the guild and steal money. You can't submit another regear for same death. :middle_finger: ", null, false, true);
                 }
             }
             else
             {
-                await RespondAsync($"<@{Context.User.Id}>, you are the stupidest person here, trying to  scam the guild and theft the money, You can't get more than 5 regear in one day", null, false, true);
+                await RespondAsync($"<@{Context.User.Id}>, you are the stupidest person here. Trying to scam the guild and steal money. You can't claim more than 5 regears in one day", null, false, true);
             }
         }
 
@@ -359,7 +359,7 @@ namespace CommandModule
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
-                await ReplyAsync(($"<@{Context.Guild.GetUser(regearPoster).Id}> your regear has been approved! ${refundAmount.ToString("N0")} has been added to your paychex"));
+                await ReplyAsync(($"<@{Context.Guild.GetUser(regearPoster).Id}> your regear https://albiononline.com/en/killboard/kill/{killId} has been approved! ${refundAmount.ToString("N0")} has been added to your paychex"));
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear {killId} for {victimName} ", null));
             }
             else
