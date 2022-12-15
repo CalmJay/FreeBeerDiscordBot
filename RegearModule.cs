@@ -22,7 +22,7 @@ namespace DiscordBot.RegearModule
         private int goldTierRegearCap = 1700000;
         private int silverTierRegearCap = 1300000;
         private int bronzeTierRegearCap = 1000000;
-        private int shitTierRegearCap = 500000;
+        private int shitTierRegearCap = 600000;
         private int iTankMinimumIP = 1450;
         private int iDPSMinimumIP = 1450;
         private int iHealerMinmumIP = 1350;
@@ -804,20 +804,6 @@ namespace DiscordBot.RegearModule
             return returnValue;
 
         }
-
-        //public int FetchItemPrice(Task<List<AverageItemPrice>> marketData, out string? ErrorMessage)
-        //{
-        //    ErrorMessage = "";
-
-        //    return 0;
-        //}
-
-        //public int FetchItemPrice(Task<List<EquipmentMarketDataMonthylyAverage>> marketData, out string? ErrorMessage)
-        //{
-        //    ErrorMessage = "";
-
-        //    return 0;
-        //}
 
         public class Equipment
         {
