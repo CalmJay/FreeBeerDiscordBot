@@ -24,7 +24,7 @@ namespace GoogleSheetsData
         private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
 
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        public static string GuildSpreadsheetId = System.Configuration.ConfigurationManager.AppSettings.Get("guildDataBaseSheetID");
+        public static string GuildSpreadsheetId = "1icWg0pqsC-SF2uwamF2W93NsIGfmqqtrDw--jaju0nU";//System.Configuration.ConfigurationManager.AppSettings.Get("guildDataBaseSheetID");
         public static string RegearSheetID = System.Configuration.ConfigurationManager.AppSettings.Get("regearSpreadSheetID");
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
@@ -166,51 +166,55 @@ namespace GoogleSheetsData
         {
             string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString(): a_command.User.Username;
             
-            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
-            
-            var numberOfRow = GetSheetsService().Spreadsheets.Values.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
-            var col1 = numberOfRow;
-            var col2 = numberOfRow;
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+
+            var numberOfRow = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
+
+
+            var col1 = numberOfRow + 1;
+            var col2 = numberOfRow + 1;
             int googleIterations = 0;
 
+            
+            //ReadRange = $"Current Season Dumps!B{col1}";
+            //WriteRange = $"Current Season Dumps!A{col1}:J{col2}";
 
-            ReadRange = $"Current Season Dumps!B{col1}";
-            WriteRange = $"Current Season Dumps!A{col1}:I{col2}";
+
             ValueRange GetResponse = null;
             IList<IList<object>> values = null;
 
             var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
             var msgRef = new MessageReference(messages.First().Id);
 
-            while (true)
-            {
-                GetResponse = await serviceValues.Get(RegearSheetID, ReadRange).ExecuteAsync();
-                values = GetResponse.Values;
+            //            while (true)
+            //            {
+            //                GetResponse = await serviceValues.Get(RegearSheetID, ReadRange).ExecuteAsync();
+            //                values = GetResponse.Values;
 
-                if (values == null || !values.Any())
-                {
-                    break;
-                }
+            //                if (values == null || !values.Any())
+            //                {
+            //                    break;
+            //                }
 
-                col1++;
-                col2++;
+            //                //col1++;
+            //               // col2++;
 
-#if DEBUG
-                googleIterations++;
-                if (googleIterations >= 250)
-                {
-                    Console.WriteLine($"Iteration is approaching googles rate limit of 500 {googleIterations}");
-                }
-               
-#endif
-                
-                ReadRange = $"Current Season Dumps!B{col1}";
-                WriteRange = $"Current Season Dumps!A{col1}:I{col2}";
-            }
+            //#if DEBUG
+            //                googleIterations++;
+            //                if (googleIterations >= 250)
+            //                {
+            //                    Console.WriteLine($"Iteration is approaching googles rate limit of 500 {googleIterations}");
+            //                }
+
+            //#endif
+
+            ReadRange = $"Current Season Dumps!B{col1 +1}";
+            WriteRange = $"Current Season Dumps!B{col1 +1}:J{col2 + 1}";
+            //            }
 
             if (values == null || !values.Any())
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_playerData.Victim.Name, "@"+ a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId} } };
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> {"@"+ a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString()} } };
                 var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 await update.ExecuteAsync();
