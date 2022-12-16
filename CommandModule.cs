@@ -119,8 +119,8 @@ namespace CommandModule
 
             if (sUserNickname == playerInfo.Name)
             {
-                //if (playerInfo.GuildId == playerDataHandler.FreeBeerGuildID)
-                //{
+                if (playerInfo.GuildId == playerDataHandler.FreeBeerGuildID)
+                {
                     var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
                     var freeRegearTokenRole = "";
                     var user = guildUserName.Guild.GetUser(guildUserName.Id);
@@ -137,11 +137,11 @@ namespace CommandModule
 
                     await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), null, null, null, null);
                     await RespondAsync(guildUserName.Nickname.ToString() + " has been registered to Free Beer :beers: ", null, false, false);
-               // }
-                //else
-                //{
-                //    await ReplyAsync($"Make sure {playerInfo.Name} is in the guild inside the game! If they were just invited give it a few minutes and try again... Or go yell at SBI to speed their shit up");
-                //}
+                }
+                else
+                {
+                    await ReplyAsync($"Make sure {playerInfo.Name} is in the guild inside the game! If they were just invited give it a few minutes and try again... Or go yell at SBI to speed their shit up");
+                }
             }
             else
             {

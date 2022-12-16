@@ -853,11 +853,7 @@ namespace PlayerData
             {
                 if (sUserNickname.Contains(tag))
                 {
-                    //while (sUserNickname.StartsWith(tag))
-                    //{
-                        //int index = sUserNickname.IndexOf("");
-                        sUserNickname = sUserNickname.Split(" ")[1];
-                    //}
+                    sUserNickname = sUserNickname.Split(" ")[1];
                 }
             }
 
