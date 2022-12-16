@@ -836,7 +836,7 @@ namespace PlayerData
 
     public class AlbionAPIDataSearch
     {
-        public async Task<PlayerLookupInfo> GetPlayerInfo(SocketInteractionContext a_socketInteraction)
+        public async Task<PlayerLookupInfo> GetPlayerInfo(SocketInteractionContext a_socketInteraction, string? userNickname)
         {
             
             string? sPlayerData = null;
@@ -844,23 +844,26 @@ namespace PlayerData
             string? sUserNickname = ((a_socketInteraction.User as SocketGuildUser).Nickname != null) ? (a_socketInteraction.User as SocketGuildUser).Nickname : a_socketInteraction.User.Username;
             PlayerLookupInfo returnValue = null;
 
-            string shotcallertag1 = "!!sl";
-            string shotcallertag2 = "!sl";
+            List<string> ShotCallertags = new List<string>();
+            ShotCallertags.Add("!!sl");
+            ShotCallertags.Add("!sl");
+            ShotCallertags.Add("!slnew");
 
-            if (sUserNickname.Contains(shotcallertag1))
+            foreach(var tag in ShotCallertags)
             {
-                while (sUserNickname.StartsWith(shotcallertag1))
+                if (sUserNickname.Contains(tag))
                 {
-                    sUserNickname = sUserNickname.Substring(shotcallertag1.Length + 1);
+                    //while (sUserNickname.StartsWith(tag))
+                    //{
+                        //int index = sUserNickname.IndexOf("");
+                        sUserNickname = sUserNickname.Split(" ")[1];
+                    //}
                 }
             }
-            else if (sUserNickname.Contains(shotcallertag2))
-            {
-                while (sUserNickname.StartsWith(shotcallertag2))
-                {
-                    sUserNickname = sUserNickname.Substring(shotcallertag2.Length + 1);
-                }
 
+            if(userNickname != null)
+            {
+                sUserNickname = userNickname;
             }
 
             using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"search?q={sUserNickname}"))
@@ -876,10 +879,29 @@ namespace PlayerData
                     {
                         returnValue = playerSearchData.players.FirstOrDefault();
                         Console.WriteLine("Guild Nickname Matches Albion Username");
+
+                        new PlayerLookupInfo()
+                        {
+                            Id = returnValue.Id,
+                            Name = returnValue.Name,
+                            GuildId = returnValue.GuildId,
+                            GuildName = returnValue.GuildName,
+                            AllianceId = returnValue.AllianceId,
+                            AllianceName = returnValue.AllianceName,
+                            Avatar = returnValue.Avatar,
+                            AvatarRing = returnValue.AvatarRing,
+                            KillFame = returnValue.KillFame,
+                            DeathFame = returnValue.DeathFame,
+                            FameRatio = returnValue.FameRatio,
+                            totalKills = returnValue.totalKills,
+                            gvgKills = returnValue.gvgKills,
+                            gvgWon = returnValue.gvgWon,
+                        };
                     }
                     else
                     {
                         //await a_socketInteraction.Channel.SendMessageAsync("Hey idiot. Does your discord nickname match your in-game name?");
+                        await a_socketInteraction.Channel.SendMessageAsync($"Player not found. Discord name doesnt match in-game name. Discord user: {a_socketInteraction.User.Username}");
                         Console.WriteLine($"Player not found. Discord name doesnt match in-game name. Discord user: {a_socketInteraction.User.Username}");
                         returnValue = null;
                     }
