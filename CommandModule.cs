@@ -91,12 +91,70 @@ namespace CommandModule
         //    await RespondAsync($"You selected {selections.First()}");
         //}
 
+        //[SlashCommand("split-loot", "Automated Split loot")]
+        //public async Task SplitLoot(IAttachment a_iImageAttachment)
+        //{
+
+
+        //}
+
+        [SlashCommand("register", "Register player to Free Beer guild")]
+        public async Task Register(SocketGuildUser guildUserName ,string ingameName = null)
+        {
+            PlayerDataHandler playerDataHandler = new PlayerDataHandler();
+            PlayerLookupInfo playerInfo = new PlayerLookupInfo();
+            AlbionAPIDataSearch albionData = new AlbionAPIDataSearch();
+            dataBaseService = new DataBaseService();
+
+            string? sUserNickname = (guildUserName.Nickname != null) ? guildUserName.Nickname : guildUserName.Username;
+
+            if(ingameName != null)
+            {
+                sUserNickname = ingameName;
+                await (guildUserName as IGuildUser).ModifyAsync(x => x.Nickname = ingameName);
+            }
+
+
+            playerInfo = await albionData.GetPlayerInfo(Context, guildUserName.Nickname.ToString());
+
+            if (sUserNickname == playerInfo.Name)
+            {
+                if (playerInfo.GuildId == playerDataHandler.FreeBeerGuildID)
+                {
+                    var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
+                    var freeRegearTokenRole = "";
+                    var user = guildUserName.Guild.GetUser(guildUserName.Id);
+                    await user.AddRoleAsync(newMemberRole);
+                    await user.AddRoleAsync(1052241667329118349);
+
+                    await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
+                    {
+                        PlayerId = playerInfo.Id,
+                        PlayerName = playerInfo.Name
+                    });
+
+                    await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
+
+                    await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), null, null, null, null);
+                    await RespondAsync(guildUserName.Nickname.ToString() + " has been registered to Free Beer :beers: ", null, false, false);
+                }
+                else
+                {
+                    await ReplyAsync($"Make sure {playerInfo.Name} is in the guild inside the game! If they were just invited give it a few minutes and try again... Or go yell at SBI to speed their shit up");
+                }
+            }
+            else
+            {
+                await ReplyAsync($"The discord name doen't match the ingame name. Here's a copy the spies name if you cant find it {playerInfo.Name}");
+            }
+        }
+
         [SlashCommand("recent-deaths", "View recent deaths")]
         public async Task GetRecentDeaths()
         {
             var testuser = Context.User.Id;
             string? sPlayerData = null;
-            var sPlayerAlbionId = new AlbionAPIDataSearch().GetPlayerInfo(Context); //either get from google sheet or search in albion API;
+            var sPlayerAlbionId = new AlbionAPIDataSearch().GetPlayerInfo(Context, null); //either get from google sheet or search in albion API;
             string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).Nickname != null) ? (Context.Interaction.User as SocketGuildUser).Nickname : Context.Interaction.User.Username;
 
             int iDeathDisplayCounter = 1;

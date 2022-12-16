@@ -24,7 +24,7 @@ namespace GoogleSheetsData
         private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
 
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
-        public static string GuildSpreadsheetId = "1icWg0pqsC-SF2uwamF2W93NsIGfmqqtrDw--jaju0nU";//System.Configuration.ConfigurationManager.AppSettings.Get("guildDataBaseSheetID");
+        public static string GuildSpreadsheetId = System.Configuration.ConfigurationManager.AppSettings.Get("guildDataBaseSheetID");
         public static string RegearSheetID = System.Configuration.ConfigurationManager.AppSettings.Get("regearSpreadSheetID");
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
@@ -170,15 +170,9 @@ namespace GoogleSheetsData
 
             var numberOfRow = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
 
-
             var col1 = numberOfRow + 1;
             var col2 = numberOfRow + 1;
             int googleIterations = 0;
-
-            
-            //ReadRange = $"Current Season Dumps!B{col1}";
-            //WriteRange = $"Current Season Dumps!A{col1}:J{col2}";
-
 
             ValueRange GetResponse = null;
             IList<IList<object>> values = null;
@@ -221,6 +215,36 @@ namespace GoogleSheetsData
 
             }
 
+        }
+
+        public static async Task RegisterUserToDataRoster(string a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
+        {
+            //THIS ONLY WRITES TO THE FREE BEER BLACKLIST SPREADSHEET. ADJUST THIS METHOD SO THAT IT CAN WRITE TO ANYSPREADSHEET
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+
+            var numberOfRow = serviceValues.Get(GuildSpreadsheetId, "Guild Roster!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
+            var col1 = numberOfRow + 1;
+            var col2 = numberOfRow + 1;
+            ValueRange GetResponse = null;
+            IList<IList<object>> values = null;
+
+            int valuesCount = 0;
+
+                ReadRange = $"Guild Roster!A{col1 + 1}";
+                WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
+            //}
+
+            if (values == null || !values.Any())
+            {
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes"} } };
+                var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+                await update.ExecuteAsync();
+
+            }
+
+            //var response = await update.ExecuteAsync();
+            // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
         }
     }
 }
