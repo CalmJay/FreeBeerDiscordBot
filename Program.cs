@@ -21,7 +21,7 @@ namespace FreeBeerBot
         private int TotalRegearSilverAmount { get; set; }
         private PlayerDataHandler.Rootobject PlayerEventData { get; set;}
 
-        private bool resetGuildCommands = false;
+        private bool resetGuildCommands = true;
         ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
 
         // Program entry point
@@ -83,23 +83,23 @@ namespace FreeBeerBot
 
             _client.Ready += async () =>
             {
-                // If running the bot with DEBUG flag, register all commands to guild specified in config
-                if (IsDebug())
-                {
+                
+
                     var guild = _client.GetGuild(GuildID);
 
-                    if(resetGuildCommands)
+                    if (resetGuildCommands)
                     {
                         await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
                         await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
                     }
-                     
+
                     // Id of the test guild can be provided from the Configuration object
+                    //await commands.RegisterCommandsGloballyAsync(true);
+  
                     await commands.RegisterCommandsToGuildAsync(GuildID);
-                }
-                else
-                    // If not debug, register commands globally
-                    await commands.RegisterCommandsGloballyAsync(true);
+
+
+
             };
 
             //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);
@@ -107,15 +107,6 @@ namespace FreeBeerBot
             await _client.StartAsync();
 
             await Task.Delay(-1);
-        }
-
-        static bool IsDebug()
-        {
-#if DEBUG
-            return true;
-#else
-            return false;
-#endif
-        }   
+        } 
     }
 }
