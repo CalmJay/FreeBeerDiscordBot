@@ -16,6 +16,11 @@ using DiscordBot.RegearModule;
 using MarketData;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.IO;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using System.Runtime.CompilerServices;
+using System.Collections.ObjectModel;
 
 namespace CommandModule
 {
@@ -468,6 +473,34 @@ namespace CommandModule
             {
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
             }          
+        }
+        [SlashCommand("split", "Scrapes members, grabs image, compares members and stores list of those contained in image")]
+        public async Task SplitLoot()
+        {
+
+            List<string> memberList = new List<string>();
+            
+            foreach (IGuildUser user in Context.Guild.Users)
+            {
+                memberList.Add(user.Username);
+            }
+
+            string tempDir = @"C:\Users\gmbro\Source\Repos\FreeBeerDiscordBot\Temp";
+            if (!Directory.Exists(tempDir))//create Temp folder for the python program to utilize if it doesn't exist
+            {
+                Directory.CreateDirectory(tempDir);
+            }
+
+            string jsonstring = JsonConvert.SerializeObject(memberList);
+
+            using (StreamWriter writer = File.CreateText("C:\\Users\\gmbro\\Source\\Repos\\FreeBeerDiscordBot\\Temp\\members.json"))
+            {
+                await writer.WriteAsync(jsonstring);
+            }
+
+            await ReplyAsync("members received.");
+
+
         }
     }
 }
