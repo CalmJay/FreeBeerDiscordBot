@@ -837,13 +837,17 @@ namespace PlayerData
     {
         public async Task<PlayerLookupInfo> GetPlayerInfo(SocketInteractionContext a_socketInteraction, string? userNickname)
         {
-            
+            PlayerLookupInfo returnValue = null;
             string? sPlayerData = null;
             string? sPlayerAlbionId = null; //either get from google sheet or search in albion API
             string? sUserNickname = ((a_socketInteraction.User as SocketGuildUser).Nickname != null) ? (a_socketInteraction.User as SocketGuildUser).Nickname : a_socketInteraction.User.Username;
-            PlayerLookupInfo returnValue = null;
 
-            if (sUserNickname.Contains(sUserNickname))
+            if(userNickname != null)
+            {
+                sUserNickname = userNickname;
+            }
+        
+            if (sUserNickname.Contains("!sl"))
             {
                 sUserNickname = CleanUpShotCallerName(sUserNickname);
             }
