@@ -474,28 +474,30 @@ namespace DiscordBot.RegearModule
 
                 Equipment underRegearItem = underRegearList.Where(x => itemType.Contains(x.Type)).FirstOrDefault();
                 MarketDataFetching marketDataFetching = new MarketDataFetching();
-                //Check for 24 Day Average
-                List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(item);
 
-                if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
+                //Check for Current Price
+                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(item);
+
+                if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
                 {
                     //Check for Daily Average
                     List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(item);
 
                     if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
                     {
-                        //Check for Current Price
-                        List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(item);
-                        if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
+                        
+
+                        //Check for 24 Day Average
+                        List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(item);
+                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
                         {
                             notAvailableInMarketList.Add(marketDataCurrent.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
                             underRegearItem.ItemPrice = "$0 (Not Found)";
                         }
                         else
                         {
-                            //get current prices
-                            var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
-
+                            //get monthly prices
+                            var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
                             returnValue += equipmentFetchPrice;
                             underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
                             underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
@@ -506,17 +508,18 @@ namespace DiscordBot.RegearModule
                         //get daily prices
                         var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
                         returnValue += equipmentFetchPrice;
+                        underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
                         underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
-
                     }
                 }
                 else
                 {
-                    //get monthly prices
-                    var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
-                    returnValue += equipmentFetchPrice;
-                    underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
+                    //get current prices
+                    var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
 
+                    returnValue += equipmentFetchPrice;
+                    underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
+                    underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                 }
             }
 

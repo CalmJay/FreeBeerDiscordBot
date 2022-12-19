@@ -806,7 +806,6 @@ namespace PlayerData
             public int Outlands { get; set; }
             public int Avalon { get; set; }
         }
-
     }
 
     public class PlayerLookupInfo
@@ -834,7 +833,7 @@ namespace PlayerData
     }
     
 
-    public class AlbionAPIDataSearch
+    public class PlayerDataLookUps
     {
         public async Task<PlayerLookupInfo> GetPlayerInfo(SocketInteractionContext a_socketInteraction, string? userNickname)
         {
@@ -844,22 +843,9 @@ namespace PlayerData
             string? sUserNickname = ((a_socketInteraction.User as SocketGuildUser).Nickname != null) ? (a_socketInteraction.User as SocketGuildUser).Nickname : a_socketInteraction.User.Username;
             PlayerLookupInfo returnValue = null;
 
-            List<string> ShotCallertags = new List<string>();
-            ShotCallertags.Add("!!sl");
-            ShotCallertags.Add("!sl");
-            ShotCallertags.Add("!slnew");
-
-            foreach(var tag in ShotCallertags)
+            if (sUserNickname.Contains(sUserNickname))
             {
-                if (sUserNickname.Contains(tag))
-                {
-                    sUserNickname = sUserNickname.Split(" ")[1];
-                }
-            }
-
-            if(userNickname != null)
-            {
-                sUserNickname = userNickname;
+                sUserNickname = CleanUpShotCallerName(sUserNickname);
             }
 
             using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"search?q={sUserNickname}"))
@@ -924,6 +910,24 @@ namespace PlayerData
             }
 
             return eventData;
+        }
+
+        public string CleanUpShotCallerName(string a_sDiscordNickName)
+        {
+            string returnValue = a_sDiscordNickName;
+            List<string> ShotCallertags = new List<string>();
+            ShotCallertags.Add("!!sl");
+            ShotCallertags.Add("!sl");
+            ShotCallertags.Add("!slnew");
+
+            foreach (var tag in ShotCallertags)
+            {
+                if (returnValue.Contains(tag))
+                {
+                    returnValue = a_sDiscordNickName.Split(" ")[1];
+                }
+            }
+            return returnValue;
         }
     }
 }

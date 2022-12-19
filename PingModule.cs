@@ -18,10 +18,31 @@ namespace DNet_V3_Tutorial
             _logger = logger;
         }
 
+        [SlashCommand("view-commands", "See list of commands")]
+        public async Task DisplayCommands()
+        {
 
-        // Basic slash command. [SlashCommand("name", "description")]
-        // Similar to text command creation, and their respective attributes
-        [SlashCommand("ping", "Receive a pong!")]
+            var embed = new EmbedBuilder()
+                .WithTitle($" Bot Commands")
+                .AddField(@"\help", "Displays commands and info about Free Beer Bot")
+                .AddField(@"\recent-deaths", "Review your last 5 deaths and display KILL IDs")
+                .AddField(@"\regear {REQUIRED: KILLID} {REQUIRED: Shotcaller}", "Submit a regear for gear refund")
+                .AddField(@"\register {REQUIRED DiscordName},{REQUIRED InGameName}", "RECRUITERS AND OFFICERS ONLY: Registers user to Free Beer guild")
+                .AddField(@"\blacklist {REQUIRED DiscordName},{REQUIRED InGameName}", "RECRUITERS AND OFFICERS ONLY: Add someone to the shit list")
+                .AddField(@"\get-player-info {REQUIRED: Player name}", "RECRUITERS AND OFFICERS ONLY Search Albion API for player info");
+                //.AddField(@"\view-paychex ", "Get your current weeks running balance")
+                //.AddField(@"Discord User ID: ", "")
+                //.AddField(@"Discord Username", "");
+
+
+            // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
+            await _logger.Log(new LogMessage(LogSeverity.Info, "PingModule : Help", $"User: {Context.User.Username}, Help: help", null));
+
+            await RespondAsync($"Bot Commands.", null, false, true, null, null, null, embed.Build());
+
+        }
+
+        [SlashCommand("ping", "Receive a reply!")]
         public async Task Ping(string message)
         {
             var channels = Context.Guild.Channels;
@@ -36,6 +57,7 @@ namespace DNet_V3_Tutorial
             await ReplyAsync(message);
             //await chnl.SendMessageAsync(message);
         }
+
         [SlashCommand("insult", "Receive a insult!")]
         public async Task Getinsult()
         {
@@ -44,7 +66,7 @@ namespace DNet_V3_Tutorial
 
 
             List<string> insultList = new List<string>
-            { //$"Fuck you <@{Context.User.Id}> your mom keeps tryin' to slip a finger in my bum but I keep telling her that I only let Votels mom do that ya fuckin loser", /* rest of elements */ 
+            {
                 $"Yeahhhhhhh bud. Votel is better than you....",
                 $"Fuck you <@{Context.User.Id}> I made your Mom cum so hard that they made a Canadian heritage moment out of it and Don Mckellar played my dick",
                 $"<@{Context.User.Id}>....I guess you prove that even god makes mistakes sometimes.",
@@ -68,7 +90,9 @@ namespace DNet_V3_Tutorial
                 $"Your mother should've swallowed you.",
                 $"I would love to insult you but I'm afraid I won't do as well as nature did.",
                 $"I envy the people that don't know you.",
-                $"I find the fact that you've lived this long both surprising and disappointing."
+                $"I find the fact that you've lived this long both surprising and disappointing.",
+                $"Logged",
+                $"HEY <@&930220030820515850>! You have some explaining to do. I wasn't the one that invited this shitter in here.",
             };
 
             int r = rnd.Next(insultList.Count);
@@ -88,7 +112,12 @@ namespace DNet_V3_Tutorial
                     await RespondAsync($"Hahahah Your gonna hate me. Lemme whisper you something <@{Context.User.Id}>!");
                     System.Threading.Thread.Sleep(2000);
                     await FollowupAsync("YOU FUCKING SUCK", null, false, true, null, null, null, null);
-                    
+                    break;
+                case "Logged":
+                    await Context.Guild.CurrentUser.AddRoleAsync(1004428809409409024);
+                    await RespondAsync($"<@{Context.User.Id}>! Have the honors of getting LOGGED bitch!!!  <:logs:1008762793404682340> ");
+                    System.Threading.Thread.Sleep(3000);
+                    await FollowupAsync($"@here <@{Context.User.Id}>! has been LOGGED. SHAME THEM!!!!");
                     break;
 
 
