@@ -377,7 +377,7 @@ namespace CommandModule
             });
 
             //Check If The Player Got 5 Regear Or Not
-            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname))
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
                 //CheckToSeeIfRegearHasAlreadyBeenClaimed
                 if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
