@@ -137,53 +137,60 @@ namespace CommandModule
         }
 
         [SlashCommand("register", "Register player to Free Beer guild")]
-        public async Task Register(SocketGuildUser guildUserName ,string ingameName = null)
+        public async Task Register(SocketGuildUser guildUserName ,string ingameName)
         {
             PlayerDataHandler playerDataHandler = new PlayerDataHandler();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
             PlayerDataLookUps albionData = new PlayerDataLookUps();
             dataBaseService = new DataBaseService();
 
-            string? sUserNickname = (guildUserName.Nickname != null) ? guildUserName.Nickname : guildUserName.Username;
+            string? sUserNickname = (guildUserName.Nickname == null) ? guildUserName.Username :guildUserName.Nickname;
 
-            if(ingameName != null)
+            var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
+            var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
+            var freeRegearRole = guildUserName.Guild.GetRole(1052241667329118349);//new member role id
+
+            var user = guildUserName.Guild.GetUser(guildUserName.Id);
+
+            if (ingameName != null)
             {
                 sUserNickname = ingameName;
-                await (guildUserName as IGuildUser).ModifyAsync(x => x.Nickname = ingameName);
+                await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
             }
 
-
-            playerInfo = await albionData.GetPlayerInfo(Context, guildUserName.Nickname.ToString());
+            playerInfo = await albionData.GetPlayerInfo(Context, sUserNickname);
 
             if (sUserNickname == playerInfo.Name)
             {
-                if (playerInfo.GuildId == playerDataHandler.FreeBeerGuildID)
+                await dataBaseService.AddPlayerInfo(new Player
                 {
-                    var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
-                    var freeRegearTokenRole = "";
-                    var user = guildUserName.Guild.GetUser(guildUserName.Id);
-                    await user.AddRoleAsync(newMemberRole);
-                    await user.AddRoleAsync(1052241667329118349);
+                    PlayerId = playerInfo.Id,
+                    PlayerName = playerInfo.Name
+                });
+          
+                await user.AddRoleAsync(newMemberRole);
+                await user.AddRoleAsync(freeRegearRole);//free regear role
 
-                    await dataBaseService.AddPlayerInfo(new Player // USE THIS FOR THE REGISTERING PROCESS
-                    {
-                        PlayerId = playerInfo.Id,
-                        PlayerName = playerInfo.Name
-                    });
+                await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
 
-                    await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
+                await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), null, null, null, null);
 
-                    await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), null, null, null, null);
-                    await RespondAsync(guildUserName.Nickname.ToString() + " has been registered to Free Beer :beers: ", null, false, false);
-                }
-                else
-                {
-                    await ReplyAsync($"Make sure {playerInfo.Name} is in the guild inside the game! If they were just invited give it a few minutes and try again... Or go yell at SBI to speed their shit up");
-                }
+                var embed = new EmbedBuilder()
+               .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
+               //.WithImageUrl($"attachment://logo.png")
+               .WithDescription("We're glad to have you. Please checkout the following below.")
+               .AddField($"Don't get kicked", "<#995798935631302667>")
+               .AddField($"General info / location of the guild stuff", "<#880598854947454996>")
+               .AddField($"Regear program", "<#970081185176891412>")
+               .AddField($"ZVZ builds", "<#906375085449945131>")
+               .AddField($"Before you do ANYTHING else","Your existence in the guild relies you on reading these");
+               //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
+
+                await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}>", false, embed.Build());
             }
             else
             {
-                await ReplyAsync($"The discord name doen't match the ingame name. Here's a copy the spies name if you cant find it {playerInfo.Name}");
+                await ReplyAsync($"The discord name doen't match the ingame name. {playerInfo.Name}");
             }
         }
 
@@ -370,7 +377,7 @@ namespace CommandModule
             });
 
             //Check If The Player Got 5 Regear Or Not
-            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname))
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
                 //CheckToSeeIfRegearHasAlreadyBeenClaimed
                 if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
