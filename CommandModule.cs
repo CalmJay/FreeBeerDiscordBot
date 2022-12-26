@@ -21,6 +21,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Runtime.CompilerServices;
 using System.Collections.ObjectModel;
+using DiscordBot.LootSplitModule;
+using System.Diagnostics;
+using Microsoft.Data.SqlClient;
 
 namespace CommandModule
 {
@@ -32,6 +35,9 @@ namespace CommandModule
 
         private static Logger _logger;
         private DataBaseService dataBaseService;
+        private List<string> lootSplitMembers;
+        private decimal lootSplitPerMember;
+
         public CommandModule(ConsoleLogger logger)
         {
             _logger = logger;
@@ -124,7 +130,7 @@ namespace CommandModule
                     //.AddField("Guild ID: ", (playerInfo.GuildId == null || playerInfo.GuildId == "") ? "No info" : playerInfo.GuildId, true)
 
                     .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
-                    //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
+                //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
 
                 await RespondAsync(null, null, false, true, null, null, null, embed.Build());
             }
@@ -137,14 +143,14 @@ namespace CommandModule
         }
 
         [SlashCommand("register", "Register player to Free Beer guild")]
-        public async Task Register(SocketGuildUser guildUserName ,string ingameName)
+        public async Task Register(SocketGuildUser guildUserName, string ingameName)
         {
             PlayerDataHandler playerDataHandler = new PlayerDataHandler();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
             PlayerDataLookUps albionData = new PlayerDataLookUps();
             dataBaseService = new DataBaseService();
 
-            string? sUserNickname = (guildUserName.Nickname == null) ? guildUserName.Username :guildUserName.Nickname;
+            string? sUserNickname = (guildUserName.Nickname == null) ? guildUserName.Username : guildUserName.Nickname;
 
             var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
             var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
@@ -167,7 +173,7 @@ namespace CommandModule
                     PlayerId = playerInfo.Id,
                     PlayerName = playerInfo.Name
                 });
-          
+
                 await user.AddRoleAsync(newMemberRole);
                 await user.AddRoleAsync(freeRegearRole);//free regear role
 
@@ -183,8 +189,8 @@ namespace CommandModule
                .AddField($"General info / location of the guild stuff", "<#880598854947454996>")
                .AddField($"Regear program", "<#970081185176891412>")
                .AddField($"ZVZ builds", "<#906375085449945131>")
-               .AddField($"Before you do ANYTHING else","Your existence in the guild relies you on reading these");
-               //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
+               .AddField($"Before you do ANYTHING else", "Your existence in the guild relies you on reading these");
+                //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
 
                 await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}>", false, embed.Build());
             }
@@ -236,7 +242,7 @@ namespace CommandModule
                         {
                             if (i <= iVisibleDeathsShown)
                             {
-                                embed.AddField($"Death {iDeathDisplayCounter} : KILL ID - {searchDeaths[i] }", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                                embed.AddField($"Death {iDeathDisplayCounter} : KILL ID - {searchDeaths[i]}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
 
                                 regearbutton.Label = $"Regear Death {iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
                                 regearbutton.CustomId = searchDeaths[i].ToString();
@@ -364,8 +370,8 @@ namespace CommandModule
 
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
-            
-            
+
+
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
             dataBaseService = new DataBaseService();
@@ -385,7 +391,7 @@ namespace CommandModule
                     if (PlayerEventData != null)
                     {
                         var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-                        
+
                         if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
                             //await DeferAsync();
@@ -432,11 +438,11 @@ namespace CommandModule
         public async Task Denied()
         {
             var guildUser = (SocketGuildUser)Context.User;
-            
+
             var interaction = Context.Interaction as IComponentInteraction;
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
-            ulong regearPoster =  Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
+            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
@@ -456,7 +462,7 @@ namespace CommandModule
         [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
-            var guildUser = (SocketGuildUser)Context.User;     
+            var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
 
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
@@ -466,7 +472,7 @@ namespace CommandModule
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
-            
+
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
@@ -477,7 +483,7 @@ namespace CommandModule
             }
             else
             {
-                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.",null, false, true);
+                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.", null, false, true);
             }
         }
 
@@ -514,7 +520,7 @@ namespace CommandModule
                 {
                     embed.AddField("BattleID", sBattleID);
                     embed.AddField("BattleBoard Name", $"https://albionbattles.com/battles/{sBattleID}", false);
-                    embed.AddField("Battle Killboard", $"https://albiononline.com/en/killboard/battles/{sBattleID}",false);
+                    embed.AddField("Battle Killboard", $"https://albiononline.com/en/killboard/battles/{sBattleID}", false);
                 }
 
                 await RespondAsync($"Audit report for event {PlayerEventData.EventId}.", null, false, true, null, null, null, embed.Build());
@@ -522,35 +528,293 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
-            }          
+            }
         }
-        [SlashCommand("split", "Scrapes members, grabs image, compares members and stores list of those contained in image")]
-        public async Task SplitLoot()
+        [SlashCommand("split-loot", "Paste/upload party ss(s). Other fields required (tbu).")]
+        public async Task SplitLoot(IAttachment partyImage, int lootAmount, int? silverBagAmount, int? chest, string? membersNotInImage)
         {
+            var guildUser = (SocketGuildUser)Context.User;
+            //var interaction = Context.Interaction as IComponentInteraction;
+            var lootSplitModule = new LootSplitModule();
 
-            List<string> memberList = new List<string>();
-            
-            foreach (IGuildUser user in Context.Guild.Users)
+            //check if file types are valid
+            if (partyImage.Filename.StartsWith("https://cdn.discordapp.com/attachments/") ||
+                partyImage.Filename.EndsWith(".png") ||
+                partyImage.Filename.EndsWith(".jpg"))
             {
-                memberList.Add(user.Username);
-            }
 
-            string tempDir = @"C:\Users\gmbro\Source\Repos\FreeBeerDiscordBot\Temp";
-            if (!Directory.Exists(tempDir))//create Temp folder for the python program to utilize if it doesn't exist
+                //find curr dir and change to the freebeerdiscordbot directory
+                string currdir = Directory.GetCurrentDirectory();
+                string parent = Directory.GetParent(currdir).FullName;
+                string parentTwo = Directory.GetParent(parent).FullName;
+                string freeBeerDir = Directory.GetParent(parentTwo).FullName;
+
+                //create the temp dir if not existing
+                string tempDir = @freeBeerDir + "\\Temp";
+                if (!Directory.Exists(tempDir))
+                {
+                    Directory.CreateDirectory(tempDir);
+                }
+
+                //download attachment
+                var fileUrl = partyImage.Url;
+
+                await RespondAsync("Hold tight. Processing...");
+
+                //download the image url that was uploaded to the channel
+                using var httpClient = new HttpClient();
+                using var s = httpClient.GetStreamAsync(fileUrl);
+                using var fs = new FileStream(freeBeerDir + "\\Temp\\image.png", FileMode.OpenOrCreate);
+                s.Result.CopyTo(fs);
+
+                //scrape members and write to Json
+                List<string> memberList = new List<string>();
+
+                //grab iterable and make list
+                var iterable = Context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+                foreach (var member in iterable.FirstOrDefault())
+                {
+                    //if no nickname, add the username
+                    if (member.Nickname is null)
+                    { memberList.Add(member.Username); }
+                    //if squad leader, remove the dumbass prefix
+                    else if (member.Nickname.StartsWith("!sl"))
+                    { memberList.Add(member.Nickname.Remove(0, 4)); }
+                    //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
+                    else
+                    { memberList.Add(member.Nickname); }
+                }
+
+                //serialize and write to json
+                string jsonstring = JsonConvert.SerializeObject(memberList);
+                using (StreamWriter writer = System.IO.File.CreateText(freeBeerDir + "\\Temp\\members.json"))
+                {
+                    await writer.WriteAsync(jsonstring);
+                }
+
+                //strings for python.exe path and the tessaract python script (with the downloaded image as argument)
+                //will eventually add the ability to upload multiple party images - these will become more command 
+                //line arguments to a max of 3 or 4 maybe?
+                string cmd = freeBeerDir + "\\PythonScript\\AO-Py-Script\\venv\\Scripts\\Python.exe";
+                string pyth = freeBeerDir + "\\PythonScript\\AO-Py-Script\\main.py " +
+                    freeBeerDir + "\\Temp\\image.png";
+
+                ProcessStartInfo start = new ProcessStartInfo();
+                start.FileName = cmd;//cmd is full path to python.exe
+                start.Arguments = pyth;//pyth is path to .py file and any cmd line args
+                start.UseShellExecute = false;
+                start.RedirectStandardOutput = true;
+                using (Process process = Process.Start(start))
+                {
+                    //read the python output and write it to json
+                    using (StreamReader reader = process.StandardOutput)
+                    {
+                        string result = reader.ReadToEnd();
+                        string jsonstringTwo = JsonConvert.SerializeObject(result); //serialize string to write to json
+                        using (StreamWriter writerTwo = System.IO.File.CreateText(freeBeerDir + "\\Temp\\members.json"))
+                        {
+                            await writerTwo.WriteAsync(jsonstringTwo);
+                        }
+
+                        //split single string into Icollection? List
+                        List<string> results = result.Split(',').ToList();
+
+                        //clean list to strings with double quotes only - DONT USE FOREACH ON ICOLLECTION IT WILL BREAK THE LOOP
+                        for (int i = 0; i < results.Count; i++)
+                        {
+                            //cleanup strings after list separation, there are extra quotations and brackets that are added during
+                            //conversion to json-py-console-consoleread; this handles all of it
+                            results[i] = results[i].Remove(0, 2);
+                            results[i] = results[i].Remove(results[i].Length - 1);
+                        }
+                        string lastItem = results[results.Count - 1].Remove(results[results.Count - 1].Length - 3);
+                        results[results.Count - 1] = lastItem;
+
+                        //string from command parameters to list
+                        List<string> notInImage = membersNotInImage.Split(",").ToList();
+
+                        //add user that opened socket - likely the large frame at top of image not captured
+                        if (guildUser.Nickname != null)
+                        {
+                            if (!results.Contains(guildUser.Nickname))
+                            {
+                                results.Add(guildUser.Nickname);
+                            }
+                        }
+                        else
+                        {
+                            if (!results.Contains(guildUser.Username))
+                            {
+                                results.Add(guildUser.Username);
+                            }
+                        }
+                        //check strings in List notInImage (list from command parameter string) for !in results, if not, add them
+                        foreach (string x in notInImage)
+                        {
+                            if (x != null)
+                            {
+                                if (results.Contains(x)) { continue; }
+                                else { results.Add(x); }
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+
+                        lootSplitMembers = results.ToList();
+
+                        //Resulting List of members complete, begin embed builder
+                        var embed = new EmbedBuilder()
+                        .WithColor(Discord.Color.Orange)
+                        .WithTitle($"Loot split submitted by {Context.User.Username}")
+                        .AddField("Member Count", results.Count)
+                        .AddField(x =>
+                        {
+                            //loop results and add members
+                            x.Name = "Members recorded (Including Not In Image)";
+                            for (int i = 0; i < (results.Count - 1); i++)
+                            {
+                                x.Value += results[i] + ", ";
+                            }
+                            x.Value += results[results.Count - 1];
+                            x.IsInline = false;
+                        });
+                        //embed split amount
+                        if (silverBagAmount != null)
+                        {
+                            decimal split = ((decimal)(lootAmount * .9 + silverBagAmount)) / results.Count;
+                            embed.AddField("Split Amount (Per)", decimal.Round(split));
+                            lootSplitPerMember = split;
+                        }
+                        else
+                        {
+                            decimal split = (decimal)(lootAmount * .9) / results.Count;
+                            embed.AddField("Split Amount (Per)", decimal.Round(split));
+                            lootSplitPerMember = split;
+                        };
+                        embed.WithImageUrl(fileUrl);
+                        if (chest != null)
+                        {
+                            embed.AddField("Chest Number(s)", chest);
+                        };
+
+                        //send the embedded report
+                        await Context.Channel.SendMessageAsync("--Loot Split Report--", false, embed.Build());
+
+                        await lootSplitModule.PostLootSplit(Context);
+
+                        //NEED TO ADD A WAY TO RESEND THE BUTTON COMPONENTS IF SOME IDIOT WITHOUT PERMS USES THEM
+
+                    }
+
+                }
+
+            }
+        }
+        [ComponentInteraction("approve split")]
+        async Task ApproveSplit()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+            //check perms to push buttons
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
             {
-                Directory.CreateDirectory(tempDir);
+                await RespondAsync("Approved. Now handling some spreadsheet bs, baby hold me just a little bit longer...");
+
+                DataBaseService dataBaseService = new DataBaseService();
+
+                string reasonLootSplit = "Loot split";
+                string message = "Loot split silver addition for member.";
+                //CHANGE ID TO BE THE ACTUAL ID FROM THE SCRAPE IF WE WANT TO ADD ACTUAL DISCORD IDS TO DB
+                int tempInt = 0000; //this is just temp PlayerID for .Player table needs to be actual discord id
+                string tempStr = "null";
+                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "LootSplit");
+                string constr = "Server = DESKTOP-CV02ERA; Database = FreeBeerdbTest; Trusted_Connection = True";
+
+                foreach (string playerName in lootSplitMembers)
+                {
+                    //STATEMENT NEEDS TO BE UPDATED, ASSUMED PLAYERS WILL BE IN db.PLAYER, SO NO NEED TO CHECK / CREATE, JUST EXCEPT IF THEY DON'T EXIST
+                    if (dataBaseService.GetPlayerInfoByName(playerName) == null)
+                    {
+                        using SqlConnection connection = new SqlConnection(constr);
+                        {
+                            using SqlCommand command = connection.CreateCommand();
+                            {
+                                //need to add player to Player table to work with foreign keys
+                                command.Parameters.AddWithValue("@playerName", playerName);
+                                command.Parameters.AddWithValue("@pid", tempInt.ToString());
+                                command.CommandText = "INSERT INTO [FreeBeerdbTest].[dbo].[Player] (PlayerName, PlayerId) VALUES (@playerName, @pid)";
+                                connection.Open();
+                                command.ExecuteNonQuery();
+
+                                //now we can actually use GetPlayerInfoByName to grab the foreign key
+                                int playerID = dataBaseService.GetPlayerInfoByName(playerName).Id;
+                                command.Parameters.AddWithValue("@type", moneyType);
+                                command.Parameters.AddWithValue("@loot", lootSplitPerMember);
+                                command.Parameters.AddWithValue("@date", DateTime.Now);
+                                command.Parameters.AddWithValue("@reason", reasonLootSplit);
+                                command.Parameters.AddWithValue("@leader", tempStr);
+                                command.Parameters.AddWithValue("@killid", tempStr);
+                                command.Parameters.AddWithValue("@queueid", tempStr);
+                                command.Parameters.AddWithValue("@message", message);
+                                command.Parameters.AddWithValue("@playerID", playerID);
+                                command.CommandText = "INSERT INTO [FreeBeerdbTest].[dbo].[PlayerLoot] (TypeID, PlayerID, Loot, CreateDate, " +
+                                    "Reason, PartyLeader, KillId, QueueId, Message) " +
+                                    "VALUES (@type, @playerID, @loot, @date, @reason, @leader, @killid, @queueid, @message)";
+                                command.ExecuteNonQuery();
+                                connection.Close();
+                                command.Parameters.Clear();
+                            }
+                        }
+                    }
+                    //if player exists in table .Player do this instead
+                    else
+                    {
+                        using SqlConnection connection = new SqlConnection(constr);
+                        {
+                            using SqlCommand command = connection.CreateCommand();
+                            {
+                                int playerID = dataBaseService.GetPlayerInfoByName(playerName).Id;
+                                command.Parameters.AddWithValue("@type", moneyType);
+                                command.Parameters.AddWithValue("@loot", lootSplitPerMember);
+                                command.Parameters.AddWithValue("@date", DateTime.Now);
+                                command.Parameters.AddWithValue("@reason", reasonLootSplit);
+                                command.Parameters.AddWithValue("@leader", tempStr);
+                                command.Parameters.AddWithValue("@killid", tempStr);
+                                command.Parameters.AddWithValue("@queueid", tempStr);
+                                command.Parameters.AddWithValue("@playerID", playerID);
+                                command.Parameters.AddWithValue("@message", message);
+                                command.CommandText = "INSERT INTO [FreeBeerdbTest].[dbo].[PlayerLoot] (TypeID, PlayerID, Loot, CreateDate, " +
+                                    "Reason, PartyLeader, KillId, QueueId, Message) " +
+                                    "VALUES (@type, @playerID, @loot, @date, @reason, @leader, @killid, @queueid, @message)";
+                                connection.Open();
+                                command.ExecuteNonQuery();
+                                connection.Close();
+                                command.Parameters.Clear();
+                            }
+                        }
+                    }
+                }
+                await Context.Channel.SendMessageAsync("Database updated. Split amount added to each member listed in report.");
             }
-
-            string jsonstring = JsonConvert.SerializeObject(memberList);
-
-            using (StreamWriter writer = File.CreateText("C:\\Users\\gmbro\\Source\\Repos\\FreeBeerDiscordBot\\Temp\\members.json"))
+            else
             {
-                await writer.WriteAsync(jsonstring);
+                await RespondAsync("Don't push buttons without perms you mongo.");
             }
-
-            await ReplyAsync("members received.");
-
-
+        }
+        [ComponentInteraction("deny split")]
+        async Task DenySplit()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+            //check perms for button pushing
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
+            {
+                await RespondAsync("Loot split denied. Humblest apologies - but don't blame me, blame the regear team.");
+            }
+            else
+            {
+                await RespondAsync("Don't push buttons without perms you mongo.");
+            }
         }
     }
 }
