@@ -863,7 +863,17 @@ namespace PlayerData
                     //USE THIS LOGIC TO CREATE METHOD TO ADD USER TO DATABASE
                     if (playerSearchData.players.FirstOrDefault() != null)
                     {
-                        returnValue = playerSearchData.players.FirstOrDefault();
+                        
+
+                        if (playerSearchData.players.Count > 1)
+                        {
+                            returnValue = playerSearchData.players.Where(x => x.FameRatio > 0).FirstOrDefault();
+                        }
+                        else
+                        {
+                            returnValue = playerSearchData.players.FirstOrDefault();
+                        }
+
                         Console.WriteLine("Guild Nickname Matches Albion Username");
 
                         new PlayerLookupInfo()
