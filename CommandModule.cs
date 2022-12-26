@@ -440,9 +440,17 @@ namespace CommandModule
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
-
                 dataBaseService = new DataBaseService();
-                dataBaseService.DeletePlayerLootByKillId(killId.ToString());
+
+                try
+                {
+                    dataBaseService.DeletePlayerLootByKillId(killId.ToString());
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
+                }
+                
                 await RespondAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}", null, false, false);
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
