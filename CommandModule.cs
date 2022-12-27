@@ -35,8 +35,8 @@ namespace CommandModule
 
         private static Logger _logger;
         private DataBaseService dataBaseService;
-        private List<string> lootSplitMembers;
-        private decimal lootSplitPerMember;
+        private static List<string> lootSplitMembers;
+        private static decimal lootSplitPerMember;
 
         public CommandModule(ConsoleLogger logger)
         {
@@ -530,7 +530,7 @@ namespace CommandModule
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
             }
         }
-        [SlashCommand("split-loot", "Paste/upload party ss(s). Other fields required (tbu).")]
+        [SlashCommand("split-loot", "Paste/upload party ss(s). Other fields required (tbu) .")]
         public async Task SplitLoot(IAttachment partyImage, int lootAmount, int? silverBagAmount, int? chest, string? membersNotInImage)
         {
             var guildUser = (SocketGuildUser)Context.User;
@@ -729,7 +729,7 @@ namespace CommandModule
                 int tempInt = 0000; //this is just temp PlayerID for .Player table needs to be actual discord id
                 string tempStr = "null";
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "LootSplit");
-                string constr = "Server = DESKTOP-CV02ERA; Database = FreeBeerdbTest; Trusted_Connection = True";
+                string constr = "Server = DESKTOP-I2QLG5A; Database = FreeBeerdbTest; Trusted_Connection = True";
 
                 foreach (string playerName in lootSplitMembers)
                 {
