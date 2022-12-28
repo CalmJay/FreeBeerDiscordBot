@@ -124,7 +124,7 @@ namespace CommandModule
                     //.AddField("Guild ID: ", (playerInfo.GuildId == null || playerInfo.GuildId == "") ? "No info" : playerInfo.GuildId, true)
 
                     .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
-                    //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
+                //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
 
                 await RespondAsync(null, null, false, true, null, null, null, embed.Build());
             }
@@ -137,7 +137,7 @@ namespace CommandModule
         }
 
         [SlashCommand("register", "Register player to Free Beer guild")]
-        public async Task Register(SocketGuildUser guildUserName ,string ingameName = null)
+        public async Task Register(SocketGuildUser guildUserName, string ingameName = null)
         {
             PlayerDataHandler playerDataHandler = new PlayerDataHandler();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
@@ -146,7 +146,7 @@ namespace CommandModule
 
             string? sUserNickname = (guildUserName.Nickname != null) ? guildUserName.Nickname : guildUserName.Username;
 
-            if(ingameName != null)
+            if (ingameName != null)
             {
                 sUserNickname = ingameName;
                 await (guildUserName as IGuildUser).ModifyAsync(x => x.Nickname = ingameName);
@@ -229,7 +229,7 @@ namespace CommandModule
                         {
                             if (i <= iVisibleDeathsShown)
                             {
-                                embed.AddField($"Death {iDeathDisplayCounter} : KILL ID - {searchDeaths[i] }", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                                embed.AddField($"Death {iDeathDisplayCounter} : KILL ID - {searchDeaths[i]}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
 
                                 regearbutton.Label = $"Regear Death {iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
                                 regearbutton.CustomId = searchDeaths[i].ToString();
@@ -331,6 +331,9 @@ namespace CommandModule
         [SlashCommand("regear", "Submit a regear")]
         public async Task RegearSubmission(int EventID, SocketGuildUser callerName)
         {
+            List<string> args = new List<string>();
+            args.Add("T5_Demonfang_@3_Excellent");
+            await RegearOCSubmission(args, callerName);
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
             RegearModule regearModule = new RegearModule();
@@ -357,8 +360,8 @@ namespace CommandModule
 
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
-            
-            
+
+
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
             dataBaseService = new DataBaseService();
@@ -378,7 +381,7 @@ namespace CommandModule
                     if (PlayerEventData != null)
                     {
                         var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-                        
+
                         if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
                             //await DeferAsync();
@@ -420,16 +423,70 @@ namespace CommandModule
                 await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
             }
         }
+        //[SlashCommand("regear-OC", "Submit a regear")]
+        public async Task RegearOCSubmission(List<string> items, SocketGuildUser callerName)
+        {
+
+             PlayerDataLookUps eventData = new PlayerDataLookUps();
+            RegearModule regearModule = new RegearModule();
+
+            var guildUser = (SocketGuildUser)Context.User;
+            var interaction = Context.Interaction as IComponentInteraction;
+
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
+
+
+            if (sUserNickname.Contains("!sl"))
+            {
+                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+            }
+
+            if (sCallerNickname.Contains("!sl"))
+            {
+                sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
+            }
+
+
+
+
+
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
+
+            dataBaseService = new DataBaseService();
+
+            //Check If The Player Got 5 Regear Or Not
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname))
+            {
+                    var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
+
+                    //if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                    //{
+                            await regearModule.PostOCRegear(Context, items, sCallerNickname, "ZVZ content", moneyType);
+                            await RespondAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+
+                    //}
+                    //else
+                    //{
+                    //    await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                    //    await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Victim.Name}", null));
+                    //}
+            }
+            else
+            {
+                await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
+            }
+        }
 
         [ComponentInteraction("deny")]
         public async Task Denied()
         {
             var guildUser = (SocketGuildUser)Context.User;
-            
+
             var interaction = Context.Interaction as IComponentInteraction;
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
-            ulong regearPoster =  Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
+            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
@@ -449,7 +506,7 @@ namespace CommandModule
         [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
-            var guildUser = (SocketGuildUser)Context.User;     
+            var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
 
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
@@ -459,7 +516,7 @@ namespace CommandModule
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
-            
+
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
@@ -470,7 +527,7 @@ namespace CommandModule
             }
             else
             {
-                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.",null, false, true);
+                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.", null, false, true);
             }
         }
 
@@ -507,7 +564,7 @@ namespace CommandModule
                 {
                     embed.AddField("BattleID", sBattleID);
                     embed.AddField("BattleBoard Name", $"https://albionbattles.com/battles/{sBattleID}", false);
-                    embed.AddField("Battle Killboard", $"https://albiononline.com/en/killboard/battles/{sBattleID}",false);
+                    embed.AddField("Battle Killboard", $"https://albiononline.com/en/killboard/battles/{sBattleID}", false);
                 }
 
                 await RespondAsync($"Audit report for event {PlayerEventData.EventId}.", null, false, true, null, null, null, embed.Build());
@@ -515,14 +572,14 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
-            }          
+            }
         }
         [SlashCommand("split", "Scrapes members, grabs image, compares members and stores list of those contained in image")]
         public async Task SplitLoot()
         {
 
             List<string> memberList = new List<string>();
-            
+
             foreach (IGuildUser user in Context.Guild.Users)
             {
                 memberList.Add(user.Username);

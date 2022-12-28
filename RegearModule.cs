@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using Discord.Interactions;
 using MarketData;
 using DiscordBot.Models;
+using Aspose.Words.Lists;
+using Newtonsoft.Json;
 
 namespace DiscordBot.RegearModule
 {
@@ -131,6 +133,100 @@ namespace DiscordBot.RegearModule
 
 
                 }
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+        public async Task PostOCRegear(SocketInteractionContext command, List<string> items, string partyLeader, string reason, MoneyTypes moneyTypes)
+        {
+            ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
+
+            var chnl = command.Client.GetChannel(id) as IMessageChannel;
+
+            string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
+
+            var marketData = await GetMarketDataForOCRegear(command, items);
+
+            RegearQueueID = command.Interaction.Id;
+
+            var approveButton = new ButtonBuilder()
+            {
+                Label = "Approve",
+                CustomId = "approve",
+                Style = ButtonStyle.Success
+            };
+            var denyButton = new ButtonBuilder()
+            {
+                Label = "Deny",
+                CustomId = "deny",
+                Style = ButtonStyle.Danger
+            };
+            var auditButton = new ButtonBuilder()
+            {
+                Label = "Audit",
+                CustomId = "audit",
+                Style = ButtonStyle.Secondary
+            };
+
+            var component = new ComponentBuilder();
+            component.WithButton(approveButton);
+            component.WithButton(denyButton);
+            component.WithButton(auditButton);
+
+            try
+            {
+                dataBaseService = new DataBaseService();
+                var player = dataBaseService.GetPlayerInfoByName(sUserNickname);
+                var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
+                await dataBaseService.AddPlayerReGear(new PlayerLoot
+                {
+                    TypeId = moneyType.Id,
+                    CreateDate = DateTime.Now,
+                    Loot = Convert.ToDecimal(marketData.Sum(x=>Convert.ToInt32(x.ItemPrice))),
+                    PlayerId = player.Id,
+                    Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
+                    PartyLeader = partyLeader,
+                    KillId = "",
+                    Reason = reason,
+                    QueueId = "0"
+                });
+
+
+
+
+ 
+                    var embed = new EmbedBuilder()
+                                    .WithTitle($" {regearRoleIcon} Regear Submission from {sUserNickname}{regearRoleIcon}")
+                                    .AddField("Victim", sUserNickname, true)
+                                    .AddField("Caller Name: ", partyLeader, true)
+                                    .AddField("Refund Amount: ", marketData.Sum(x => Convert.ToInt32(x.ItemPrice)), true)
+                                    .AddField("Discord User ID: ", command.User.Id, true)
+                                    .AddField("Discord Username", command.User.Username, true)
+                                    //.AddField("Date of death", a_EventData.TimeStamp)
+                                    .WithUrl($"https://albiononline.com/en/killboard/kill/a_EventData.EventId")
+                                    .WithCurrentTimestamp()
+                                    //<:emoji_name:emoji_id> or <a:animated_emoji_name:emoji_id>
+                                    //.WithImageUrl(GearImageRenderSerivce(command))
+                                    //.AddField(fb => fb.WithName("🌍 Location").WithValue("https://cdn.discordapp.com/attachments/944305637624533082/1026594623696678932/BAG_603948955.png").WithIsInline(true))
+                                    .WithImageUrl($"attachment://image.jpg");
+
+                    //CheckRegearRequirments(a_EventData, out bool requirementsMet, out string? errorMessage);
+
+                    //if (!requirementsMet)
+                    //{
+                    //    embed.WithDescription($"<a:red_siren:1050052736206508132> WARNING: {errorMessage} <a:red_siren:1050052736206508132> ");
+                    //    embed.Color = Color.Red;
+                    //}
+                    //else
+                    //{
+                    //    embed.WithDescription($":thumbsup:  Requreiments Met: This regear meets Free Beer Standards  :thumbsup: ");
+                    //    embed.Color = Color.Green;
+                    //}
+
+                    await chnl.SendFileAsync( "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
+
             }
             catch (Exception ex)
             {
@@ -582,7 +678,96 @@ namespace DiscordBot.RegearModule
 
             return new List<string> { gearImage, returnValue.ToString("N0") };
         }
+        public async Task<List<Equipment>> GetMarketDataForOCRegear(SocketInteractionContext command, List<string> itemsName)
+        {
+            List<Item> items = new List<Item>();
+            double returnValue = 0;
+            using (StreamReader r = new StreamReader("Files/items.json"))
+            {
+                string json = r.ReadToEnd();
+                 items = JsonConvert.DeserializeObject<List<Item>>(json);
+            }
+            List<Equipment> underRegearItem = new List<Equipment>();
 
+            foreach (var item in itemsName)
+            {
+                var itemDes=item.Split('_');
+                var itemDescription1 = items.Where(x => x.LocalizedNames.ENUS.Contains("Demonfang"));
+
+                var itemDescription2= items.Where(x => x.LocalizedNames.ENUS.Contains(itemDes[1]) && x.UniqueName.Contains(item[0])).FirstOrDefault();
+
+                var itemDescription = items.Where(x => x.LocalizedNames.ENUS.Contains(itemDes[1]) && x.UniqueName.Contains(item[0]) && x.UniqueName.Contains(item[2])).FirstOrDefault();
+                
+                string itemType = (itemDescription.UniqueName.Split('_')[1] == "2H") ? "MAIN" : itemDescription.UniqueName.Split('_')[1];
+
+                MarketDataFetching marketDataFetching = new MarketDataFetching();
+
+                //Check for Current Price
+                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(itemDescription.UniqueName);
+
+                if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
+                {
+                    //Check for Daily Average
+                    List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(itemDescription.UniqueName);
+
+                    if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
+                    {
+
+
+                        //Check for 24 Day Average
+                        List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(itemDescription.UniqueName);
+                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
+                        {
+                            underRegearItem.Add(new Equipment
+                            {
+                                Image = $"https://render.albiononline.com/v1/item/{itemDescription.UniqueName + "?quality=" + itemDes[3]}",
+                                ItemPrice = "0"
+                                //ItemPrice = "$0 (Not Found)",
+                            });
+                        }
+                        else
+                        {
+                            //get monthly prices
+                            var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
+                            returnValue += equipmentFetchPrice;
+                            underRegearItem.Add(new Equipment
+                            {
+                                Image = $"https://render.albiononline.com/v1/item/{itemDescription.UniqueName + "?quality=" + itemDes[3]}",
+                                ItemPrice = equipmentFetchPrice.ToString("N0")
+                                //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
+                            });
+                        }
+                    }
+                    else
+                    {
+                        //get daily prices
+                        var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
+                        returnValue += equipmentFetchPrice;
+                        underRegearItem.Add(new Equipment
+                        {
+                            Image = $"https://render.albiononline.com/v1/item/{itemDescription.UniqueName + "?quality=" + itemDes[3]}",
+                            ItemPrice = equipmentFetchPrice.ToString("N0")
+                            //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
+                        });
+
+                    }
+                }
+                else
+                {
+                    //get current prices
+                    var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
+
+                    returnValue += equipmentFetchPrice;
+                    underRegearItem.Add(new Equipment
+                    {
+                        Image = $"https://render.albiononline.com/v1/item/{itemDescription.UniqueName + "?quality=" + itemDes[3]}",
+                        ItemPrice= equipmentFetchPrice.ToString("N0")
+                        //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
+                    });
+                }
+            }
+            return underRegearItem;
+        }
         private ClassType GetRegearClassType(string a_sGearItem)
         {
             ClassType returnvalue = ClassType.Unknown;
