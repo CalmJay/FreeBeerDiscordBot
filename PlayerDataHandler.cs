@@ -806,6 +806,7 @@ namespace PlayerData
             public int Outlands { get; set; }
             public int Avalon { get; set; }
         }
+
     }
 
     public class PlayerLookupInfo
@@ -911,7 +912,21 @@ namespace PlayerData
 
             return eventData;
         }
+        public async Task<PlayersSearch> GetAlbionPlayerInfo(string Name)
+        {
+            string playerData = null;
+            PlayersSearch eventData = null;
+            using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"search?q={Name}"))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    playerData = await response.Content.ReadAsStringAsync();
+                    eventData = JsonConvert.DeserializeObject<PlayersSearch>(playerData);
+                }
+            }
 
+            return eventData;
+        }
         public string CleanUpShotCallerName(string a_sDiscordNickName)
         {
             string returnValue = a_sDiscordNickName;
