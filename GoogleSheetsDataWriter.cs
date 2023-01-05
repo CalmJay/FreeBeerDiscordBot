@@ -9,6 +9,7 @@ using Google.Apis.Util.Store;
 using PlayerData;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -164,8 +165,8 @@ namespace GoogleSheetsData
 
         public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund, string a_sCallerName)
         {
-            string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString(): a_command.User.Username;
-            
+            string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString() : a_command.User.Username;
+
             var serviceValues = GetSheetsService().Spreadsheets.Values;
 
             var numberOfRow = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
@@ -202,13 +203,13 @@ namespace GoogleSheetsData
 
             //#endif
 
-            ReadRange = $"Current Season Dumps!B{col1 +1}";
-            WriteRange = $"Current Season Dumps!B{col1 +1}:J{col2 + 1}";
+            ReadRange = $"Current Season Dumps!B{col1 + 1}";
+            WriteRange = $"Current Season Dumps!B{col1 + 1}:J{col2 + 1}";
             //            }
 
             if (values == null || !values.Any())
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> {"@"+ a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString()} } };
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };
                 var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 await update.ExecuteAsync();
@@ -225,26 +226,89 @@ namespace GoogleSheetsData
             var numberOfRow = serviceValues.Get(GuildSpreadsheetId, "Guild Roster!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
             var col1 = numberOfRow + 1;
             var col2 = numberOfRow + 1;
-            ValueRange GetResponse = null;
+
             IList<IList<object>> values = null;
-
-            int valuesCount = 0;
-
-                ReadRange = $"Guild Roster!A{col1 + 1}";
-                WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
+            ReadRange = $"Guild Roster!A{col1 + 1}";
+            WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
             //}
 
             if (values == null || !values.Any())
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes"} } };
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes" } } };
                 var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 await update.ExecuteAsync();
 
             }
+        }
 
-            //var response = await update.ExecuteAsync();
-            // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
+        public static string GetCurrentPaychexAmount(string a_sUserName)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+            DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+            var dayTest = lastSunday.Day.ToString();
+            var dayofweekTest = lastSunday.DayOfWeek.ToString();
+            var monthTest = lastSunday.Month.ToString();
+            var shortmonth = DateTime.Now.ToShortMonthName();
+            var monthName = DateTime.Now.ToMonthName();
+
+            string combinedDate = $"{shortmonth}-{lastSunday.Day}";
+
+            var DaterowValues = serviceValues.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
+
+            int dateIndex = 1;
+
+            foreach (var dates in DaterowValues)
+            {
+                if(dates.ToString() == combinedDate)
+                {
+
+                    break;
+                }
+                dateIndex++;
+            }
+
+            //var returnData = DaterowValues;
+            ReadRange = $"Payouts!B4:B";
+            var rowValues = serviceValues.Get(RegearSheetID, $"Payouts!R4C2:R305C{dateIndex}").Execute().Values;
+
+            //serviceValues.Get(RegearSheetID, $"Payouts!B{col1 + 1}");
+
+            //a_sUserName = "7mmo";
+            string currentPaychex = "0";
+            int i = 0;
+            foreach (var users in rowValues)
+            {
+                if (users[0].ToString().ToLower() == a_sUserName.ToLower())
+                {
+                    currentPaychex = users.Last().ToString(); 
+                }
+                i++;
+            }
+            var finalAmount = rowValues.Where(x => x.ToString() == a_sUserName).FirstOrDefault();
+            //x => x.Contains(combinedDate)
+            return currentPaychex;
+        }
+
+
+    }
+
+    public static class HelperMethods
+    {
+        public static DateTime StartOfWeek(this DateTime dt, DayOfWeek startOfWeek)
+        {
+            int diff = (7 + (dt.DayOfWeek - startOfWeek)) % 7;
+            return dt.AddDays(-1 * diff).Date;
+        }
+
+        public static string ToMonthName(this DateTime dateTime)
+        {
+            return CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(dateTime.Month);
+        }
+
+        public static string ToShortMonthName(this DateTime dateTime)
+        {
+            return CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(dateTime.Month);
         }
     }
 }
