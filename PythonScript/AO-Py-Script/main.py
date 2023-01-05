@@ -31,21 +31,43 @@ def main():
         joined = "".join([str(char) for char in temp])
         mem_list_copy[n] = joined.lower()
 
-    ind_list = []
+    ind_set = set()
     ret_str_list = []
 
-    image_path = sys.argv[1]  # get command line argument from C#
-    try:
-        img_str = image_to_text(image_path)  # returns full string of names found in lower case
+    path_list = []
 
-        for m in range(0, len(mem_list_copy)):  # find indices for names in original mem list
-            if mem_list_copy[m] in img_str:
-                ind_list.append(m)
-        for n in range(0, len(ind_list)):  # build return list from strings in original mem list
-            ret_str_list.append(mem_list[ind_list[n]])
-        print(ret_str_list)
+    for n in range(1, len(sys.argv)):
+        if sys.argv[n] != None:
+            image_path = sys.argv[n]  # get command line argument from C#
+            path_list.append(image_path)
+
+    try:
+        for n in range(0, len(path_list)):
+            image_path = path_list[n]
+            img_str = image_to_text(image_path)  # returns full string of names found in lower case
+            for m in range(0, len(mem_list_copy)):  # find indices for names in original mem list
+                if mem_list_copy[m] in img_str:
+                    ind_set.add(m)
+
+        ind_list = list(ind_set)
+        for p in range(0, len(ind_list)):  # build return list from set of indices
+            ret_str_list.append(mem_list[ind_list[p]])
+        print(ret_str_list, end="")
     except AnyExcept:
-        print("Loot split not processed, please try again.")
+        print("null", end="")
+
+    # old code
+    # try:
+        # image_path = sys.argv[1]
+        # img_str = image_to_text(image_path)
+        # for m in range(0, len(mem_list_copy)):  # find indices for names in original mem list
+        #     if mem_list_copy[m] in img_str:
+        #         ind_list.append(m)
+        # for n in range(0, len(ind_list)):  # build return list from strings in original mem list
+        #     ret_str_list.append(mem_list[ind_list[n]])
+        # print(ret_str_list)
+    # except AnyExcept:
+    #     print("Loot split not processed, please try again.")
 
 
 # set new_path to the parent.parent.parent working directory, so we can access the discord bot \Temp folder

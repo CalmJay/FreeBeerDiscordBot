@@ -24,6 +24,9 @@ using System.Collections.ObjectModel;
 using DiscordBot.LootSplitModule;
 using System.Diagnostics;
 using Microsoft.Data.SqlClient;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using Discord.Commands;
+using Microsoft.VisualBasic;
 
 namespace CommandModule
 {
@@ -35,8 +38,12 @@ namespace CommandModule
 
         private static Logger _logger;
         private DataBaseService dataBaseService;
+
         private static List<string> lootSplitMembers;
         private static decimal lootSplitPerMember;
+        private static List<string> resultList;
+        private static List<ulong> msgsIds;
+        private static List<string> memberListField;
 
         public CommandModule(ConsoleLogger logger)
         {
@@ -530,188 +537,188 @@ namespace CommandModule
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
             }
         }
-        [SlashCommand("split-loot", "Paste/upload party ss(s). Other fields required (tbu) .")]
-        public async Task SplitLoot(IAttachment partyImage, int lootAmount, int? silverBagAmount, int? chest, string? membersNotInImage)
-        {
-            var guildUser = (SocketGuildUser)Context.User;
-            //var interaction = Context.Interaction as IComponentInteraction;
-            var lootSplitModule = new LootSplitModule();
+        //[SlashCommand("split-loot", "Paste/upload party ss(s). Other fields required (tbu) .")]
+        //public async Task SplitLoot(IAttachment partyImage, int lootAmount, int? silverBagAmount, int? chest, string? membersNotInImage)
+        //{
+        //    var guildUser = (SocketGuildUser)Context.User;
+        //    //var interaction = Context.Interaction as IComponentInteraction;
+        //    var lootSplitModule = new LootSplitModule();
 
-            //check if file types are valid
-            if (partyImage.Filename.StartsWith("https://cdn.discordapp.com/attachments/") ||
-                partyImage.Filename.EndsWith(".png") ||
-                partyImage.Filename.EndsWith(".jpg"))
-            {
+        //    //check if file types are valid
+        //    if (partyImage.Filename.StartsWith("https://cdn.discordapp.com/attachments/") ||
+        //        partyImage.Filename.EndsWith(".png") ||
+        //        partyImage.Filename.EndsWith(".jpg"))
+        //    {
 
-                //find curr dir and change to the freebeerdiscordbot directory
-                string currdir = Directory.GetCurrentDirectory();
-                string parent = Directory.GetParent(currdir).FullName;
-                string parentTwo = Directory.GetParent(parent).FullName;
-                string freeBeerDir = Directory.GetParent(parentTwo).FullName;
+        //        //find curr dir and change to the freebeerdiscordbot directory
+        //        string currdir = Directory.GetCurrentDirectory();
+        //        string parent = Directory.GetParent(currdir).FullName;
+        //        string parentTwo = Directory.GetParent(parent).FullName;
+        //        string freeBeerDir = Directory.GetParent(parentTwo).FullName;
 
-                //create the temp dir if not existing
-                string tempDir = @freeBeerDir + "\\Temp";
-                if (!Directory.Exists(tempDir))
-                {
-                    Directory.CreateDirectory(tempDir);
-                }
+        //        //create the temp dir if not existing
+        //        string tempDir = @freeBeerDir + "\\Temp";
+        //        if (!Directory.Exists(tempDir))
+        //        {
+        //            Directory.CreateDirectory(tempDir);
+        //        }
 
-                //download attachment
-                var fileUrl = partyImage.Url;
+        //        //download attachment
+        //        var fileUrl = partyImage.Url;
 
-                await RespondAsync("Hold tight. Processing...");
+        //        await RespondAsync("Hold tight. Processing...");
 
-                //download the image url that was uploaded to the channel
-                using var httpClient = new HttpClient();
-                using var s = httpClient.GetStreamAsync(fileUrl);
-                using var fs = new FileStream(freeBeerDir + "\\Temp\\image.png", FileMode.OpenOrCreate);
-                s.Result.CopyTo(fs);
+        //        //download the image url that was uploaded to the channel
+        //        using var httpClient = new HttpClient();
+        //        using var s = httpClient.GetStreamAsync(fileUrl);
+        //        using var fs = new FileStream(freeBeerDir + "\\Temp\\image.png", FileMode.OpenOrCreate);
+        //        s.Result.CopyTo(fs);
 
-                //scrape members and write to Json
-                List<string> memberList = new List<string>();
+        //        //scrape members and write to Json
+        //        List<string> memberList = new List<string>();
 
-                //grab iterable and make list
-                var iterable = Context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
-                foreach (var member in iterable.FirstOrDefault())
-                {
-                    //if no nickname, add the username
-                    if (member.Nickname is null)
-                    { memberList.Add(member.Username); }
-                    //if squad leader, remove the dumbass prefix
-                    else if (member.Nickname.StartsWith("!sl"))
-                    { memberList.Add(member.Nickname.Remove(0, 4)); }
-                    //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
-                    else
-                    { memberList.Add(member.Nickname); }
-                }
+        //        //grab iterable and make list
+        //        var iterable = Context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+        //        foreach (var member in iterable.FirstOrDefault())
+        //        {
+        //            //if no nickname, add the username
+        //            if (member.Nickname is null)
+        //            { memberList.Add(member.Username); }
+        //            //if squad leader, remove the dumbass prefix
+        //            else if (member.Nickname.StartsWith("!sl"))
+        //            { memberList.Add(member.Nickname.Remove(0, 4)); }
+        //            //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
+        //            else
+        //            { memberList.Add(member.Nickname); }
+        //        }
 
-                //serialize and write to json
-                string jsonstring = JsonConvert.SerializeObject(memberList);
-                using (StreamWriter writer = System.IO.File.CreateText(freeBeerDir + "\\Temp\\members.json"))
-                {
-                    await writer.WriteAsync(jsonstring);
-                }
+        //        //serialize and write to json
+        //        string jsonstring = JsonConvert.SerializeObject(memberList);
+        //        using (StreamWriter writer = System.IO.File.CreateText(freeBeerDir + "\\Temp\\members.json"))
+        //        {
+        //            await writer.WriteAsync(jsonstring);
+        //        }
 
-                //strings for python.exe path and the tessaract python script (with the downloaded image as argument)
-                //will eventually add the ability to upload multiple party images - these will become more command 
-                //line arguments to a max of 3 or 4 maybe?
-                string cmd = freeBeerDir + "\\PythonScript\\AO-Py-Script\\venv\\Scripts\\Python.exe";
-                string pyth = freeBeerDir + "\\PythonScript\\AO-Py-Script\\main.py " +
-                    freeBeerDir + "\\Temp\\image.png";
+        //        //strings for python.exe path and the tessaract python script (with the downloaded image as argument)
+        //        //will eventually add the ability to upload multiple party images - these will become more command 
+        //        //line arguments to a max of 3 or 4 maybe?
+        //        string cmd = freeBeerDir + "\\PythonScript\\AO-Py-Script\\venv\\Scripts\\Python.exe";
+        //        string pyth = freeBeerDir + "\\PythonScript\\AO-Py-Script\\main.py " +
+        //            freeBeerDir + "\\Temp\\image.png";
 
-                ProcessStartInfo start = new ProcessStartInfo();
-                start.FileName = cmd;//cmd is full path to python.exe
-                start.Arguments = pyth;//pyth is path to .py file and any cmd line args
-                start.UseShellExecute = false;
-                start.RedirectStandardOutput = true;
-                using (Process process = Process.Start(start))
-                {
-                    //read the python output and write it to json
-                    using (StreamReader reader = process.StandardOutput)
-                    {
-                        string result = reader.ReadToEnd();
-                        string jsonstringTwo = JsonConvert.SerializeObject(result); //serialize string to write to json
-                        using (StreamWriter writerTwo = System.IO.File.CreateText(freeBeerDir + "\\Temp\\members.json"))
-                        {
-                            await writerTwo.WriteAsync(jsonstringTwo);
-                        }
+        //        ProcessStartInfo start = new ProcessStartInfo();
+        //        start.FileName = cmd;//cmd is full path to python.exe
+        //        start.Arguments = pyth;//pyth is path to .py file and any cmd line args
+        //        start.UseShellExecute = false;
+        //        start.RedirectStandardOutput = true;
+        //        using (Process process = Process.Start(start))
+        //        {
+        //            //read the python output and write it to json
+        //            using (StreamReader reader = process.StandardOutput)
+        //            {
+        //                string result = reader.ReadToEnd();
+        //                string jsonstringTwo = JsonConvert.SerializeObject(result); //serialize string to write to json
+        //                using (StreamWriter writerTwo = System.IO.File.CreateText(freeBeerDir + "\\Temp\\members.json"))
+        //                {
+        //                    await writerTwo.WriteAsync(jsonstringTwo);
+        //                }
 
-                        //split single string into Icollection? List
-                        List<string> results = result.Split(',').ToList();
+        //                //split single string into Icollection? List
+        //                List<string> results = result.Split(',').ToList();
 
-                        //clean list to strings with double quotes only - DONT USE FOREACH ON ICOLLECTION IT WILL BREAK THE LOOP
-                        for (int i = 0; i < results.Count; i++)
-                        {
-                            //cleanup strings after list separation, there are extra quotations and brackets that are added during
-                            //conversion to json-py-console-consoleread; this handles all of it
-                            results[i] = results[i].Remove(0, 2);
-                            results[i] = results[i].Remove(results[i].Length - 1);
-                        }
-                        string lastItem = results[results.Count - 1].Remove(results[results.Count - 1].Length - 3);
-                        results[results.Count - 1] = lastItem;
+        //                //clean list to strings with double quotes only - DONT USE FOREACH ON ICOLLECTION IT WILL BREAK THE LOOP
+        //                for (int i = 0; i < results.Count; i++)
+        //                {
+        //                    //cleanup strings after list separation, there are extra quotations and brackets that are added during
+        //                    //conversion to json-py-console-consoleread; this handles all of it
+        //                    results[i] = results[i].Remove(0, 2);
+        //                    results[i] = results[i].Remove(results[i].Length - 1);
+        //                }
+        //                string lastItem = results[results.Count - 1].Remove(results[results.Count - 1].Length - 3);
+        //                results[results.Count - 1] = lastItem;
 
-                        //string from command parameters to list
-                        List<string> notInImage = membersNotInImage.Split(",").ToList();
+        //                //string from command parameters to list
+        //                List<string> notInImage = membersNotInImage.Split(",").ToList();
 
-                        //add user that opened socket - likely the large frame at top of image not captured
-                        if (guildUser.Nickname != null)
-                        {
-                            if (!results.Contains(guildUser.Nickname))
-                            {
-                                results.Add(guildUser.Nickname);
-                            }
-                        }
-                        else
-                        {
-                            if (!results.Contains(guildUser.Username))
-                            {
-                                results.Add(guildUser.Username);
-                            }
-                        }
-                        //check strings in List notInImage (list from command parameter string) for !in results, if not, add them
-                        foreach (string x in notInImage)
-                        {
-                            if (x != null)
-                            {
-                                if (results.Contains(x)) { continue; }
-                                else { results.Add(x); }
-                            }
-                            else
-                            {
-                                continue;
-                            }
-                        }
+        //                //add user that opened socket - likely the large frame at top of image not captured
+        //                if (guildUser.Nickname != null)
+        //                {
+        //                    if (!results.Contains(guildUser.Nickname))
+        //                    {
+        //                        results.Add(guildUser.Nickname);
+        //                    }
+        //                }
+        //                else
+        //                {
+        //                    if (!results.Contains(guildUser.Username))
+        //                    {
+        //                        results.Add(guildUser.Username);
+        //                    }
+        //                }
+        //                //check strings in List notInImage (list from command parameter string) for !in results, if not, add them
+        //                foreach (string x in notInImage)
+        //                {
+        //                    if (x != null)
+        //                    {
+        //                        if (results.Contains(x)) { continue; }
+        //                        else { results.Add(x); }
+        //                    }
+        //                    else
+        //                    {
+        //                        continue;
+        //                    }
+        //                }
 
-                        lootSplitMembers = results.ToList();
+        //                lootSplitMembers = results.ToList();
 
-                        //Resulting List of members complete, begin embed builder
-                        var embed = new EmbedBuilder()
-                        .WithColor(Discord.Color.Orange)
-                        .WithTitle($"Loot split submitted by {Context.User.Username}")
-                        .AddField("Member Count", results.Count)
-                        .AddField(x =>
-                        {
-                            //loop results and add members
-                            x.Name = "Members recorded (Including Not In Image)";
-                            for (int i = 0; i < (results.Count - 1); i++)
-                            {
-                                x.Value += results[i] + ", ";
-                            }
-                            x.Value += results[results.Count - 1];
-                            x.IsInline = false;
-                        });
-                        //embed split amount
-                        if (silverBagAmount != null)
-                        {
-                            decimal split = ((decimal)(lootAmount * .9 + silverBagAmount)) / results.Count;
-                            embed.AddField("Split Amount (Per)", decimal.Round(split));
-                            lootSplitPerMember = split;
-                        }
-                        else
-                        {
-                            decimal split = (decimal)(lootAmount * .9) / results.Count;
-                            embed.AddField("Split Amount (Per)", decimal.Round(split));
-                            lootSplitPerMember = split;
-                        };
-                        embed.WithImageUrl(fileUrl);
-                        if (chest != null)
-                        {
-                            embed.AddField("Chest Number(s)", chest);
-                        };
+        //                //Resulting List of members complete, begin embed builder
+        //                var embed = new EmbedBuilder()
+        //                .WithColor(Discord.Color.Orange)
+        //                .WithTitle($"Loot split submitted by {Context.User.Username}")
+        //                .AddField("Member Count", results.Count)
+        //                .AddField(x =>
+        //                {
+        //                    //loop results and add members
+        //                    x.Name = "Members recorded (Including Not In Image)";
+        //                    for (int i = 0; i < (results.Count - 1); i++)
+        //                    {
+        //                        x.Value += results[i] + ", ";
+        //                    }
+        //                    x.Value += results[results.Count - 1];
+        //                    x.IsInline = false;
+        //                });
+        //                //embed split amount
+        //                if (silverBagAmount != null)
+        //                {
+        //                    decimal split = ((decimal)(lootAmount * .9 + silverBagAmount)) / results.Count;
+        //                    embed.AddField("Split Amount (Per)", decimal.Round(split));
+        //                    lootSplitPerMember = split;
+        //                }
+        //                else
+        //                {
+        //                    decimal split = (decimal)(lootAmount * .9) / results.Count;
+        //                    embed.AddField("Split Amount (Per)", decimal.Round(split));
+        //                    lootSplitPerMember = split;
+        //                };
+        //                embed.WithImageUrl(fileUrl);
+        //                if (chest != null)
+        //                {
+        //                    embed.AddField("Chest Number(s)", chest);
+        //                };
 
-                        //send the embedded report
-                        await Context.Channel.SendMessageAsync("--Loot Split Report--", false, embed.Build());
+        //                //send the embedded report
+        //                await Context.Channel.SendMessageAsync("--Loot Split Report--", false, embed.Build());
 
-                        await lootSplitModule.PostLootSplit(Context);
+        //                await lootSplitModule.PostLootSplit(Context);
 
-                        //NEED TO ADD A WAY TO RESEND THE BUTTON COMPONENTS IF SOME IDIOT WITHOUT PERMS USES THEM
+        //                //NEED TO ADD A WAY TO RESEND THE BUTTON COMPONENTS IF SOME IDIOT WITHOUT PERMS USES THEM
 
-                    }
+        //            }
 
-                }
+        //        }
 
-            }
-        }
+        //    }
+        //}
         [ComponentInteraction("approve split")]
         async Task ApproveSplit()
         {
@@ -814,6 +821,303 @@ namespace CommandModule
             else
             {
                 await RespondAsync("Don't push buttons without perms you mongo.");
+            }
+        }
+        [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
+        public async Task SplitLoot()
+        {
+            //user will be instructed to enter upload images prior to using this command
+            var guildUser = (SocketGuildUser)Context.User;
+            //var interaction = Context.Interaction as IComponentInteraction;
+            var lootSplitModule = new LootSplitModule();
+
+            //find curr dir and change to the freebeerdiscordbot directory
+            string currdir = Directory.GetCurrentDirectory();
+            string parent = Directory.GetParent(currdir).FullName;
+            string parentTwo = Directory.GetParent(parent).FullName;
+            string freeBeerDir = Directory.GetParent(parentTwo).FullName;
+
+            //create the temp dir if not existing
+            string tempDir = @freeBeerDir + "\\Temp";
+            if (!Directory.Exists(tempDir))
+            {
+                Directory.CreateDirectory(tempDir);
+            }
+
+            //acknowledge command received
+            await RespondAsync("Image(s) processing, hold tight...");
+
+            //scrape thread for image uploads
+            var msgsIterable = Context.Channel.GetMessagesAsync().ToListAsync().Result.ToList();
+
+            //create and fill list with n urls from channel
+            List<string> msgsUrls = new List<string>();
+            foreach (var msg in msgsIterable.FirstOrDefault())
+            {
+                if (msg.Attachments.FirstOrDefault() != null)
+                {
+                    msgsUrls.Add(msg.Attachments.FirstOrDefault().Url);
+                    //msgsIds.Add(msg.Attachments.FirstOrDefault().Id);
+                }
+            }
+            int m = 1;
+            foreach (string url in msgsUrls)
+            {
+                //download the image(s) url that was uploaded to the channel
+                using var httpClient = new HttpClient();
+                using var s = httpClient.GetStreamAsync(url);
+                using var fs = new FileStream(freeBeerDir + "\\Temp\\image" + m.ToString() + ".png", FileMode.OpenOrCreate);
+                s.Result.CopyTo(fs);
+                m++;
+            }
+
+            ////scrape members and write to Json
+            ///
+            List<string> memberList = new List<string>();
+            //grab iterable and make list
+            var iterable = Context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+            foreach (var member in iterable.FirstOrDefault())
+            {
+                //if no nickname, add the username
+                if (member.Nickname is null)
+                { memberList.Add(member.Username); }
+                //if squad leader, remove the dumbass prefix
+                else if (member.Nickname.StartsWith("!sl"))
+                { memberList.Add(member.Nickname.Remove(0, 4)); }
+                //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
+                else
+                { memberList.Add(member.Nickname); }
+            }
+
+            memberListField = memberList;
+
+            //serialize and write
+            string jsonstring = JsonConvert.SerializeObject(memberList);
+            using (StreamWriter writer = System.IO.File.CreateText(freeBeerDir + "\\Temp\\members.json"))
+            {
+                await writer.WriteAsync(jsonstring);
+            }
+
+            //strings for python.exe path and the tessaract python script (with the downloaded image as argument)
+            string cmd = freeBeerDir + "\\PythonScript\\AO-Py-Script\\venv\\Scripts\\Python.exe";
+            string pyth = freeBeerDir + "\\PythonScript\\AO-Py-Script\\main.py " +
+                freeBeerDir + "\\Temp\\image1.png";
+            for (int n = 2; n < m; n++)
+            {
+                pyth += " " + freeBeerDir + "\\Temp\\image" + n.ToString() + ".png";
+            }
+
+            ProcessStartInfo start = new ProcessStartInfo();
+            start.FileName = cmd;//cmd is full path to python.exe
+            start.Arguments = pyth;//pyth is path to .py file and any cmd line args
+            start.UseShellExecute = false;
+            start.RedirectStandardOutput = true;
+            using (Process process = Process.Start(start))
+            {
+                //read the python output and write it to json
+                using (StreamReader reader = process.StandardOutput)
+                {
+                    string result = reader.ReadToEnd();
+                    //serialize string to write to json
+                    string jsonstringTwo = JsonConvert.SerializeObject(result);
+                    using (StreamWriter writerTwo = System.IO.File.CreateText(freeBeerDir + "\\Temp\\members.json"))
+                    {
+                        await writerTwo.WriteAsync(jsonstringTwo);
+                    }
+
+                    //split single string into Icollection? List
+                    List<string> results = result.Split(',').ToList();
+
+                    //clean list to strings with double quotes only - DONT USE FOREACH ON ICOLLECTION IT WILL BREAK THE LOOP
+                    for (int i = 0; i < results.Count; i++)
+                    {
+                        //cleanup strings after list separation, there are extra quotations and brackets that are added during
+                        //conversion to json-py-console-consoleread; this handles all of it
+                        if (i != results.Count - 1)
+                        {
+                            results[i] = results[i].Remove(0, 2);
+                            results[i] = results[i].Remove(results[i].Length - 1);
+                        }
+                        else
+                        {
+                            results[i] = results[i].Remove(0, 2);
+                            results[i] = results[i].Remove(results[i].Length - 2);
+                        }
+                    }
+                    //add user that opened socket - likely the large frame at top of image not captured
+                    if (guildUser.Nickname != null)
+                    {
+                        if (!results.Contains(guildUser.Nickname))
+                        {
+                            results.Add(guildUser.Nickname);
+                        }
+                    }
+                    else
+                    {
+                        if (!results.Contains(guildUser.Username))
+                        {
+                            results.Add(guildUser.Username);
+                        }
+                    }
+                    resultList = results;
+                }
+
+            }
+            //Resulting List of members complete, begin embed builder
+            var embed = new EmbedBuilder()
+            .WithColor(Discord.Color.Orange)
+            .AddField("Member Count", resultList.Count)
+            .AddField(x =>
+            {
+                //loop results and add members
+                x.Name = "Members recorded";
+                for (int i = 0; i < (resultList.Count - 1); i++)
+                {
+                    x.Value += resultList[i] + ", ";
+                }
+                x.Value += resultList[resultList.Count - 1];
+                x.IsInline = false;
+            });
+            //send the embedded report
+            await Context.Channel.SendMessageAsync("", false, embed.Build());
+
+            await lootSplitModule.LootSplitModal(Context);
+
+            //now should I bring back some other components? Have the thing interaction return somehow?
+        }
+        //modal components below
+        [ComponentInteraction("add-members-modal")]
+        async Task AddMembersModal()
+        {
+            //add silver bags text input
+            var mb = new ModalBuilder()
+            .WithTitle("Additional Split Information")
+            .WithCustomId("split_info")
+            .AddTextInput("Please enter additional members not captured", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc." +
+                " (case sensitive)", value: null)
+            .AddTextInput("Please enter total loot amount", "loot_total", placeholder: "e.g. 42069 (no units or commas)")
+            .AddTextInput("Please enter chest location", "chest_loc", placeholder: "e.g. 25, 26, 27, etc.");
+            try
+            {
+                //send modal
+                await Context.Interaction.RespondWithModalAsync(mb.Build());
+
+                Context.Client.ModalSubmitted += async modal =>
+                {
+                    List<SocketMessageComponentData> components = modal.Data.Components.ToList();
+                    string membersStr = components
+                        .First(x => x.CustomId == "add_members").Value;
+                    string lootTotal = components.FirstOrDefault(x => x.CustomId == "loot_total").Value;
+                    string chestLoc = components.FirstOrDefault(x => x.CustomId == "chest_loc").Value;
+
+                    await modal.DeferAsync();
+
+                    //split single string into member list
+                    List<string> membersSplit = membersStr.Split(',').ToList();
+
+                    //clean list of strings with space at the end
+                    for (int i = 1; i < membersSplit.Count; i++)
+                    {
+                        //cleanup strings after list separation
+                        if (i > 0)
+                        {
+                            membersSplit[i] = membersSplit[i].Remove(0, 1);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+                    foreach (string member in membersSplit)
+                    {
+                        if (memberListField.Contains(member))
+                        {
+                            if (!(resultList.Contains(member)))
+                            {
+                                resultList.Add(member);
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            await Context.Channel.SendMessageAsync("User " + member + " not found.");
+                        }
+                    }
+                    //New resulting List of members complete, begin embed builder two
+
+                    //convert lootTotal to int (need to edit this so that code below is in try, and catch just
+                    //displays a message
+                        
+                    int lootTotalInt = Int32.Parse(lootTotal);
+                    //is this the correct split amount?
+                    lootSplitPerMember = (decimal)((lootTotalInt * .9) / resultList.Count);
+
+                    var embed = new EmbedBuilder()
+                    .WithTitle($"Loot split report generated by {Context.User.Username}")
+                    .WithColor(Discord.Color.Orange)
+                    .AddField("Member Count", resultList.Count)
+                    .AddField(x =>
+                    {
+                        //loop results and add members
+                        x.Name = "Members recorded";
+                        for (int i = 0; i < (resultList.Count - 1); i++)
+                        {
+                            x.Value += resultList[i] + ", ";
+                        }
+                        x.Value += resultList[resultList.Count - 1];
+                        x.IsInline = false;
+                    })
+                    .AddField("Loot Split Total", lootTotal)
+                    .AddField("Loot Split Per", lootSplitPerMember)
+                    .AddField("Chest Location(s)", chestLoc);
+                    
+                    //send the embedded report
+                    await Context.Channel.SendMessageAsync("", false, embed.Build());
+
+                    await Context.Channel.SendMessageAsync("***please post relevant chest loot images below " +
+                        "for evaluation. Once regear team verifies/denies I’ll send you a message with the outcome. " +
+                        "So long and thanks for all the fish***");
+
+                    //call LootSplitModule to verify/deny
+                    LootSplitModule lootSplitModule= new LootSplitModule();
+                    await lootSplitModule.PostLootSplit(Context);
+
+                    return;
+                };
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+        [ComponentInteraction("no-add-modal")]
+        async Task NoAddMembersModal()
+        {
+            var mb = new ModalBuilder()
+            .WithTitle("Additional Split Information")
+            .WithCustomId("split_info")
+            .AddTextInput("Please enter total loot amount", "loot_total", placeholder: "e.g. 42069 (no units or commas)")
+            .AddTextInput("Please enter chest location", "chest_loc", placeholder: "e.g. 25, 26, 27, etc.");
+            try
+            {
+                //send modal
+                await Context.Interaction.RespondWithModalAsync(mb.Build());
+
+                Context.Client.ModalSubmitted += async modal =>
+                {
+                    List<SocketMessageComponentData> components = modal.Data.Components.ToList();
+                    string componentsStr = components
+                        .First(x => x.CustomId == "loot_total").Value;
+                    await modal.RespondAsync($"Here is the output!:  {componentsStr}");
+                    return;
+                };
+            }
+            catch (Exception ex)
+            {
+                throw;
             }
         }
     }

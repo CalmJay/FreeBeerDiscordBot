@@ -84,7 +84,7 @@ def image_to_text(image):
         if i == 127:
             cv2.imwrite(new_path + r"\Temp\threshold127.png", inv_img)
         output_str = pytesseract.image_to_string(inv_img, config="-c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOP"
-                                                                 "QRSTUVWXYZabcdefghijklmnopqrstuvwxyz").lower()
+                                                                 "QRSTUVWXYZabcdefghijklmnopqrstuvwxyz-").lower()
         temp_str += output_str
     return temp_str
 
