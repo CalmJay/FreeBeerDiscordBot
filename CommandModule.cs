@@ -21,6 +21,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Runtime.CompilerServices;
 using System.Collections.ObjectModel;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace CommandModule
 {
@@ -68,6 +69,7 @@ namespace CommandModule
 
         //// Simple slash command to bring up a message with a select menu
         //[SlashCommand("menu", "Select Menu demo command")]
+        //public async Task MenuInput()
         //public async Task MenuInput()
         //{
         //    var components = new ComponentBuilder();
@@ -124,7 +126,7 @@ namespace CommandModule
                     //.AddField("Guild ID: ", (playerInfo.GuildId == null || playerInfo.GuildId == "") ? "No info" : playerInfo.GuildId, true)
 
                     .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
-                    //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
+                //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
 
                 await RespondAsync(null, null, false, true, null, null, null, embed.Build());
             }
@@ -137,14 +139,14 @@ namespace CommandModule
         }
 
         [SlashCommand("register", "Register player to Free Beer guild")]
-        public async Task Register(SocketGuildUser guildUserName ,string ingameName)
+        public async Task Register(SocketGuildUser guildUserName, string ingameName)
         {
             PlayerDataHandler playerDataHandler = new PlayerDataHandler();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
             PlayerDataLookUps albionData = new PlayerDataLookUps();
             dataBaseService = new DataBaseService();
 
-            string? sUserNickname = (guildUserName.Nickname == null) ? guildUserName.Username :guildUserName.Nickname;
+            string? sUserNickname = (guildUserName.Nickname == null) ? guildUserName.Username : guildUserName.Nickname;
 
             var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
             var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
@@ -167,7 +169,7 @@ namespace CommandModule
                     PlayerId = playerInfo.Id,
                     PlayerName = playerInfo.Name
                 });
-          
+
                 await user.AddRoleAsync(newMemberRole);
                 await user.AddRoleAsync(freeRegearRole);//free regear role
 
@@ -183,8 +185,8 @@ namespace CommandModule
                .AddField($"General info / location of the guild stuff", "<#880598854947454996>")
                .AddField($"Regear program", "<#970081185176891412>")
                .AddField($"ZVZ builds", "<#906375085449945131>")
-               .AddField($"Before you do ANYTHING else","Your existence in the guild relies you on reading these");
-               //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
+               .AddField($"Before you do ANYTHING else", "Your existence in the guild relies you on reading these");
+                //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
 
                 await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}>", false, embed.Build());
             }
@@ -236,7 +238,7 @@ namespace CommandModule
                         {
                             if (i <= iVisibleDeathsShown)
                             {
-                                embed.AddField($"Death {iDeathDisplayCounter} : KILL ID - {searchDeaths[i] }", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
+                                embed.AddField($"Death {iDeathDisplayCounter} : KILL ID - {searchDeaths[i]}", $"https://albiononline.com/en/killboard/kill/{searchDeaths[i]}", false);
 
                                 regearbutton.Label = $"Regear Death {iDeathDisplayCounter}"; //QOL Update. Allows members to start the regear process straight from the recent deaths list
                                 regearbutton.CustomId = searchDeaths[i].ToString();
@@ -359,13 +361,8 @@ namespace CommandModule
                 sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
             }
 
-
-
-
-
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
-            
-            
+
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
             dataBaseService = new DataBaseService();
@@ -385,7 +382,7 @@ namespace CommandModule
                     if (PlayerEventData != null)
                     {
                         var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-                        
+
                         if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
                             await DeferAsync();
@@ -393,18 +390,22 @@ namespace CommandModule
                             if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                             {
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "ZVZ content", moneyType);
-                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
+
                             }
                             else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                             {
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "Small group content", moneyType);
-                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
                             }
                             else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
                             {
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "Solo or small group content", moneyType);
-                                await FollowupAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
                             }
+
+                            await FollowupAsync("Regear Submission Complete", null, false, true);
+                            await DeleteOriginalResponseAsync();
                         }
                         else
                         {
@@ -432,15 +433,16 @@ namespace CommandModule
         public async Task Denied()
         {
             var guildUser = (SocketGuildUser)Context.User;
-            
+
             var interaction = Context.Interaction as IComponentInteraction;
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
-            ulong regearPoster =  Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
+            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 dataBaseService = new DataBaseService();
+                dataBaseService.DeletePlayerLootByKillId(killId.ToString());
 
                 try
                 {
@@ -451,7 +453,7 @@ namespace CommandModule
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
                 
-                await RespondAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}", null, false, false);
+                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
@@ -461,10 +463,11 @@ namespace CommandModule
                 await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
             }
         }
+        
         [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
-            var guildUser = (SocketGuildUser)Context.User;     
+            var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
 
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
@@ -474,18 +477,25 @@ namespace CommandModule
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
-            
+
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
-                await ReplyAsync(($"<@{Context.Guild.GetUser(regearPoster).Id}> your regear https://albiononline.com/en/killboard/kill/{killId} has been approved! ${refundAmount.ToString("N0")} has been added to your paychex"));
+
+                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> your regear https://albiononline.com/en/killboard/kill/{killId} has been approved! ${refundAmount.ToString("N0")} has been added to your paychex");
+
+                if (Context.Guild.GetUser(regearPoster).Roles.Any(r => r.Name == "Free Regear - Eligible"))
+                {
+                    await Context.Guild.GetUser(regearPoster).RemoveRoleAsync(1052241667329118349);//using test role
+                }
+
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear {killId} for {victimName} ", null));
             }
             else
             {
-                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.",null, false, true);
+                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.", null, false, true);
             }
         }
 
@@ -495,7 +505,7 @@ namespace CommandModule
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
-
+            
             PlayerDataLookUps eventData = new PlayerDataLookUps();
             PlayerEventData = await eventData.GetAlbionEventInfo(killId);
 
@@ -522,7 +532,7 @@ namespace CommandModule
                 {
                     embed.AddField("BattleID", sBattleID);
                     embed.AddField("BattleBoard Name", $"https://albionbattles.com/battles/{sBattleID}", false);
-                    embed.AddField("Battle Killboard", $"https://albiononline.com/en/killboard/battles/{sBattleID}",false);
+                    embed.AddField("Battle Killboard", $"https://albiononline.com/en/killboard/battles/{sBattleID}", false);
                 }
 
                 await RespondAsync($"Audit report for event {PlayerEventData.EventId}.", null, false, true, null, null, null, embed.Build());
@@ -530,35 +540,45 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
-            }          
+            }
         }
-        [SlashCommand("split", "Scrapes members, grabs image, compares members and stores list of those contained in image")]
-        public async Task SplitLoot()
+        //[SlashCommand("split", "Scrapes members, grabs image, compares members and stores list of those contained in image")]
+        //public async Task SplitLoot()
+        //{
+
+        //    List<string> memberList = new List<string>();
+
+        //    foreach (IGuildUser user in Context.Guild.Users)
+        //    {
+        //        memberList.Add(user.Username);
+        //    }
+
+        //    string tempDir = @"C:\Users\gmbro\Source\Repos\FreeBeerDiscordBot\Temp";
+        //    if (!Directory.Exists(tempDir))//create Temp folder for the python program to utilize if it doesn't exist
+        //    {
+        //        Directory.CreateDirectory(tempDir);
+        //    }
+
+        //    string jsonstring = JsonConvert.SerializeObject(memberList);
+
+        //    using (StreamWriter writer = File.CreateText("C:\\Users\\gmbro\\Source\\Repos\\FreeBeerDiscordBot\\Temp\\members.json"))
+        //    {
+        //        await writer.WriteAsync(jsonstring);
+        //    }
+
+        //    await ReplyAsync("members received.");
+
+
+        //}
+
+
+        [SlashCommand("view-paychex","Views your current paychex amount")]
+        public async Task GetCurrentPaychexAmount()
         {
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            string returnValue = GoogleSheetsDataWriter.GetCurrentPaychexAmount(sUserNickname);
 
-            List<string> memberList = new List<string>();
-            
-            foreach (IGuildUser user in Context.Guild.Users)
-            {
-                memberList.Add(user.Username);
-            }
-
-            string tempDir = @"C:\Users\gmbro\Source\Repos\FreeBeerDiscordBot\Temp";
-            if (!Directory.Exists(tempDir))//create Temp folder for the python program to utilize if it doesn't exist
-            {
-                Directory.CreateDirectory(tempDir);
-            }
-
-            string jsonstring = JsonConvert.SerializeObject(memberList);
-
-            using (StreamWriter writer = File.CreateText("C:\\Users\\gmbro\\Source\\Repos\\FreeBeerDiscordBot\\Temp\\members.json"))
-            {
-                await writer.WriteAsync(jsonstring);
-            }
-
-            await ReplyAsync("members received.");
-
-
+            await RespondAsync($"Your current paychex total is ${returnValue}",null,false,true);
         }
     }
 }

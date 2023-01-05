@@ -93,7 +93,6 @@ namespace DiscordBot.RegearModule
 
                 var commandUser = command.Guild.GetUser(command.User.Id);
 
-
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
@@ -132,7 +131,8 @@ namespace DiscordBot.RegearModule
                         embed.Color = Color.Green;
                     }
 
-                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from <@{command.Guild.GetUser(commandUser.Id).Id}>", false, embed.Build(), null, false, null, null, components: component.Build());
+                    await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
+
 
 
                 }
@@ -549,8 +549,9 @@ namespace DiscordBot.RegearModule
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
-                regearIconType = "Free Regear - Eligible";
+
+                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                regearIconType = "Free Regear - Elligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
