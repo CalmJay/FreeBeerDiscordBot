@@ -391,6 +391,7 @@ namespace CommandModule
                             {
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "ZVZ content", moneyType);
                                 await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
+
                             }
                             else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                             {
@@ -440,10 +441,18 @@ namespace CommandModule
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
-
                 dataBaseService = new DataBaseService();
                 dataBaseService.DeletePlayerLootByKillId(killId.ToString());
 
+                try
+                {
+                    dataBaseService.DeletePlayerLootByKillId(killId.ToString());
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
+                }
+                
                 await Context.Guild.GetUser(regearPoster).SendMessageAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
@@ -454,6 +463,7 @@ namespace CommandModule
                 await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
             }
         }
+        
         [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
