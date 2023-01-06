@@ -84,25 +84,25 @@ namespace FreeBeerBot
             _client.Ready += async () =>
             {
                 //If running the bot with DEBUG flag, register all commands to guild specified in config
-                //if (IsDebug())
-                //{
-                //    var guild = _client.GetGuild(GuildID);
+                if (IsDebug())
+                {
+                    var guild = _client.GetGuild(GuildID);
 
-                //    if (resetGuildCommands)
-                //    {
-                //        await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
-                //        await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
-                //    }
-                //    //guild.ModifyAsync()
-                //    // Id of the test guild can be provided from the Configuration object
-                //    await commands.RegisterCommandsToGuildAsync(GuildID);
+                    if (resetGuildCommands)
+                    {
+                        await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+                        await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
+                    }
+                    //guild.ModifyAsync()
+                    // Id of the test guild can be provided from the Configuration object
+                    await commands.RegisterCommandsToGuildAsync(GuildID);
 
-                //}
-                //else
-                //{
-                //    //If not debug, register commands globally
-                //    await commands.RegisterCommandsGloballyAsync(true);
-                //}
+                }
+                else
+                {
+                    //If not debug, register commands globally
+                    await commands.RegisterCommandsGloballyAsync(true);
+                }
             };
 
             //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);
