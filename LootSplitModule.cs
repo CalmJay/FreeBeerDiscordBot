@@ -44,7 +44,7 @@ namespace DiscordBot.LootSplitModule
                 throw;
             }
         }
-        public async Task LootSplitModal(SocketInteractionContext command)
+        public async Task SendAddMembersButtons(SocketInteractionContext command)
         {
             //FOR RELEASE ADD LOOT SPLIT CHANNEL ID TO APPSETTINGS AND 
             //ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("lootSplitChannelId"));
@@ -69,7 +69,7 @@ namespace DiscordBot.LootSplitModule
 
             try
             {
-                await channel.SendMessageAsync("Add members not captured above, or not present in party image?", isTTS: false, 
+                await channel.SendMessageAsync("Add members not captured above, or not present in party image?", isTTS: false,
                     embed: null, options: null, allowedMentions: null, messageReference: null,
                     components: comp.Build(), stickers: null, embeds: null, flags: MessageFlags.None);
             }
