@@ -29,10 +29,10 @@ using Discord.Commands;
 using Microsoft.VisualBasic;
 using Aspose.Imaging.FileFormats.Emf.EmfPlus.Consts;
 using Aspose.Words.Fields;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace CommandModule
 {
-    // Must use InteractionModuleBase<SocketInteractionContext> for the InteractionService to auto-register the commands
     public class CommandModule : InteractionModuleBase<SocketInteractionContext>
     {
         public InteractionService Commands { get; set; }
@@ -68,7 +68,7 @@ namespace CommandModule
                 .AddField("Guild Name ", (playerInfo.GuildName == null || playerInfo.GuildName == "") ? "No info" : playerInfo.GuildName, true)
                 //.AddField("Guild ID: ", (playerInfo.GuildId == null || playerInfo.GuildId == "") ? "No info" : playerInfo.GuildId, true)
 
-                .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
+                    .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
                 //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
 
                 await RespondAsync(null, null, false, true, null, null, null, embed.Build());
@@ -118,17 +118,17 @@ namespace CommandModule
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
 
-                await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), null, null, null, null);
+                await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), ingameName, null, null, null);
 
                 var embed = new EmbedBuilder()
-                .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
-                //.WithImageUrl($"attachment://logo.png")
-                .WithDescription("We're glad to have you. Please checkout the following below.")
-                .AddField($"Don't get kicked", "<#995798935631302667>")
-                .AddField($"General info / location of the guild stuff", "<#880598854947454996>")
-                .AddField($"Regear program", "<#970081185176891412>")
-                .AddField($"ZVZ builds", "<#906375085449945131>")
-                .AddField($"Before you do ANYTHING else", "Your existence in the guild relies you on reading these");
+               .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
+               //.WithImageUrl($"attachment://logo.png")
+               .WithDescription("We're glad to have you. Please checkout the following below.")
+               .AddField($"Don't get kicked", "<#995798935631302667>")
+               .AddField($"General info / location of the guild stuff", "<#880598854947454996>")
+               .AddField($"Regear program", "<#970081185176891412>")
+               .AddField($"ZVZ builds", "<#906375085449945131>")
+               .AddField($"Before you do ANYTHING else", "Your existence in the guild relies you on reading these");
                 //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
 
                 await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}>", false, embed.Build());
@@ -304,12 +304,7 @@ namespace CommandModule
                 sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
             }
 
-
-
-
-
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
-
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
@@ -333,23 +328,27 @@ namespace CommandModule
 
                         if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                         {
-                            //await DeferAsync();
+                            await DeferAsync();
 
                             if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                             {
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "ZVZ content", moneyType);
-                                await RespondAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
+
                             }
                             else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
                             {
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "Small group content", moneyType);
-                                await RespondAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
                             }
                             else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
                             {
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "Solo or small group content", moneyType);
-                                await RespondAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.", null, false, true);
+                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
                             }
+
+                            await FollowupAsync("Regear Submission Complete", null, false, true);
+                            await DeleteOriginalResponseAsync();
                         }
                         else
                         {
@@ -385,10 +384,20 @@ namespace CommandModule
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
-
                 dataBaseService = new DataBaseService();
-                dataBaseService.DeletePlayerLootByKillId(killId.ToString());
-                await RespondAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}", null, false, false);
+
+                try
+                {
+                    dataBaseService.DeletePlayerLootByKillId(killId.ToString());
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
+                }
+
+                var guildUsertest = Context.Guild.GetUser(regearPoster);
+                
+                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
@@ -398,6 +407,7 @@ namespace CommandModule
                 await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
             }
         }
+        
         [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
@@ -415,9 +425,17 @@ namespace CommandModule
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
-                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, MoneyTypes.ReGear);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
-                await ReplyAsync(($"<@{Context.Guild.GetUser(regearPoster).Id}> your regear https://albiononline.com/en/killboard/kill/{killId} has been approved! ${refundAmount.ToString("N0")} has been added to your paychex"));
+
+                
+                if (Context.Guild.GetUser(regearPoster).Roles.Any(r => r.Name == "Free Regear - Eligible"))
+                {
+                    await Context.Guild.GetUser(regearPoster).RemoveRoleAsync(1052241667329118349);
+                }
+
+                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> your regear https://albiononline.com/en/killboard/kill/{killId} has been approved! ${refundAmount.ToString("N0")} has been added to your paychex");
+
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear {killId} for {victimName} ", null));
             }
             else
@@ -432,7 +450,7 @@ namespace CommandModule
             var guildUser = (SocketGuildUser)Context.User;
             var interaction = Context.Interaction as IComponentInteraction;
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
-
+            
             PlayerDataLookUps eventData = new PlayerDataLookUps();
             PlayerEventData = await eventData.GetAlbionEventInfo(killId);
 
@@ -467,8 +485,18 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
-            }
+            }          
+        }
+
+
+
+        [SlashCommand("view-paychex","Views your current paychex amount")]
+        public async Task GetCurrentPaychexAmount()
+        {
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            string returnValue = GoogleSheetsDataWriter.GetCurrentPaychexAmount(sUserNickname);
+
+            await RespondAsync($"Your current paychex total is ${returnValue}",null,false,true);
         }
     }
 }
-

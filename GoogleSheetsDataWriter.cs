@@ -1,14 +1,18 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using DiscordBot.Enums;
+using DiscordBot.Models;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
+using Newtonsoft.Json.Linq;
 using PlayerData;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -21,27 +25,27 @@ namespace GoogleSheetsData
         public static string ReadRange { get; set; }
         public static string WriteRange { get; set; }
 
-        private const string GoogleCredentialsFileName = "credentials.json"; //ADD TO CONFIG
+        private const string GoogleCredentialsFileName = "credentials.json";
 
         static string[] Scopes = { SheetsService.Scope.Spreadsheets };
         public static string GuildSpreadsheetId = System.Configuration.ConfigurationManager.AppSettings.Get("guildDataBaseSheetID");
         public static string RegearSheetID = System.Configuration.ConfigurationManager.AppSettings.Get("regearSpreadSheetID");
 
         static string ApplicationName = "Google Sheets API .NET Quickstart";
-        public bool enableGoogleApi = true; //ADD TO CONFIG
+        public bool enableGoogleApi = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("enableGoogleAPI"));
+
 
         public void ConnectToGoogleAPI()
         {
             try
             {
                 UserCredential credential;
-                // Load client secrets.
+
                 using (var stream =
                        new FileStream("credentials.json", FileMode.Open, FileAccess.Read))
                 {
-                    /* The file token.json stores the user's access and refresh tokens, and is created
-                     automatically when the authorization flow completes for the first time. */
                     string credPath = "token.json";
+
                     credential = GoogleWebAuthorizationBroker.AuthorizeAsync(GoogleClientSecrets.FromStream(stream).Secrets, Scopes, "user", CancellationToken.None, new FileDataStore(credPath, true)).Result;
                     Console.WriteLine("Credential file saved to: " + credPath);
                 }
@@ -128,9 +132,6 @@ namespace GoogleSheetsData
 
             ValueRange GetResponse = null;
             IList<IList<object>> values = null;
-            int valuesCount = 0;
-            //var GetResponse = await valuesResource.Get(SpreadsheetId, ReadRange).ExecuteAsync();
-            //var values = GetResponse.Values;
 
             while (true)
             {
@@ -155,96 +156,167 @@ namespace GoogleSheetsData
                 var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 await update.ExecuteAsync();
-
             }
 
-            //var response = await update.ExecuteAsync();
-            // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
         }
 
-        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund, string a_sCallerName)
+        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund, string a_sCallerName, MoneyTypes a_eMoneyType)
         {
-            string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString(): a_command.User.Username;
-            
+            string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString() : a_command.User.Username;
+
             var serviceValues = GetSheetsService().Spreadsheets.Values;
 
             var numberOfRow = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
 
             var col1 = numberOfRow + 1;
             var col2 = numberOfRow + 1;
-            int googleIterations = 0;
-
-            ValueRange GetResponse = null;
-            IList<IList<object>> values = null;
 
             var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
             var msgRef = new MessageReference(messages.First().Id);
 
-            //            while (true)
-            //            {
-            //                GetResponse = await serviceValues.Get(RegearSheetID, ReadRange).ExecuteAsync();
-            //                values = GetResponse.Values;
+            ReadRange = $"Current Season Dumps!B{col1 + 1}";
+            WriteRange = $"Current Season Dumps!B{col1 + 1}:J{col2 + 1}";
 
-            //                if (values == null || !values.Any())
-            //                {
-            //                    break;
-            //                }
+            ValueRange rowValues = null;
 
-            //                //col1++;
-            //               // col2++;
-
-            //#if DEBUG
-            //                googleIterations++;
-            //                if (googleIterations >= 250)
-            //                {
-            //                    Console.WriteLine($"Iteration is approaching googles rate limit of 500 {googleIterations}");
-            //                }
-
-            //#endif
-
-            ReadRange = $"Current Season Dumps!B{col1 +1}";
-            WriteRange = $"Current Season Dumps!B{col1 +1}:J{col2 + 1}";
-            //            }
-
-            if (values == null || !values.Any())
+            switch (a_eMoneyType)
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> {"@"+ a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "The reason inputed", a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString()} } };
-                var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
-                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-                await update.ExecuteAsync();
-
+                case MoneyTypes.ReGear:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "Regearable Event", a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };          
+                    break;
+                case MoneyTypes.LootSplit:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + "PlayerName", DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", "Loot Split Event", a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
+                    break;
             }
 
+            var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
+
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+            await update.ExecuteAsync();
         }
 
         public static async Task RegisterUserToDataRoster(string a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
         {
-            //THIS ONLY WRITES TO THE FREE BEER BLACKLIST SPREADSHEET. ADJUST THIS METHOD SO THAT IT CAN WRITE TO ANYSPREADSHEET
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
 
             var numberOfRow = serviceValues.Get(GuildSpreadsheetId, "Guild Roster!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
             var col1 = numberOfRow + 1;
             var col2 = numberOfRow + 1;
-            ValueRange GetResponse = null;
-            IList<IList<object>> values = null;
 
-            int valuesCount = 0;
+            ReadRange = $"Guild Roster!A{col1 + 1}";
+            WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
 
-                ReadRange = $"Guild Roster!A{col1 + 1}";
-                WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
-            //}
+            
+            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes" } } };
+            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+            await update.ExecuteAsync();
 
-            if (values == null || !values.Any())
+            
+        }
+
+        public static async Task RegisterUserToRegearSheets(SocketGuildUser a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
+        {
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+
+            var numberOfRow = serviceValues.Get(RegearSheetID, "Data Validation!B2:B").Execute().Values.Count;
+            var col1 = numberOfRow + 1;
+            var col2 = numberOfRow + 1;
+
+            ReadRange = $"Guild Roster!B{col1 + 1}";
+            WriteRange = $"Guild Roster!B{col1 + 1}:E{col2 + 1}";
+
+
+            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser.Nickname, $"@{a_SocketGuildUser.Nickname}",a_SocketGuildUser.Username ,a_SocketGuildUser.Id } } };
+            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+            await update.ExecuteAsync();
+        }
+
+        public static async Task RegisterUserToPayouts(SocketGuildUser a_SocketGuildUser)
+        {
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+
+            var numberOfRow = serviceValues.Get(RegearSheetID, "Payouts!B2:B").Execute().Values.Count;
+            var col1 = numberOfRow + 1;
+            var col2 = numberOfRow + 1;
+
+            ReadRange = $"Payouts!B{col1 + 1}";
+            WriteRange = $"Payouts!B{col1 + 1}:E{col2 + 1}";
+
+
+            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser.Nickname } } };
+            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+            await update.ExecuteAsync();
+        }
+
+
+        public static string GetCurrentPaychexAmount(string a_sUserName)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+            DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+            var dayTest = lastSunday.Day.ToString();
+            var dayofweekTest = lastSunday.DayOfWeek.ToString();
+            var monthTest = lastSunday.Month.ToString();
+            var shortmonth = DateTime.Now.ToShortMonthName();
+            var monthName = DateTime.Now.ToMonthName();
+
+            string combinedDate = $"{shortmonth}-{lastSunday.Day}";
+
+            var DaterowValues = serviceValues.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
+
+            int dateIndex = 1;
+
+            foreach (var dates in DaterowValues)
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes"} } };
-                var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
-                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-                await update.ExecuteAsync();
+                if(dates.ToString() == combinedDate)
+                {
 
+                    break;
+                }
+                dateIndex++;
             }
 
-            //var response = await update.ExecuteAsync();
-            // Console.WriteLine($"Updated rows: { response.UpdatedRows}");
+            ReadRange = $"Payouts!B4:B";
+
+            var rowValues = serviceValues.Get(RegearSheetID, $"Payouts!R4C2:R305C{dateIndex}").Execute().Values;
+
+
+            string currentPaychex = "0";
+            int i = 0;
+            foreach (var users in rowValues)
+            {
+                if (users[0].ToString().ToLower() == a_sUserName.ToLower())
+                {
+                    currentPaychex = users.Last().ToString(); 
+                }
+                i++;
+            }
+
+            //var finalAmount = rowValues.Where(x => x.ToString() == a_sUserName).FirstOrDefault();
+            return currentPaychex;
+        }
+
+
+    }
+
+    public static class HelperMethods
+    {
+        public static DateTime StartOfWeek(this DateTime dt, DayOfWeek startOfWeek)
+        {
+            int diff = (7 + (dt.DayOfWeek - startOfWeek)) % 7;
+            return dt.AddDays(-1 * diff).Date;
+        }
+
+        public static string ToMonthName(this DateTime dateTime)
+        {
+            return CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(dateTime.Month);
+        }
+
+        public static string ToShortMonthName(this DateTime dateTime)
+        {
+            return CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(dateTime.Month);
         }
     }
 }

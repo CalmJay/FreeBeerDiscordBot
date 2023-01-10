@@ -29,10 +29,8 @@ namespace DNet_V3_Tutorial
                 .AddField(@"\regear {REQUIRED: KILLID} {REQUIRED: Shotcaller}", "Submit a regear for gear refund")
                 .AddField(@"\register {REQUIRED DiscordName},{REQUIRED InGameName}", "RECRUITERS AND OFFICERS ONLY: Registers user to Free Beer guild")
                 .AddField(@"\blacklist {REQUIRED DiscordName},{REQUIRED InGameName}", "RECRUITERS AND OFFICERS ONLY: Add someone to the shit list")
+                .AddField(@"\view-paychex", "View your current weeks running paychex balance.")
                 .AddField(@"\get-player-info {REQUIRED: Player name}", "RECRUITERS AND OFFICERS ONLY Search Albion API for player info");
-                //.AddField(@"\view-paychex ", "Get your current weeks running balance")
-                //.AddField(@"Discord User ID: ", "")
-                //.AddField(@"Discord Username", "");
 
 
             // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
