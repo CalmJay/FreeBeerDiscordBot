@@ -255,11 +255,6 @@ namespace DiscordBot.LootSplitModule
         }
         public async Task SendAddMemButtons(SocketInteractionContext context)
         {
-            //FOR RELEASE ADD LOOT SPLIT CHANNEL ID TO APPSETTINGS AND 
-            //ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("lootSplitChannelId"));
-
-            //FOR RELEASE CHANGE THIS CHANNEL TO THE LOOT SPLIT CHANNEL
-            //var channel = context.Client.GetChannel(1061044854450298962) as IMessageChannel;
             var channel = context.Client.GetChannel(context.Channel.Id) as IMessageChannel;
             var approveSplit = new ButtonBuilder()
             {
@@ -313,7 +308,7 @@ namespace DiscordBot.LootSplitModule
                 context.Client.ModalSubmitted += async modal =>
                 {
                     List<SocketMessageComponentData> components = modal.Data.Components.ToList();
-                    //may need to put this first one in a conditional is 
+                    //may need to put membersStr in some kind of conditional if they select "no" for add other members
                     string membersStr = components.First(x => x.CustomId == "add_members").Value;
                     string lootTotal = components.FirstOrDefault(x => x.CustomId == "loot_total").Value;
                     string chestLoc = components.FirstOrDefault(x => x.CustomId == "chest_loc").Value;
@@ -357,7 +352,6 @@ namespace DiscordBot.LootSplitModule
                     }
 
                     //New resulting List of members complete, begin embed builder two
-
                     //convert lootTotal to ulong, if an alpha char is present, send error
                     try
                     {

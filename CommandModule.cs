@@ -487,9 +487,6 @@ namespace CommandModule
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
             }          
         }
-
-
-
         [SlashCommand("view-paychex","Views your current paychex amount")]
         public async Task GetCurrentPaychexAmount()
         {
@@ -497,6 +494,172 @@ namespace CommandModule
             string returnValue = GoogleSheetsDataWriter.GetCurrentPaychexAmount(sUserNickname);
 
             await RespondAsync($"Your current paychex total is ${returnValue}",null,false,true);
+        }
+        [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
+        public async Task SplitLoot()
+        {
+            //DiscordSocketConfig discordSocketConfig = new DiscordSocketConfig
+            //{
+            //    UseInteractionSnowflakeDate = false
+            //};
+
+            //DiscordSocketClient client = new(discordSocketConfig);
+
+            await DeferAsync();
+
+            //var interaction = Context.Interaction as IComponentInteraction;
+            LootSplitModule lootSplitMod = new LootSplitModule();
+
+            //scrape images and save via lootSplitModule
+            await lootSplitMod.ScrapeImages(Context);
+
+            //scrape members and write to json
+            await lootSplitMod.CreateMemberList(Context);
+
+            //create member dict for ids to be used later
+            await lootSplitMod.CreateMemberDict(Context);
+
+            //strings for python.exe path and the tessaract python script (with the downloaded image as argument)
+            string cmd = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\venv\\Scripts\\Python.exe";
+            string pythArgs = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\main.py " +
+            lootSplitMod.freeBeerDirectory + "\\Temp\\image1.png";
+            for (int n = 2; n < lootSplitMod.imageCount; n++)
+            {
+                pythArgs += " " + lootSplitMod.freeBeerDirectory + "\\Temp\\image" + n.ToString() + ".png";
+            }
+
+            //call py tesseract and grab output
+            await lootSplitMod.CallPyTesseract(Context, cmd, pythArgs);
+
+            //create initial embed
+            await lootSplitMod.CreateFirstEmbed(Context);
+
+            //check if members look good, proceed to modal
+            await lootSplitMod.SendAddMemButtons(Context);
+
+            lootSplitModule = lootSplitMod;
+        }
+        [ComponentInteraction("add-members-modal")]
+        async Task AddMembersModal()
+        {
+            LootSplitModule lootSplitMod = lootSplitModule;
+
+            //build modal and send with add members option
+            Boolean addIsTrue = true;
+
+            await lootSplitMod.BuildModalHandler(Context, addIsTrue, lootSplitMod.scrapedList, lootSplitMod.imageMembers);
+
+        }
+        [ComponentInteraction("no-add-modal")]
+        async Task NoAddMembersModal()
+        {
+            LootSplitModule lootSplitMod = lootSplitModule;
+
+            //build modal and send with add members option
+            Boolean addIsTrue = false;
+
+            await lootSplitModule.BuildModalHandler(Context, addIsTrue, lootSplitMod.scrapedList, lootSplitMod.imageMembers);
+
+            await lootSplitMod.PostLootSplit(Context);
+        }
+        [ComponentInteraction("approve split")]
+        async Task ApproveSplit()
+        {
+            LootSplitModule lootSplitMod = lootSplitModule;
+            RegearModule regearModule = new RegearModule();
+
+            var guildUser = (SocketGuildUser)Context.User;
+            var interaction = Context.Interaction as IComponentInteraction;
+
+            //check perms to push buttons
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
+            {
+                await RespondAsync("Approved. Now handling some spreadsheet bs, baby hold me just a little bit longer...");
+
+                DataBaseService dataBaseService = new DataBaseService();
+
+                string reasonLootSplit = "Loot split";
+                //string message = "Loot split silver addition for member.";
+                string tempStr = "null";
+                var moneyTypes = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "LootSplit");
+                var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
+                //var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "LootSplit");
+                string constr = "Server = DESKTOP-I2QLG5A; Database = FreeBeerdbTest; Trusted_Connection = True";
+                string partyLead = lootSplitMod.submitter;
+                int refundAmount = Convert.ToInt32(lootSplitMod.lootAmountPer);
+
+                foreach (string playerName in lootSplitMod.imageMembers)
+                {
+                    //conditional to add members to .Player table if not in there already
+                    if (dataBaseService.GetPlayerInfoByName(playerName) == null)
+                    {
+                        using SqlConnection connection = new SqlConnection(constr);
+                        {
+                            using SqlCommand command = connection.CreateCommand();
+
+                            {
+                                //need to add player to Player table to work with foreign keys
+                                command.Parameters.AddWithValue("@playerName", playerName);
+                                command.Parameters.AddWithValue("@pid", lootSplitMod.scrapedDict[playerName].ToString());
+                                command.CommandText = "INSERT INTO [FreeBeerdbTest].[dbo].[Player] (PlayerName, PlayerId) VALUES (@playerName, @pid)";
+                                connection.Open();
+                                command.ExecuteNonQuery();
+                                connection.Close();
+                                command.Parameters.Clear();
+                            }
+                        }
+                    }
+                    int playerID = dataBaseService.GetPlayerInfoByName(playerName).Id;
+                    await dataBaseService.AddPlayerReGear(new PlayerLoot
+                    {
+                        TypeId = moneyType.Id,
+                        CreateDate = DateTime.Now,
+                        Loot = refundAmount,
+                        PlayerId = playerID,
+                        Message = tempStr,
+                        PartyLeader = partyLead,
+                        KillId = tempStr,
+                        Reason = reasonLootSplit,
+                        QueueId = tempStr
+                    });
+                }
+                //SHEETS PORTION??
+                //await GoogleSheetsDataWriter.WriteToRegearSheet(Context, null, refundAmount, partyLead);
+
+                await Context.User.SendMessageAsync(($"<@{Context.Guild.GetUser(lootSplitMod.scrapedDict[partyLead]).Id}> your loot split has been approved! " +
+                    $"${refundAmount.ToString("N0")} has been added to your paychex"));
+                //await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear for {partyLead} ", null));
+
+                SocketGuildChannel socketChannel = Context.Guild.GetChannel(Context.Channel.Id);
+                await socketChannel.DeleteAsync();
+            }
+            else
+            {
+                await RespondAsync("Don't push buttons without perms you mongo.");
+            }
+        }
+        [ComponentInteraction("deny split")]
+        async Task DenySplit()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+            //check perms for button pushing
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
+            {
+                await RespondAsync("Loot split denied. Humblest apologies - but don't blame me, blame the regear team.");
+                //create and fill list with n urls from channel
+                var msgsList = Context.Channel.GetMessagesAsync().ToListAsync().Result.ToList();
+
+                List<string> msgsUrls = new List<string>();
+                foreach (var msg in msgsList.FirstOrDefault())
+                {
+                    await Context.Channel.DeleteMessageAsync(msg);
+                }
+            }
+            else
+            {
+                await RespondAsync("Don't push buttons without perms you mongo.");
+            }
+
         }
     }
 }
