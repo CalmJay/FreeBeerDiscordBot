@@ -91,13 +91,12 @@ namespace DiscordBot.RegearModule
                     QueueId = "0"
                 });
 
-
-
+                var commandUser = command.Guild.GetUser(command.User.Id);
 
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                    .WithTitle($" {regearRoleIcon} Regear Submission from {a_EventData.Victim.Name}{regearRoleIcon}")
+                                    .WithTitle($" {regearRoleIcon} Regear Submission from {a_EventData.Victim.Name} {regearRoleIcon}")
                                     .AddField("KillID: ", a_EventData.EventId, true)
                                     .AddField("Victim", a_EventData.Victim.Name, true)
                                     .AddField("Killer", "[" + a_EventData.Killer.AllianceName + "] " + "[" + a_EventData.Killer.GuildName + "] " + a_EventData.Killer.Name)
@@ -107,7 +106,7 @@ namespace DiscordBot.RegearModule
                                     .AddField("Discord User ID: ", command.User.Id, true)
                                     .AddField("Discord Username", command.User.Username, true)
                                     //.AddField("Date of death", a_EventData.TimeStamp)
-                                    .WithUrl($"https://albiononline.com/en/killboard/kill/a_EventData.EventId")
+                                    .WithUrl($"https://albiononline.com/en/killboard/kill/{a_EventData.EventId}")
                                     .WithCurrentTimestamp()
                                     //<:emoji_name:emoji_id> or <a:animated_emoji_name:emoji_id>
                                     //.WithImageUrl(GearImageRenderSerivce(command))
@@ -121,13 +120,19 @@ namespace DiscordBot.RegearModule
                         embed.WithDescription($"<a:red_siren:1050052736206508132> WARNING: {errorMessage} <a:red_siren:1050052736206508132> ");
                         embed.Color = Color.Red;
                     }
+                    else if(!UserHaveRegearRole(command))
+                    {
+                        embed.WithDescription($"<a:red_siren:1050052736206508132>  THIS MEMBER DOESN'T HAVE REGEAR ROLES  <a:red_siren:1050052736206508132> ");
+                        embed.Color = Color.Red;
+                    }
                     else
                     {
                         embed.WithDescription($":thumbsup:  Requreiments Met: This regear meets Free Beer Standards  :thumbsup: ");
                         embed.Color = Color.Green;
                     }
 
-                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
+                    await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
+
 
 
                 }
@@ -159,7 +164,7 @@ namespace DiscordBot.RegearModule
         public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Rootobject a_Playerdata)
         {
             double returnValue = 0;
-            string sMarketLocation = "";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
+            string sMarketLocation = "Bridgewatch,BridgewatchPortal,Caerleon,FortSterling,FortSterling,Lymhurst,LymhurstPortal,Martlock,martlockportal,Thetford,Thetfordportal";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
             var guildUser = (SocketGuildUser)command.User;
             var regearIconType = "";
             PlayerDataHandler.Equipment1 victimEquipment = a_Playerdata.Victim.Equipment;
@@ -524,34 +529,35 @@ namespace DiscordBot.RegearModule
             }
 
 
-            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1049889855619989515
+            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
             {
                 returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
-                regearIconType = "Gold Tier Regear - Elligible";
+                regearIconType = "Gold Tier Regear - Eligible";
                 regearRoleIcon = "<:Gold:1009104748542185512>";
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 970083338591289364
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
             {
                 returnValue = Math.Min(silverTierRegearCap, returnValue);
-                regearIconType = "Silver Tier Regear - Elligible";
+                regearIconType = "Silver Tier Regear - Eligible";
                 regearRoleIcon = "<:Silver:1009104762484047982>";
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) //Role ID 970083088241672245
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
             {
                 returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
-                regearIconType = "Bronze Tier Regear - Elligible";
+                regearIconType = "Bronze Tier Regear - Eligible";
                 regearRoleIcon = "<:Bronze_Bar:1019676753666527342>";
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Elligible")) // Role ID 1052241667329118349
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+
+                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "Free Regear - Elligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
             {
                 returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
-                regearIconType = "Shit Tier Regear - Elligible";
+                regearIconType = "NOT ELIGIBLE FOR REGEAR";
                 regearRoleIcon = ":poop:";
             }
 
@@ -711,7 +717,7 @@ namespace DiscordBot.RegearModule
         private bool IsRegearSupportClass(string a_sGearItem)
         {
 
-            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("FLAIL") || a_sGearItem.Contains("ENIGMATICORB"))
+            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("FLAIL") || a_sGearItem.Contains("ENIGMATICORB") || a_sGearItem.Contains("CURSEDSTAFF"))
             {
                 return true;
             }
@@ -806,6 +812,33 @@ namespace DiscordBot.RegearModule
             }
             return returnValue;
 
+        }
+
+        public bool UserHaveRegearRole(SocketInteractionContext a_SocketContext)
+        {
+
+            var guildUser = (SocketGuildUser)a_SocketContext.User;
+
+            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
+            {
+                return true;
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
+            {
+                return true;
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
+            {
+                return true;
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public class Equipment
