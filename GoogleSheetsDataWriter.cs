@@ -156,7 +156,6 @@ namespace GoogleSheetsData
                 var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
                 update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                 await update.ExecuteAsync();
-
             }
 
         }
@@ -198,26 +197,60 @@ namespace GoogleSheetsData
 
         public static async Task RegisterUserToDataRoster(string a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
         {
-            //THIS ONLY WRITES TO THE FREE BEER BLACKLIST SPREADSHEET. ADJUST THIS METHOD SO THAT IT CAN WRITE TO ANYSPREADSHEET
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
 
             var numberOfRow = serviceValues.Get(GuildSpreadsheetId, "Guild Roster!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
             var col1 = numberOfRow + 1;
             var col2 = numberOfRow + 1;
 
-            IList<IList<object>> values = null;
             ReadRange = $"Guild Roster!A{col1 + 1}";
             WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
 
-            if (values == null || !values.Any())
-            {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes" } } };
-                var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
-                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-                await update.ExecuteAsync();
+            
+            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes" } } };
+            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+            await update.ExecuteAsync();
 
-            }
+            
         }
+
+        public static async Task RegisterUserToRegearSheets(SocketGuildUser a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
+        {
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+
+            var numberOfRow = serviceValues.Get(RegearSheetID, "Data Validation!B2:B").Execute().Values.Count;
+            var col1 = numberOfRow + 1;
+            var col2 = numberOfRow + 1;
+
+            ReadRange = $"Guild Roster!B{col1 + 1}";
+            WriteRange = $"Guild Roster!B{col1 + 1}:E{col2 + 1}";
+
+
+            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser.Nickname, $"@{a_SocketGuildUser.Nickname}",a_SocketGuildUser.Username ,a_SocketGuildUser.Id } } };
+            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+            await update.ExecuteAsync();
+        }
+
+        public static async Task RegisterUserToPayouts(SocketGuildUser a_SocketGuildUser)
+        {
+            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+
+            var numberOfRow = serviceValues.Get(RegearSheetID, "Payouts!B2:B").Execute().Values.Count;
+            var col1 = numberOfRow + 1;
+            var col2 = numberOfRow + 1;
+
+            ReadRange = $"Payouts!B{col1 + 1}";
+            WriteRange = $"Payouts!B{col1 + 1}:E{col2 + 1}";
+
+
+            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser.Nickname } } };
+            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+            await update.ExecuteAsync();
+        }
+
 
         public static string GetCurrentPaychexAmount(string a_sUserName)
         {

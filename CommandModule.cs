@@ -103,7 +103,7 @@ namespace CommandModule
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
 
-                await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), null, null, null, null);
+                await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), ingameName, null, null, null);
 
                 var embed = new EmbedBuilder()
                .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
@@ -379,8 +379,10 @@ namespace CommandModule
                 {
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
+
+                var guildUsertest = Context.Guild.GetUser(regearPoster);
                 
-                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
+                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
