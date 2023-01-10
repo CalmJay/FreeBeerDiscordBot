@@ -537,10 +537,17 @@ namespace CommandModule
         [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
         public async Task SplitLoot()
         {
+            //DiscordSocketConfig discordSocketConfig = new DiscordSocketConfig
+            //{
+            //    UseInteractionSnowflakeDate = false
+            //};
+
+            //DiscordSocketClient client = new(discordSocketConfig);
+
+            await DeferAsync();
+
             //var interaction = Context.Interaction as IComponentInteraction;
             LootSplitModule lootSplitMod = new LootSplitModule();
-
-            await RespondAsync("Processing images, stand by...");
 
             //scrape images and save via lootSplitModule
             await lootSplitMod.ScrapeImages(Context);

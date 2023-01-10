@@ -47,9 +47,7 @@ namespace DiscordBot.LootSplitModule
             freeBeerDirectory = freeBeerDir;
 
             //scrape thread for image uploads
-            var channel = context.Client.GetChannel(context.Channel.Id) as IMessageChannel;
-
-            var msgsIterable = channel.GetMessagesAsync().ToListAsync().Result.ToList();
+            var msgsIterable = context.Channel.GetMessagesAsync().ToListAsync().Result.ToList();
 
             //create and fill list with n urls from channel
             List<string> msgsUrls = new List<string>();
@@ -80,18 +78,35 @@ namespace DiscordBot.LootSplitModule
             List<string> memberList = new List<string>();
 
             //grab iterable and make list
+
+            ulong roleIdNewGuy = 847350505977675796;
+            ulong roleIdMember = 739948841847095387;
+            ulong roleIdOfficer = 335894631810334720;
+            ulong roleIdVeteran = 739950349405782046;
+
+            //var channel = context.Guild.GetChannel(739949855195267174);
+            //var iterable = channel.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+
             var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
             foreach (var member in iterable.FirstOrDefault())
             {
-                //if no nickname, add the username
-                if (member.Nickname is null)
-                { memberList.Add(member.Username); }
-                //if squad leader, remove the dumbass prefix
-                else if (member.Nickname.StartsWith("!sl"))
-                { memberList.Add(member.Nickname.Remove(0, 4)); }
-                //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
-                else
-                { memberList.Add(member.Nickname); }
+                if (member.RoleIds.Contains(roleIdNewGuy) || member.RoleIds.Contains(roleIdMember)
+                    || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
+                {
+                    //if no nickname, add the username
+                    if (member.Nickname is null)
+                    { memberList.Add(member.Username); }
+                    //if squad leader, remove the dumbass prefix
+                    else if (member.Nickname.StartsWith("!slnew"))
+                    { memberList.Add(member.Nickname.Remove(0, 7)); }
+                    //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
+                    else if (member.Nickname.StartsWith("!!sl"))
+                    { memberList.Add(member.Nickname.Remove(0, 5)); }
+                    else if (member.Nickname.StartsWith("!sl"))
+                    { memberList.Add(member.Nickname.Remove(0, 4)); }
+                    else
+                    { memberList.Add(member.Nickname); }
+                }
             }
 
             scrapedList = memberList;
@@ -108,28 +123,41 @@ namespace DiscordBot.LootSplitModule
             Dictionary<string, ulong> dict = new Dictionary<string, ulong>();
 
             //grab iterable and make dict
+
+            ulong roleIdNewGuy = 847350505977675796;
+            ulong roleIdMember = 739948841847095387;
+            ulong roleIdOfficer = 335894631810334720;
+            ulong roleIdVeteran = 739950349405782046;
+
+            //var channel = context.Guild.GetChannel(739949855195267174);
+            //var iterable = channel.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+
             var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
             foreach (var member in iterable.FirstOrDefault())
             {
-                if (member.Nickname != null)
+                if (member.RoleIds.Contains(roleIdNewGuy) || member.RoleIds.Contains(roleIdMember)
+                    || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
                 {
-                    if (member.Nickname.StartsWith("!!"))
+                    if (member.Nickname != null)
                     {
-                        string temp = member.Nickname.Remove(0, 5);
-                        dict.Add(temp, member.Id);
+                        if (member.Nickname.StartsWith("!!"))
+                        {
+                            string temp = member.Nickname.Remove(0, 5);
+                            dict.Add(temp, member.Id);
+                        }
+                        else
+                        {
+                            dict.Add(member.Nickname, member.Id);
+                        }
+                    }
+                    else if (member.Nickname == null)
+                    {
+                        dict.Add(member.Username, member.Id);
                     }
                     else
                     {
-                        dict.Add(member.Nickname, member.Id);
+                        continue;
                     }
-                }
-                else if (member.Nickname == null)
-                {
-                    dict.Add(member.Username, member.Id);
-                }
-                else
-                {
-                    continue;
                 }
                 scrapedDict = dict;
             }
