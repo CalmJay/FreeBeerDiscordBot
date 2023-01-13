@@ -17,6 +17,10 @@ namespace DiscordBot.LootSplitModule
 {
     public class LootSplitModule
     {
+        public ulong roleIdNewRecruit = 847350505977675796;
+        public ulong roleIdMember = 739948841847095387;
+        public ulong roleIdOfficer = 335894631810334720;
+        public ulong roleIdVeteran = 739950349405782046;
         public Dictionary<string, ulong> scrapedDict { get; set; }
         public List<string> scrapedList { get; set; }
         public int imageCount { get; set; }
@@ -79,18 +83,10 @@ namespace DiscordBot.LootSplitModule
 
             //grab iterable and make list
 
-            ulong roleIdNewGuy = 847350505977675796;
-            ulong roleIdMember = 739948841847095387;
-            ulong roleIdOfficer = 335894631810334720;
-            ulong roleIdVeteran = 739950349405782046;
-
-            //var channel = context.Guild.GetChannel(739949855195267174);
-            //var iterable = channel.Guild.GetUsersAsync().ToListAsync().Result.ToList();
-
             var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
             foreach (var member in iterable.FirstOrDefault())
             {
-                if (member.RoleIds.Contains(roleIdNewGuy) || member.RoleIds.Contains(roleIdMember)
+                if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
                     || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
                 {
                     //if no nickname, add the username
@@ -124,18 +120,10 @@ namespace DiscordBot.LootSplitModule
 
             //grab iterable and make dict
 
-            ulong roleIdNewGuy = 847350505977675796;
-            ulong roleIdMember = 739948841847095387;
-            ulong roleIdOfficer = 335894631810334720;
-            ulong roleIdVeteran = 739950349405782046;
-
-            //var channel = context.Guild.GetChannel(739949855195267174);
-            //var iterable = channel.Guild.GetUsersAsync().ToListAsync().Result.ToList();
-
             var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
             foreach (var member in iterable.FirstOrDefault())
             {
-                if (member.RoleIds.Contains(roleIdNewGuy) || member.RoleIds.Contains(roleIdMember)
+                if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
                     || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
                 {
                     if (member.Nickname != null)
@@ -406,10 +394,6 @@ namespace DiscordBot.LootSplitModule
         }
         public async Task PostLootSplit(SocketInteractionContext context)
         {
-            //FOR RELEASE ADD LOOT SPLIT CHANNEL ID TO APPSETTINGS AND 
-            //ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("lootSplitChannelId"));
-
-            //FOR RELEASE CHANGE THIS CHANNEL TO THE LOOT SPLIT CHANNEL
             var channel = context.Client.GetChannel(context.Channel.Id) as IMessageChannel;
             var approveSplit = new ButtonBuilder()
             {

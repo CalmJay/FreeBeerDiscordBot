@@ -498,13 +498,6 @@ namespace CommandModule
         [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
         public async Task SplitLoot()
         {
-            //DiscordSocketConfig discordSocketConfig = new DiscordSocketConfig
-            //{
-            //    UseInteractionSnowflakeDate = false
-            //};
-
-            //DiscordSocketClient client = new(discordSocketConfig);
-
             await DeferAsync();
 
             //var interaction = Context.Interaction as IComponentInteraction;
@@ -579,12 +572,10 @@ namespace CommandModule
                 DataBaseService dataBaseService = new DataBaseService();
 
                 string reasonLootSplit = "Loot split";
-                //string message = "Loot split silver addition for member.";
                 string tempStr = "null";
                 var moneyTypes = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "LootSplit");
                 var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
-                //var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "LootSplit");
-                string constr = "Server = DESKTOP-I2QLG5A; Database = FreeBeerdbTest; Trusted_Connection = True";
+                string constr = "Server = .; Database = FreeBeerdbTest; Trusted_Connection = True";
                 string partyLead = lootSplitMod.submitter;
                 int refundAmount = Convert.ToInt32(lootSplitMod.lootAmountPer);
 
@@ -622,13 +613,16 @@ namespace CommandModule
                         Reason = reasonLootSplit,
                         QueueId = tempStr
                     });
-                }
-                //SHEETS PORTION??
-                //await GoogleSheetsDataWriter.WriteToRegearSheet(Context, null, refundAmount, partyLead);
+                    //Sheets write for each playerName - Needs Review
+                    //PlayerLookupInfo playerInfo = new PlayerLookupInfo();
+                    //PlayerDataLookUps albionData = new PlayerDataLookUps();
+                    //playerInfo = await albionData.GetPlayerInfo(Context, playerName);
+                    //await GoogleSheetsDataWriter.WriteToRegearSheet(Context, null, refundAmount, partyLead, moneyTypes);
 
+                }
                 await Context.User.SendMessageAsync(($"<@{Context.Guild.GetUser(lootSplitMod.scrapedDict[partyLead]).Id}> your loot split has been approved! " +
                     $"${refundAmount.ToString("N0")} has been added to your paychex"));
-                //await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear for {partyLead} ", null));
+                await _logger.Log(new LogMessage(LogSeverity.Info, "Loot Split Approved", $"User: {Context.User.Username}, Approved the regear for {partyLead} ", null));
 
                 SocketGuildChannel socketChannel = Context.Guild.GetChannel(Context.Channel.Id);
                 await socketChannel.DeleteAsync();
