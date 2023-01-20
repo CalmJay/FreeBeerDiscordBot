@@ -45,6 +45,7 @@ namespace FreeBeerBot
             {
                 GatewayIntents = GatewayIntents.AllUnprivileged, //Toggle intents inside the Discord Developer portal to add more security.
                 AlwaysDownloadUsers = true,
+                UseInteractionSnowflakeDate = false
             }))
             // Adding console logging
             .AddTransient<ConsoleLogger>()
