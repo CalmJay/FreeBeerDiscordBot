@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using Discord.Interactions;
 using MarketData;
 using DiscordBot.Models;
+using Aspose.Words.Lists;
+using Newtonsoft.Json;
 
 namespace DiscordBot.RegearModule
 {
@@ -134,6 +136,100 @@ namespace DiscordBot.RegearModule
                     await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
 
 
+
+                }
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+        public async Task PostOCRegear(SocketInteractionContext command, List<string> items, string partyLeader, string reason, MoneyTypes moneyTypes)
+        {
+            ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
+
+            var chnl = command.Client.GetChannel(id) as IMessageChannel;
+
+            string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
+
+            var marketData = await GetMarketDataForOCRegear(command, items);
+
+            RegearQueueID = command.Interaction.Id;
+
+            var converter = new HtmlConverter();
+            var html = marketData[0];
+            var bytes = converter.FromHtmlString(html);
+
+            var approveButton = new ButtonBuilder()
+            {
+                Label = "Approve",
+                CustomId = "approve",
+                Style = ButtonStyle.Success
+            };
+            var denyButton = new ButtonBuilder()
+            {
+                Label = "Deny",
+                CustomId = "deny",
+                Style = ButtonStyle.Danger
+            };
+            var auditButton = new ButtonBuilder()
+            {
+                Label = "Audit",
+                CustomId = "audit",
+                Style = ButtonStyle.Secondary
+            };
+
+            var component = new ComponentBuilder();
+            component.WithButton(approveButton);
+            component.WithButton(denyButton);
+            component.WithButton(auditButton);
+
+            try
+            {
+                dataBaseService = new DataBaseService();
+                var player = dataBaseService.GetPlayerInfoByName(sUserNickname);
+                var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
+                await dataBaseService.AddPlayerReGear(new PlayerLoot
+                {
+                    TypeId = moneyType.Id,
+                    CreateDate = DateTime.Now,
+                    Loot = Convert.ToDecimal(marketData[1]),
+                    PlayerId = player.Id,
+                    Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
+                    PartyLeader = partyLeader,
+                    KillId = "",
+                    Reason = reason,
+                    QueueId = "0"
+                });
+
+
+                using (MemoryStream imgStream = new MemoryStream(bytes))
+                {
+                    var embed = new EmbedBuilder()
+                                        .WithTitle($" {regearRoleIcon} Regear Submission from {sUserNickname}{regearRoleIcon}")
+                                        .AddField("Victim", sUserNickname, true)
+                                        .AddField("Caller Name: ", partyLeader, true)
+                                        .AddField("Refund Amount: ", marketData[1], true)
+                                        .AddField("Discord User ID: ", command.User.Id, true)
+                                        .AddField("Discord Username", command.User.Username, true)
+                                        .WithUrl($"https://albiononline.com/en/killboard/kill/a_EventData.EventId")
+                                        .WithCurrentTimestamp()
+                                        .WithImageUrl($"attachment://image.jpg");
+
+                    //CheckRegearRequirments(a_EventData, out bool requirementsMet, out string? errorMessage);
+
+                    //if (!requirementsMet)
+                    //{
+                    //    embed.WithDescription($"<a:red_siren:1050052736206508132> WARNING: {errorMessage} <a:red_siren:1050052736206508132> ");
+                    //    embed.Color = Color.Red;
+                    //}
+                    //else
+                    //{
+                    //    embed.WithDescription($":thumbsup:  Requreiments Met: This regear meets Free Beer Standards  :thumbsup: ");
+                    //    embed.Color = Color.Green;
+                    //}
+
+                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
 
                 }
             }
@@ -588,7 +684,145 @@ namespace DiscordBot.RegearModule
 
             return new List<string> { gearImage, returnValue.ToString("N0") };
         }
+        public async Task<List<string>> GetMarketDataForOCRegear(SocketInteractionContext command, List<string> itemsName)
+        {
+            var regearIconType = "";
+            var guildUser = (SocketGuildUser)command.User;
+            string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
 
+            List<Item> items = new List<Item>();
+            double returnValue = 0;
+            using (StreamReader r = new StreamReader("Files/items.json"))
+            {
+                string json = r.ReadToEnd();
+                 items = JsonConvert.DeserializeObject<List<Item>>(json);
+            }
+            List<Equipment> underRegearItem = new List<Equipment>();
+
+            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1049889855619989515
+            {
+                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
+                regearIconType = "Gold Tier Regear - Elligible";
+                regearRoleIcon = "<:Gold:1009104748542185512>";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 970083338591289364
+            {
+                returnValue = Math.Min(silverTierRegearCap, returnValue);
+                regearIconType = "Silver Tier Regear - Elligible";
+                regearRoleIcon = "<:Silver:1009104762484047982>";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) //Role ID 970083088241672245
+            {
+                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                regearIconType = "Bronze Tier Regear - Elligible";
+                regearRoleIcon = "<:Bronze_Bar:1019676753666527342>";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Elligible")) // Role ID 1052241667329118349
+            {
+                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                regearIconType = "Free Regear - Elligible";
+                regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
+            }
+            else
+            {
+                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                regearIconType = "Shit Tier Regear - Elligible";
+                regearRoleIcon = ":poop:";
+            }
+
+            foreach (var item in itemsName)
+            {
+                var itemDes=item.Split('/');
+                //var itemDescription1 = items.Where(x => x.LocalizedNames.ENUS.Contains("Demonfang"));
+
+                //var itemDescription2= items.Where(x => x.LocalizedNames.ENUS.Contains(itemDes[1]) && x.UniqueName.Contains(item[0])).FirstOrDefault();
+
+                //var itemDescription = items.Where(x => x.LocalizedNames.ENUS.Contains(itemDes[1]) && x.UniqueName.Contains(item[0]) && x.UniqueName.Contains(item[2])).FirstOrDefault();
+                
+                string itemType = (itemDes[0].Split('_')[1] == "2H") ? "MAIN" : itemDes[0].Split('_')[1];
+
+                MarketDataFetching marketDataFetching = new MarketDataFetching();
+
+                //Check for Current Price
+                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(itemDes[0]);
+
+                if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
+                {
+                    //Check for Daily Average
+                    List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(itemDes[0]);
+
+                    if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
+                    {
+
+
+                        //Check for 24 Day Average
+                        List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(itemDes[0]);
+                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
+                        {
+                            underRegearItem.Add(new Equipment
+                            {
+                                Image = $"https://render.albiononline.com/v1/item/{itemDes[0] + "?quality=" + itemDes[1]}",
+                                ItemPrice = "0"
+                                //ItemPrice = "$0 (Not Found)",
+                            });
+                        }
+                        else
+                        {
+                            //get monthly prices
+                            var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
+                            returnValue += equipmentFetchPrice;
+                            underRegearItem.Add(new Equipment
+                            {
+                                Image = $"https://render.albiononline.com/v1/item/{itemDes[0] + "?quality=" + itemDes[1]}",
+                                ItemPrice = equipmentFetchPrice.ToString("N0")
+                                //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
+                            });
+                        }
+                    }
+                    else
+                    {
+                        //get daily prices
+                        var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
+                        returnValue += equipmentFetchPrice;
+                        underRegearItem.Add(new Equipment
+                        {
+                            Image = $"https://render.albiononline.com/v1/item/{itemDes[0] + "?quality=" + itemDes[1]}",
+                            ItemPrice = equipmentFetchPrice.ToString("N0")
+                            //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
+                        });
+
+                    }
+                }
+                else
+                {
+                    //get current prices
+                    var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
+
+                    returnValue += equipmentFetchPrice;
+                    underRegearItem.Add(new Equipment
+                    {
+                        Image = $"https://render.albiononline.com/v1/item/{itemDes[0] + "?quality=" + itemDes[1]}",
+                        ItemPrice= equipmentFetchPrice.ToString("N0")
+                        //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
+                    });
+                }
+            }
+            var gearImage = $"<div style='background-color: #c7a98f;'> <div> <center><h3>Regear Submitted By {sUserNickname} ({regearIconType})</h3>";
+            foreach (var item in underRegearItem)
+            {
+                gearImage += $"<div style='display: inline-block;line-height: .1;'>" +
+                    $"<img style='width:150px;height:150px' src='{item.Image}'/>" +
+                    $"<p >{item.ItemPrice}</p></div>";
+            }
+
+            gearImage += $"<div style='font-weight : bold;'>Refund amount. : {returnValue.ToString("N0")}</div></center></div>";
+
+            gearImage += $"<center><br/>";
+
+            gearImage += $"</center></div>";
+
+            return new List<string> { gearImage, returnValue.ToString("N0") };
+        }
         private ClassType GetRegearClassType(string a_sGearItem)
         {
             ClassType returnvalue = ClassType.Unknown;

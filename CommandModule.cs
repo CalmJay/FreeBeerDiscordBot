@@ -283,6 +283,9 @@ namespace CommandModule
         [SlashCommand("regear", "Submit a regear")]
         public async Task RegearSubmission(int EventID, SocketGuildUser callerName)
         {
+            List<string> args = new List<string>();
+            //args.Add("T7_MAIN_DAGGER_HELL@1/4");
+            //await RegearOCSubmission(args, callerName);
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
             RegearModule regearModule = new RegearModule();
@@ -369,6 +372,67 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
+            }
+        }
+        [SlashCommand("regear-oc", "Submit a regear")]
+        public async Task RegearOCSubmission(string items, SocketGuildUser callerName)
+        {
+
+            PlayerDataLookUps eventData = new PlayerDataLookUps();
+            RegearModule regearModule = new RegearModule();
+            var guildUser = (SocketGuildUser)Context.User;
+
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
+
+            var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
+
+            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
+
+            if (sUserNickname.Contains("!sl"))
+            {
+                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+            }
+
+            if (sCallerNickname.Contains("!sl"))
+            {
+                sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
+            }
+
+
+            dataBaseService = new DataBaseService();
+
+            await dataBaseService.AddPlayerInfo(new Player
+            {
+                PlayerId = PlayerEventData.Id,
+                PlayerName = PlayerEventData.Name
+            });
+
+
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
+            
+            await DeferAsync();
+
+            //Check If The Player Got 5 Regear Or Not
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname))
+            {
+                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
+
+                if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                {
+                    await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, "ZVZ content", moneyType);
+                    await FollowupAsync($"<@{Context.User.Id}> Your regear ID: has been submitted successfully.", null, false, true);
+
+                }
+                else
+                {
+                    await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                    await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Name}", null));
+                }
+            }
+            else
+            {
+                await FollowupAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
             }
         }
 
