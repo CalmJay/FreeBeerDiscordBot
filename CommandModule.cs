@@ -47,6 +47,59 @@ namespace CommandModule
             _logger = logger;
         }
 
+        // Simple slash command to bring up a message with a button to press
+        [SlashCommand("button", "Button demo command")]
+        public async Task ButtonInput()
+        {
+            var components = new ComponentBuilder();
+            var button = new ButtonBuilder()
+            {
+                Label = "Button",
+                CustomId = "button1",
+                Style = ButtonStyle.Primary
+            };
+
+            // Messages take component lists. Either buttons or select menus. The button can not be directly added to the message. It must be added to the ComponentBuilder.
+            // The ComponentBuilder is then given to the message components property.
+            components.WithButton(button);
+
+            await RespondAsync("This message has a button!", components: components.Build());
+        }
+
+        // This is the handler for the button created above. It is triggered by nmatching the customID of the button.
+        [ComponentInteraction("button1")]
+        public async Task ButtonHandler()
+        {
+            // try setting a breakpoint here to see what kind of data is supplied in a ComponentInteraction.
+            var c = Context;
+
+            await RespondAsync($"You pressed a button!");
+        }
+
+        // Simple slash command to bring up a message with a select menu
+        [SlashCommand("menu", "Select Menu demo command")]
+        public async Task MenuInput()
+        {
+            var components = new ComponentBuilder();
+            // A SelectMenuBuilder is created
+            var select = new SelectMenuBuilder()
+            {
+                CustomId = "menu1",
+                Placeholder = "Select something"
+            };
+            // Options are added to the select menu. The option values can be generated on execution of the command. You can then use the value in the Handler for the select menu
+            // to determine what to do next. An example would be including the ID of the user who made the selection in the value.
+            select.AddOption("abc", "abc_value");
+            select.AddOption("def", "def_value");
+            select.AddOption("ghi", "ghi_value");
+
+            components.WithSelectMenu(select);
+
+            await RespondAsync("This message has a menu!", components: components.Build());
+        }
+
+
+
         [SlashCommand("get-player-info", "Search for Player Info")]
         public async Task GetBasicPlayerInfo(string a_sPlayerName)
         {
@@ -281,11 +334,9 @@ namespace CommandModule
         }
 
         [SlashCommand("regear", "Submit a regear")]
-        public async Task RegearSubmission(int EventID, SocketGuildUser callerName)
+        public async Task RegearSubmission(int EventID, SocketGuildUser callerName, EventTypeEnum EventType)
         {
             List<string> args = new List<string>();
-            //args.Add("T7_MAIN_DAGGER_HELL@1/4");
-            //await RegearOCSubmission(args, callerName);
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
             RegearModule regearModule = new RegearModule();
@@ -333,22 +384,8 @@ namespace CommandModule
                         {
                             await DeferAsync();
 
-                            if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
-                            {
-                                await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "ZVZ content", moneyType);
-                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
-
-                            }
-                            else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
-                            {
-                                await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "Small group content", moneyType);
-                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
-                            }
-                            else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
-                            {
-                                await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "Solo or small group content", moneyType);
-                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
-                            }
+                            await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, EventType, moneyType);
+                            await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
 
                             await FollowupAsync("Regear Submission Complete", null, false, true);
                             await DeleteOriginalResponseAsync();
@@ -372,67 +409,6 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
-            }
-        }
-        [SlashCommand("regear-oc", "Submit a regear")]
-        public async Task RegearOCSubmission(string items, SocketGuildUser callerName)
-        {
-
-            PlayerDataLookUps eventData = new PlayerDataLookUps();
-            RegearModule regearModule = new RegearModule();
-            var guildUser = (SocketGuildUser)Context.User;
-
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
-            string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
-
-            var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
-
-            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
-
-            if (sUserNickname.Contains("!sl"))
-            {
-                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
-            }
-
-            if (sCallerNickname.Contains("!sl"))
-            {
-                sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
-            }
-
-
-            dataBaseService = new DataBaseService();
-
-            await dataBaseService.AddPlayerInfo(new Player
-            {
-                PlayerId = PlayerEventData.Id,
-                PlayerName = PlayerEventData.Name
-            });
-
-
-            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
-            
-            await DeferAsync();
-
-            //Check If The Player Got 5 Regear Or Not
-            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname))
-            {
-                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
-
-                if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
-                {
-                    await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, "ZVZ content", moneyType);
-                    await FollowupAsync($"<@{Context.User.Id}> Your regear ID: has been submitted successfully.", null, false, true);
-
-                }
-                else
-                {
-                    await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Name}. Ask the Regear team if there's an issue.", null, false, true);
-                    await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Name}", null));
-                }
-            }
-            else
-            {
-                await FollowupAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
             }
         }
 
@@ -483,13 +459,14 @@ namespace CommandModule
             string callername = Regex.Replace(interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.ToString(), @"\p{C}+", string.Empty);
             int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
             ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
+            string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[8].Value.ToString();
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
-                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, MoneyTypes.ReGear);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, eventType, MoneyTypes.ReGear);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
 
                 IReadOnlyCollection<Discord.Rest.RestGuildUser> guildUsers = await Context.Guild.SearchUsersAsync(victimName);
@@ -552,6 +529,111 @@ namespace CommandModule
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
             }          
         }
+
+        [SlashCommand("regear-oc", "Submit a OC-break regear")]
+        public async Task RegearOCSubmission(string items, SocketGuildUser callerName, EventTypeEnum enumEventType, int? a_iEstimatedGearPrice = null)
+        {
+
+            PlayerDataLookUps eventData = new PlayerDataLookUps();
+            RegearModule regearModule = new RegearModule();
+            var guildUser = (SocketGuildUser)Context.User;
+
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
+
+            var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
+
+            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
+
+            if (sUserNickname.Contains("!sl"))
+            {
+                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+            }
+
+            if (sCallerNickname.Contains("!sl"))
+            {
+                sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
+            }
+
+
+            dataBaseService = new DataBaseService();
+
+            await dataBaseService.AddPlayerInfo(new Player
+            {
+                PlayerId = PlayerEventData.Id,
+                PlayerName = PlayerEventData.Name
+            });
+
+
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
+
+            await DeferAsync();
+            
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+            {           
+                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
+
+                if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                {
+                    await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak ,enumEventType);
+                    await RespondAsync($"<@{Context.User.Id}> Your OC break has been submitted successfully.", null, false, true);
+                }
+                else
+                {
+                    await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                    await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Name}", null));
+                }
+            }
+            else
+            {
+                await FollowupAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
+            }
+
+        }
+
+        [ComponentInteraction("oc-approve")]
+        public async Task OCApproved()
+        {
+
+        }
+
+        [ComponentInteraction("oc-deny")]
+        public async Task OCDenied()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+
+            var interaction = Context.Interaction as IComponentInteraction;
+            string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString();
+            var iQueueID = interaction.Message.Embeds.FirstOrDefault().Fields[3].Value;
+            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            {
+                dataBaseService = new DataBaseService();
+
+                //try
+                //{
+                //    dataBaseService.DeletePlayerLootByQueueId(killId.ToString());
+                //}
+                //catch (Exception ex)
+                //{
+                //    Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
+                //}
+
+                var guildUsertest = Context.Guild.GetUser(regearPoster);
+
+                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"OC Regear {iQueueID} was denied.");
+                await _logger.Log(new LogMessage(LogSeverity.Info, "OC Regear Denied", $"User: {Context.User.Username}, Denied regear {iQueueID} for {victimName} ", null));
+
+                await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+            }
+            else
+            {
+                await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
+            }
+        }
+
+
         [SlashCommand("view-paychex","Views your current paychex amount")]
         public async Task GetCurrentPaychexAmount()
         {
