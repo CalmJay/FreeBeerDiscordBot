@@ -39,12 +39,11 @@ namespace DiscordBot.RegearModule
         private string regearRoleIcon { get; set; }
 
 
-        public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes)
+        public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
         {
             ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
 
             var chnl = command.Client.GetChannel(id) as IMessageChannel;
-
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, a_EventData);
 
             var converter = new HtmlConverter();
@@ -141,6 +140,12 @@ namespace DiscordBot.RegearModule
                         }
                     }
 
+                    if(a_Mentor != null)
+                    {      
+                        embed.AddField("Mentor", (a_Mentor.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_Mentor.Nickname) : a_Mentor.Username, true);
+                        await a_Mentor.SendMessageAsync($"Your mentee {a_EventData.Victim.Name} has submitted a regear. https://discord.com/channels/157626637913948160/602243828266696720/{command.Interaction.Id}");
+                    }
+
                     await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
 
                 }
@@ -156,7 +161,7 @@ namespace DiscordBot.RegearModule
 
             var chnl = command.Client.GetChannel(id) as IMessageChannel;
 
-            string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
+            string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((command.User as SocketGuildUser).Nickname) : command.User.Username;
 
             var marketData = await GetMarketDataForOCRegear(command, items);
 
@@ -196,9 +201,9 @@ namespace DiscordBot.RegearModule
                     PlayerId = player.Id,
                     Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
                     PartyLeader = a_sPartyLeader,
-                    KillId = "",
+                    KillId = "NA",
                     Reason = a_eEventTypes.ToString(),
-                    QueueId = "0"
+                    QueueId = RegearQueueID.ToString()
                 });
 
 
@@ -207,7 +212,8 @@ namespace DiscordBot.RegearModule
                     var embed = new EmbedBuilder()
                                         .WithTitle($" {regearRoleIcon} OC Submission from {sUserNickname}{regearRoleIcon}")                                
                                         .AddField("Victim", sUserNickname, true)
-                                        .AddField("Caller Name: ", a_sPartyLeader, true)                                                                
+                                        .AddField("Caller Name: ", a_sPartyLeader, true)
+                                        .AddField("Refund Amount: ", TotalRegearSilverAmount, true)
                                         .AddField("Event Type: ", a_eEventTypes, true)
                                         .AddField("QueueID", command.Interaction.Id,true)
                                         .AddField("Discord User ID: ", command.User.Id, true)
@@ -381,19 +387,19 @@ namespace DiscordBot.RegearModule
             {
                 returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Eligible";
-                regearRoleIcon = "<:Gold:1009104748542185512>";
+                regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
             {
                 returnValue = Math.Min(silverTierRegearCap, returnValue);
                 regearIconType = "Silver Tier Regear - Eligible";
-                regearRoleIcon = "<:Silver:1009104762484047982>";
+                regearRoleIcon = "<:FreeBeerSilverCreditCard:1071163029493919905>";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
             {
                 returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Eligible";
-                regearRoleIcon = "<:Bronze_Bar:1019676753666527342>";
+                regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
@@ -457,19 +463,19 @@ namespace DiscordBot.RegearModule
             {
                 returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Elligible";
-                regearRoleIcon = "<:Gold:1009104748542185512>";
+                regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 970083338591289364
             {
                 returnValue = Math.Min(silverTierRegearCap, returnValue);
                 regearIconType = "Silver Tier Regear - Elligible";
-                regearRoleIcon = "<:Silver:1009104762484047982>";
+                regearRoleIcon = "<:FreeBeerSilverCreditCard:1071163029493919905> ";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) //Role ID 970083088241672245
             {
                 returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Elligible";
-                regearRoleIcon = "<:Bronze_Bar:1019676753666527342>";
+                regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Elligible")) // Role ID 1052241667329118349
             {
@@ -486,12 +492,12 @@ namespace DiscordBot.RegearModule
 
             foreach (var item in submittedOCItems)
             {
-                var itemDes=item.Replace(" ", "");
+                var itemDes = item.Replace(" ", "");
 
                 MarketDataFetching marketDataFetching = new MarketDataFetching();
 
                 //Check for Current Price
-                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(itemDes+ "?quality=3");
+                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(itemDes + "?quality=3");
 
                 if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
                 {
@@ -548,11 +554,14 @@ namespace DiscordBot.RegearModule
                     underRegearItem.Add(new Equipment
                     {
                         Image = $"https://render.albiononline.com/v1/item/{itemDes}?quality=3",
-                        ItemPrice= equipmentFetchPrice.ToString("N0")
+                        ItemPrice = equipmentFetchPrice.ToString("N0")
                         //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
                     });
                 }
             }
+
+            TotalRegearSilverAmount = returnValue;
+
             var gearImage = $"<div style='background-color: #c7a98f;'> <div> <center><h3>OC Regear Submitted By {sUserNickname} ({regearIconType})</h3>";
             foreach (var item in underRegearItem)
             {

@@ -30,6 +30,7 @@ using Microsoft.VisualBasic;
 using Aspose.Imaging.FileFormats.Emf.EmfPlus.Consts;
 using Aspose.Words.Fields;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 
 namespace CommandModule
 {
@@ -333,8 +334,26 @@ namespace CommandModule
             await FollowupAsync(a_DiscordUsername.ToString() + " has been blacklisted <:kekw:816748015372861512> ", null, false, false);
         }
 
+        [SlashCommand("view-paychex", "Views your current paychex amount")]
+        public async Task GetCurrentPaychexAmount()
+        {
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
+            string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+
+            var embed = new EmbedBuilder()
+                .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
+                .AddField("Last weeks Paychex total", $"${paychexRunningTotal[0]:n0}")
+                .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
+                .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}");
+
+            await RespondAsync(null, null, false, true, null, null, null, embed.Build());
+        }
+
+
+
         [SlashCommand("regear", "Submit a regear")]
-        public async Task RegearSubmission(int EventID, SocketGuildUser callerName, EventTypeEnum EventType)
+        public async Task RegearSubmission(int EventID, SocketGuildUser callerName, EventTypeEnum EventType, SocketGuildUser mentor = null)
         {
             List<string> args = new List<string>();
 
@@ -370,46 +389,53 @@ namespace CommandModule
                 PlayerName = PlayerEventData.Victim.Name
             });
 
-            //Check If The Player Got 5 Regear Or Not
-            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+            //Check If The Player Got 5 Regear Or Not 1054273070749204520
+            if ((guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) && mentor == null)
             {
-                //CheckToSeeIfRegearHasAlreadyBeenClaimed
-                if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
+                await RespondAsync($"Hey bud. You need to submit your regear with your mentor tagged. They are the optional choice at the end of the command. ", null, false, true);
+            }
+            else
+            {
+                if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                 {
-                    if (PlayerEventData != null)
+                    //CheckToSeeIfRegearHasAlreadyBeenClaimed
+                    if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
                     {
-                        var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-
-                        if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                        if (PlayerEventData != null)
                         {
-                            await DeferAsync();
+                            var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-                            await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, EventType, moneyType);
-                            await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
+                            if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                            {
+                                await DeferAsync();
 
-                            await FollowupAsync("Regear Submission Complete", null, false, true);
-                            await DeleteOriginalResponseAsync();
+                                await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, EventType, moneyType, mentor);
+                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
+
+                                await FollowupAsync("Regear Submission Complete", null, false, true);
+                                await DeleteOriginalResponseAsync();
+                            }
+                            else
+                            {
+                                await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Victim.Name}", null));
+                            }
                         }
                         else
                         {
-                            await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
-                            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Victim.Name}", null));
+                            await RespondAsync("Event info not found. Please verify Kill ID or event has expired.", null, false, true);
                         }
                     }
                     else
                     {
-                        await RespondAsync("Event info not found. Please verify Kill ID or event has expired.", null, false, true);
+                        await RespondAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam the guild and steal money. You can't submit another regear for same death. :middle_finger: ", null, false, true);
                     }
                 }
                 else
                 {
-                    await RespondAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam the guild and steal money. You can't submit another regear for same death. :middle_finger: ", null, false, true);
+                    await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
                 }
-            }
-            else
-            {
-                await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
-            }
+            }          
         }
 
         [ComponentInteraction("deny")]
@@ -422,7 +448,7 @@ namespace CommandModule
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
             {
                 dataBaseService = new DataBaseService();
 
@@ -460,10 +486,11 @@ namespace CommandModule
             int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
             ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
             string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[8].Value.ToString();
+            string mentor = interaction.Message.Embeds.FirstOrDefault().Fields[9].Value.ToString();
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, eventType, MoneyTypes.ReGear);
@@ -540,11 +567,7 @@ namespace CommandModule
 
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
             string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
-
-            var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
-
-            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
-
+            
             if (sUserNickname.Contains("!sl"))
             {
                 sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
@@ -555,6 +578,8 @@ namespace CommandModule
                 sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
             }
 
+            var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
+            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
 
             dataBaseService = new DataBaseService();
 
@@ -567,16 +592,20 @@ namespace CommandModule
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
 
-            await DeferAsync();
             
-            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
-            {           
+            
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
+            {
+                await DeferAsync();
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
 
                 if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                 {
-                    await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak ,enumEventType);
-                    await RespondAsync($"<@{Context.User.Id}> Your OC break has been submitted successfully.", null, false, true);
+                    await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak, enumEventType);
+                    await Context.User.SendMessageAsync($"Your OC Break ID:{regearModule.RegearQueueID} has been submitted successfully.");
+
+                    await FollowupAsync("Regear Submission Complete", null, false, true);
+                    await DeleteOriginalResponseAsync();
                 }
                 else
                 {
@@ -586,7 +615,7 @@ namespace CommandModule
             }
             else
             {
-                await FollowupAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
+                await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, true);
             }
 
         }
@@ -594,7 +623,32 @@ namespace CommandModule
         [ComponentInteraction("oc-approve")]
         public async Task OCApproved()
         {
+            var guildUser = (SocketGuildUser)Context.User;
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+            var interaction = Context.Interaction as IComponentInteraction;
 
+            string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString();
+            string callername = Regex.Replace(interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString(), @"\p{C}+", string.Empty);
+            int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[2].Value);
+            string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.ToString();
+            ulong queueID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+            
+
+            PlayerDataLookUps eventData = new PlayerDataLookUps();
+
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            {
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, eventType, MoneyTypes.OCBreak);
+                await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+
+                await Context.Guild.GetUser(regearPosterID).SendMessageAsync($"Your OC Break {queueID} has been approved by {sUserNickname}! ${refundAmount.ToString("N0")} has been added to your paychex");
+                await _logger.Log(new LogMessage(LogSeverity.Info, "OC Break Approved", $"User: {Context.User.Username}, Approved the regear {queueID} for {victimName} ", null));
+            }
+            else
+            {
+                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.", null, false, true);
+            }
         }
 
         [ComponentInteraction("oc-deny")]
@@ -604,21 +658,21 @@ namespace CommandModule
 
             var interaction = Context.Interaction as IComponentInteraction;
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString();
-            var iQueueID = interaction.Message.Embeds.FirstOrDefault().Fields[3].Value;
-            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            var iQueueID = interaction.Message.Embeds.FirstOrDefault().Fields[4].Value;
+            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 dataBaseService = new DataBaseService();
 
-                //try
-                //{
-                //    dataBaseService.DeletePlayerLootByQueueId(killId.ToString());
-                //}
-                //catch (Exception ex)
-                //{
-                //    Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
-                //}
+                try
+                {
+                    dataBaseService.DeletePlayerLootByQueueId(iQueueID.ToString());
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
+                }
 
                 var guildUsertest = Context.Guild.GetUser(regearPoster);
 
@@ -634,14 +688,6 @@ namespace CommandModule
         }
 
 
-        [SlashCommand("view-paychex","Views your current paychex amount")]
-        public async Task GetCurrentPaychexAmount()
-        {
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
-            string returnValue = GoogleSheetsDataWriter.GetCurrentPaychexAmount(sUserNickname);
-
-            await RespondAsync($"Your current paychex total is ${returnValue}",null,false,true);
-        }
         [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
         public async Task SplitLoot()
         {

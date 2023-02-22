@@ -64,6 +64,21 @@ namespace DiscordBot.Services
             freeBeerdbContext.PlayerLoot.Remove(playerLoot);
             freeBeerdbContext.SaveChanges();
         }
+
+        public void DeletePlayerLootByQueueId(string queueID)
+        {
+            var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.QueueId == queueID).FirstOrDefault();
+            if(playerLoot != null)
+            {
+                freeBeerdbContext.PlayerLoot.Remove(playerLoot);
+                freeBeerdbContext.SaveChanges();
+            }
+            else
+            {
+                Console.WriteLine($"Issue writing OC Break to database. Null Reference. QeueueID={queueID}");
+            }
+            
+        }
         public MoneyType GetMoneyTypeByName(MoneyTypes moneyType)
         {
             return freeBeerdbContext.MoneyType.AsQueryable().Where(x => x.Type == (int)moneyType).FirstOrDefault();
