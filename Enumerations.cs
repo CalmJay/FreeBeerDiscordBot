@@ -4,15 +4,20 @@ using System.Text;
 
 namespace DiscordBot.Enums
 {
-    //public enum Enumerations
-    //{
-    //    ReGear,
-    //    LootSplit,
-    //    Other,
-    //    OCBreak,
-    //    FocusSale,
-    //    Hellgates,
-    //}
+    public enum EventTypeEnum
+    {
+        Castle,
+        Chest,
+        Ganking,
+        Hellgates,
+        Hideout,
+        Mages,
+        Orb,
+        Other,
+        SpecialEvent,
+        Territory,
+        Vortex
+    }
 
     public enum AlbionAPIDataTypesEnum
     {

@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace GoogleSheetsData
 {
@@ -160,10 +161,9 @@ namespace GoogleSheetsData
 
         }
 
-        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund, string a_sCallerName, MoneyTypes a_eMoneyType)
+        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType)
         {
-            string sDiscordName = (a_command.User as SocketGuildUser).Nickname != null ? (a_command.User as SocketGuildUser).Nickname.ToString() : a_command.User.Username;
-
+            string? sUserNickname = ((a_command.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((a_command.User as SocketGuildUser).Nickname) : a_command.User.Username;
             var serviceValues = GetSheetsService().Spreadsheets.Values;
 
             var numberOfRow = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
@@ -182,11 +182,15 @@ namespace GoogleSheetsData
             switch (a_eMoneyType)
             {
                 case MoneyTypes.ReGear:
-                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", "Regearable Event", a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };          
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };          
                     break;
                 case MoneyTypes.LootSplit:
-                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + "PlayerName", DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", "Loot Split Event", a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + "PlayerName", DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
                     break;
+                case MoneyTypes.OCBreak:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "OC Break", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
+                    break;
+
             }
 
             var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
@@ -252,7 +256,7 @@ namespace GoogleSheetsData
         }
 
 
-        public static string GetCurrentPaychexAmount(string a_sUserName)
+        public static List<string> GetRunningPaychexTotal(string a_sUserName)
         {
             var serviceValues = GetSheetsService().Spreadsheets.Values;
             DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
@@ -262,7 +266,9 @@ namespace GoogleSheetsData
             var shortmonth = DateTime.Now.ToShortMonthName();
             var monthName = DateTime.Now.ToMonthName();
 
-            string combinedDate = $"{shortmonth}-{lastSunday.Day}";
+            string combinedDate = $"{shortmonth}-{lastSunday.Day}";//This gets the running total
+
+            List<string> paychexData = new List<string>();
 
             var DaterowValues = serviceValues.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
 
@@ -270,7 +276,7 @@ namespace GoogleSheetsData
 
             foreach (var dates in DaterowValues)
             {
-                if(dates.ToString() == combinedDate)
+                if (dates.ToString() == combinedDate)
                 {
 
                     break;
@@ -278,29 +284,50 @@ namespace GoogleSheetsData
                 dateIndex++;
             }
 
-            ReadRange = $"Payouts!B4:B";
-
             var rowValues = serviceValues.Get(RegearSheetID, $"Payouts!R4C2:R305C{dateIndex}").Execute().Values;
 
-
-            string currentPaychex = "0";
             int i = 0;
             foreach (var users in rowValues)
             {
                 if (users[0].ToString().ToLower() == a_sUserName.ToLower())
                 {
-                    currentPaychex = users.Last().ToString(); 
+                    paychexData.Add(users[users.Count - 2].ToString() + $" {DaterowValues[dateIndex - 2]}");
+                    paychexData.Add(users.Last().ToString() + $" {DaterowValues[dateIndex - 1]}");
                 }
+                
                 i++;
             }
 
-            //var finalAmount = rowValues.Where(x => x.ToString() == a_sUserName).FirstOrDefault();
-            return currentPaychex;
+            return paychexData;
         }
 
+        public static string GetMiniMarketCredits(string a_sUserName)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+            string returnValue = "0";
+
+            ReadRange = $"Mini-Market Credits!A2:A305";
+
+            var rowValues = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!R2C1:R305C2").Execute().Values;
+
+            int i = 0;
+            foreach (var users in rowValues)
+            {
+                if (users[0].ToString().ToLower() == a_sUserName.ToLower())
+                {
+                    returnValue = users.Last().ToString();
+                    break;
+                }
+
+                i++;
+            }
+
+
+            return returnValue;
+        }
 
     }
-
+    
     public static class HelperMethods
     {
         public static DateTime StartOfWeek(this DateTime dt, DayOfWeek startOfWeek)

@@ -45,6 +45,7 @@ namespace FreeBeerBot
             {
                 GatewayIntents = GatewayIntents.AllUnprivileged, //Toggle intents inside the Discord Developer portal to add more security.
                 AlwaysDownloadUsers = true,
+                UseInteractionSnowflakeDate = false
             }))
             // Adding console logging
             .AddTransient<ConsoleLogger>()
@@ -83,7 +84,7 @@ namespace FreeBeerBot
 
             _client.Ready += async () =>
             {
-                //If running the bot with DEBUG flag, register all commands to guild specified in config
+
                 //if (IsDebug())
                 //{
                 //    var guild = _client.GetGuild(GuildID);
