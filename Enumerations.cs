@@ -16,7 +16,8 @@ namespace DiscordBot.Enums
         Other,
         SpecialEvent,
         Territory,
-        Vortex
+        Vortex,
+        DrinkingBeer
     }
 
     public enum AlbionAPIDataTypesEnum
@@ -80,5 +81,15 @@ namespace DiscordBot.Enums
         Support,
         Healer,
         Unknown
+    }
+
+    public enum MiniMarketType
+    {
+        Purchase,
+        Deposit,
+        Withdrawal,
+        CreditsTransfer,
+        AccountSetup,
+        Other
     }
 }

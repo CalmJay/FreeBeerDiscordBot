@@ -8,6 +8,7 @@ using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
+using Microsoft.VisualBasic;
 using Newtonsoft.Json.Linq;
 using PlayerData;
 using System;
@@ -182,7 +183,7 @@ namespace GoogleSheetsData
             switch (a_eMoneyType)
             {
                 case MoneyTypes.ReGear:
-                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };          
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };
                     break;
                 case MoneyTypes.LootSplit:
                     rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + "PlayerName", DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
@@ -195,7 +196,7 @@ namespace GoogleSheetsData
 
             var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
 
-            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
             await update.ExecuteAsync();
         }
 
@@ -210,69 +211,58 @@ namespace GoogleSheetsData
             ReadRange = $"Guild Roster!A{col1 + 1}";
             WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
 
-            
+
             var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes" } } };
             var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
             update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
             await update.ExecuteAsync();
 
-            
+
         }
 
         public static async Task RegisterUserToRegearSheets(SocketGuildUser a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
         {
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+            string? sUserNickname = (a_SocketGuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.Nickname) : a_SocketGuildUser.Username;
 
-            var numberOfRow = serviceValues.Get(RegearSheetID, "Data Validation!B2:B").Execute().Values.Count;
-            var col1 = numberOfRow + 1;
-            var col2 = numberOfRow + 1;
+            var payOutsNumberOfRow = serviceValues.Get(RegearSheetID, "Payouts!B2:B").Execute().Values.Count;
+            var dataValidationNumberOfRow = serviceValues.Get(RegearSheetID, "Data Validation!B2:B").Execute().Values.Count;
 
-            ReadRange = $"Guild Roster!B{col1 + 1}";
-            WriteRange = $"Guild Roster!B{col1 + 1}:E{col2 + 1}";
+            var col1 = payOutsNumberOfRow + 2;
+            var col2 = dataValidationNumberOfRow + 2;
 
+            try
+            {
+                var payoutsRowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sUserNickname } } };
+                var payoutsUpdate = serviceValues.Update(payoutsRowValues, RegearSheetID, $"B{col1}");
+                payoutsUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                await payoutsUpdate.ExecuteAsync();
 
-            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser.Nickname, $"@{a_SocketGuildUser.Nickname}",a_SocketGuildUser.Username ,a_SocketGuildUser.Id } } };
-            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
-            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-            await update.ExecuteAsync();
+                var dataValidationRowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sUserNickname, "@" + sUserNickname } } };
+                var dataValidationUpdate = serviceValues.Update(dataValidationRowValues, RegearSheetID, $"Data Validation!B{col2}:C2{col2}");
+                dataValidationUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                await dataValidationUpdate.ExecuteAsync();
+            }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine(ex.ToString()); 
+            }
         }
-
-        public static async Task RegisterUserToPayouts(SocketGuildUser a_SocketGuildUser)
-        {
-            var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
-
-            var numberOfRow = serviceValues.Get(RegearSheetID, "Payouts!B2:B").Execute().Values.Count;
-            var col1 = numberOfRow + 1;
-            var col2 = numberOfRow + 1;
-
-            ReadRange = $"Payouts!B{col1 + 1}";
-            WriteRange = $"Payouts!B{col1 + 1}:E{col2 + 1}";
-
-
-            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser.Nickname } } };
-            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
-            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-            await update.ExecuteAsync();
-        }
-
 
         public static List<string> GetRunningPaychexTotal(string a_sUserName)
         {
-            var serviceValues = GetSheetsService().Spreadsheets.Values;
+            var serviceValues = GetSheetsService().Spreadsheets;
             DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
-            var dayTest = lastSunday.Day.ToString();
-            var dayofweekTest = lastSunday.DayOfWeek.ToString();
-            var monthTest = lastSunday.Month.ToString();
+            var testmonth = DateTime.Now - lastSunday;
             var shortmonth = DateTime.Now.ToShortMonthName();
-            var monthName = DateTime.Now.ToMonthName();
 
+            IList<IList<object>> paychexClaimedColumn = null;
             string combinedDate = $"{shortmonth}-{lastSunday.Day}";//This gets the running total
 
             List<string> paychexData = new List<string>();
+            var DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
 
-            var DaterowValues = serviceValues.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
-
-            int dateIndex = 1;
+            int dateIndex = 0;
 
             foreach (var dates in DaterowValues)
             {
@@ -284,7 +274,7 @@ namespace GoogleSheetsData
                 dateIndex++;
             }
 
-            var rowValues = serviceValues.Get(RegearSheetID, $"Payouts!R4C2:R305C{dateIndex}").Execute().Values;
+            var rowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R4C2:R350C{dateIndex}").Execute().Values;
 
             int i = 0;
             foreach (var users in rowValues)
@@ -294,8 +284,45 @@ namespace GoogleSheetsData
                     paychexData.Add(users[users.Count - 2].ToString() + $" {DaterowValues[dateIndex - 2]}");
                     paychexData.Add(users.Last().ToString() + $" {DaterowValues[dateIndex - 1]}");
                 }
-                
+
                 i++;
+            }
+
+            var ssRequest = serviceValues.Get(RegearSheetID);
+            Spreadsheet ss = ssRequest.Execute();
+            List<string> sheetList = new List<string>();
+
+            foreach (Sheet sheet in ss.Sheets)
+            {
+                sheetList.Add(sheet.Properties.Title);
+            }
+
+            paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{DaterowValues[dateIndex - 2]} Paychex!R2C1:R350C4").Execute().Values;
+
+            if (sheetList.Contains($"{DaterowValues[dateIndex - 2]} Paychex"))
+            {
+
+                i = 0;
+                foreach (var users in paychexClaimedColumn)
+                {
+                    if (users[0].ToString().ToLower() == a_sUserName.ToLower())
+                    {
+                        if (users[3].ToString() == "TRUE")
+                        {
+                            paychexData[0] += " (CLAIMED)";
+                        }
+                        else if (users[3].ToString() == "FALSE")
+                        {
+                            paychexData[0] += " (NOT CLAIMED)";
+                        }
+                        break;
+                    }
+                    i++;
+                }
+            }
+            else if(paychexData.Count > 0)
+            {
+                paychexData[0] += " (NOT RENDERED)";
             }
 
             return paychexData;
@@ -322,12 +349,148 @@ namespace GoogleSheetsData
                 i++;
             }
 
-
             return returnValue;
         }
 
+        public static async Task RenderPaychex()
+        {
+            var serviceValues = GetSheetsService().Spreadsheets;
+
+            //serviceValues.Sheets.CopyTo()
+
+
+        }
+
+        public static async Task TransferPaychexToMiniMartCredits(SocketGuildUser a_SocketGuildUser)
+        {
+            string? sUserNickname = (a_SocketGuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.Nickname) : a_SocketGuildUser.Username;
+
+            var serviceValues = GetSheetsService().Spreadsheets;
+            DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+            var shortmonth = DateTime.Now.ToShortMonthName();
+
+            IList<IList<object>> paychexClaimedColumn = null;
+            string combinedDate = $"{shortmonth}-{lastSunday.Day}";
+
+
+
+            List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
+            var cleanupedTotal = paychexRunningTotal[0].Substring(0, paychexRunningTotal[0].IndexOf(" "));
+            int a = Int32.Parse(cleanupedTotal.Replace(",", ""));
+            //if(a > 10000000)
+            //{ 
+            if (paychexRunningTotal[0].Contains("(NOT CLAIMED"))
+            {
+                var numberOfRow = serviceValues.Values.Get(RegearSheetID, "MiniMart Ledger!B2:B").Execute().Values.Count;
+                var col1 = numberOfRow + 2;
+
+
+
+                try
+                {
+                    var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, cleanupedTotal, DateTime.Now.ToString("M/d/yyyy"), "Free Beer Bot", "Credits Transfer" } } };
+                    var rowUpdates = serviceValues.Values.Update(rowValues, RegearSheetID, $"MiniMart Ledger!B{col1}:F{col1}");
+                    rowUpdates.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                    await rowUpdates.ExecuteAsync();
+
+
+                    var splitPaychexString = paychexRunningTotal[0].Split(" ");
+                    paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{splitPaychexString[1].ToString()} Paychex!R2C1:R350C4").Execute().Values;
+
+                    int i = 0;
+                    foreach (var users in paychexClaimedColumn)
+                    {
+                        if (users[0].ToString().ToLower() == sUserNickname.ToLower())
+                        {
+                            var dataValidationRowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "Free Beer Bot", "TRUE" } } };
+                            var dataValidationUpdate = serviceValues.Values.Update(dataValidationRowValues, RegearSheetID, $"{splitPaychexString[1]} Paychex!C{i + 2}:D{i + 2}");
+                            dataValidationUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                            await dataValidationUpdate.ExecuteAsync();
+                        }
+
+                        i++;
+                    }
+
+
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+                await a_SocketGuildUser.SendMessageAsync($"Your Paychex have successfully been transfered to mini-mart credits. Total: {cleanupedTotal}");
+            }
+            else if (paychexRunningTotal[0].Contains("(CLAIMED"))
+            {
+                await a_SocketGuildUser.SendMessageAsync("You already claimed or transferred your paychex");
+            }
+            else if (paychexRunningTotal[0].Contains("(NOT RENDERED)"))
+            {
+                await a_SocketGuildUser.SendMessageAsync("The new paychex have not been rendered yet. Please be patient.");
+            }
+            else
+            {
+                await a_SocketGuildUser.SendMessageAsync("The Paychex are not rendered yet or there was an issue transferring your paychex to mini mart credits. Seek out an Officer to investigate.");
+            }
+        //}
+        }
+
+        public static async Task MiniMartTransaction(SocketGuildUser a_Manager, SocketGuildUser a_User, int a_iAmount, MiniMarketType a_eTransactionType)
+        {
+            string? sManagerNickname = (a_Manager.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_Manager.Nickname) : a_Manager.Username;
+            string? sUserNickname = (a_User.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_User.Nickname) : a_User.Username;
+
+            double dMiniMartDiscount = .10;
+
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+
+            var numberOfRow = serviceValues.Get(RegearSheetID, "MiniMart Ledger!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
+
+            var col1 = numberOfRow + 1;
+            var col2 = numberOfRow + 1;
+
+            //var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
+            //var msgRef = new MessageReference(messages.First().Id);
+
+            ReadRange = $"MiniMart Ledger!B{col1 + 1}";
+            WriteRange = $"MiniMart Ledger!B{col1 + 1}:f{col2 + 1}";
+
+            ValueRange rowValues = null;
+
+            int discountedAmount = Convert.ToInt32(Math.Floor(a_iAmount - (a_iAmount * dMiniMartDiscount)));
+
+            switch (a_eTransactionType)
+            {
+                case MiniMarketType.AccountSetup:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, a_iAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Account Setup" } } };
+                    break;
+                case MiniMarketType.Deposit:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, a_iAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Deposit" } } };
+                    break;
+                case MiniMarketType.Purchase:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, -discountedAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Purchase" } } };
+                    break;
+                case MiniMarketType.CreditsTransfer:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, a_iAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Credits Transfer" } } };
+                    break;
+                case MiniMarketType.Withdrawal:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, -a_iAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Withdrawal" } } };
+                    break;
+                case MiniMarketType.Other:
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, a_iAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Other" } } };
+                    break;
+            }
+
+            var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
+
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+            await update.ExecuteAsync();
+
+        }
+
+        
+
     }
-    
+
     public static class HelperMethods
     {
         public static DateTime StartOfWeek(this DateTime dt, DayOfWeek startOfWeek)

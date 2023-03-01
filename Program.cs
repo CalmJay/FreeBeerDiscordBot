@@ -84,7 +84,6 @@ namespace FreeBeerBot
 
             _client.Ready += async () =>
             {
-
                 //if (IsDebug())
                 //{
                 //    var guild = _client.GetGuild(GuildID);

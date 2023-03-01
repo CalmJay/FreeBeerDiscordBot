@@ -405,7 +405,7 @@ namespace DiscordBot.RegearModule
             {
 
                 returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
-                regearIconType = "Free Regear - Elligible";
+                regearIconType = "Free Regear - Eligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
@@ -465,22 +465,22 @@ namespace DiscordBot.RegearModule
                 regearIconType = "Gold Tier Regear - Elligible";
                 regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible")) //ROLE ID 970083338591289364
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
             {
                 returnValue = Math.Min(silverTierRegearCap, returnValue);
                 regearIconType = "Silver Tier Regear - Elligible";
                 regearRoleIcon = "<:FreeBeerSilverCreditCard:1071163029493919905> ";
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) //Role ID 970083088241672245
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
             {
                 returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Elligible";
                 regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Elligible")) // Role ID 1052241667329118349
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
                 returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
-                regearIconType = "Free Regear - Elligible";
+                regearIconType = "Free Regear - Eligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else

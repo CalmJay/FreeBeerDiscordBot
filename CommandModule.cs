@@ -31,6 +31,7 @@ using Aspose.Imaging.FileFormats.Emf.EmfPlus.Consts;
 using Aspose.Words.Fields;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
+using System.Data;
 
 namespace CommandModule
 {
@@ -47,58 +48,6 @@ namespace CommandModule
         {
             _logger = logger;
         }
-
-        // Simple slash command to bring up a message with a button to press
-        [SlashCommand("button", "Button demo command")]
-        public async Task ButtonInput()
-        {
-            var components = new ComponentBuilder();
-            var button = new ButtonBuilder()
-            {
-                Label = "Button",
-                CustomId = "button1",
-                Style = ButtonStyle.Primary
-            };
-
-            // Messages take component lists. Either buttons or select menus. The button can not be directly added to the message. It must be added to the ComponentBuilder.
-            // The ComponentBuilder is then given to the message components property.
-            components.WithButton(button);
-
-            await RespondAsync("This message has a button!", components: components.Build());
-        }
-
-        // This is the handler for the button created above. It is triggered by nmatching the customID of the button.
-        [ComponentInteraction("button1")]
-        public async Task ButtonHandler()
-        {
-            // try setting a breakpoint here to see what kind of data is supplied in a ComponentInteraction.
-            var c = Context;
-
-            await RespondAsync($"You pressed a button!");
-        }
-
-        // Simple slash command to bring up a message with a select menu
-        [SlashCommand("menu", "Select Menu demo command")]
-        public async Task MenuInput()
-        {
-            var components = new ComponentBuilder();
-            // A SelectMenuBuilder is created
-            var select = new SelectMenuBuilder()
-            {
-                CustomId = "menu1",
-                Placeholder = "Select something"
-            };
-            // Options are added to the select menu. The option values can be generated on execution of the command. You can then use the value in the Handler for the select menu
-            // to determine what to do next. An example would be including the ID of the user who made the selection in the value.
-            select.AddOption("abc", "abc_value");
-            select.AddOption("def", "def_value");
-            select.AddOption("ghi", "ghi_value");
-
-            components.WithSelectMenu(select);
-
-            await RespondAsync("This message has a menu!", components: components.Build());
-        }
-
 
 
         [SlashCommand("get-player-info", "Search for Player Info")]
@@ -151,15 +100,20 @@ namespace CommandModule
 
             var user = guildUserName.Guild.GetUser(guildUserName.Id);
 
-            if (ingameName != null)
+            if (ingameName != null || sUserNickname != ingameName)
             {
-                sUserNickname = ingameName;
-                await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
+
+                if (sUserNickname != ingameName)
+                {
+                    sUserNickname = ingameName;
+                    await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
+                }
+
             }
 
             playerInfo = await albionData.GetPlayerInfo(Context, sUserNickname);
 
-            if (sUserNickname == playerInfo.Name)
+            if (sUserNickname.ToLower() == playerInfo.Name.ToLower())
             {
                 await dataBaseService.AddPlayerInfo(new Player
                 {
@@ -173,6 +127,7 @@ namespace CommandModule
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
 
                 await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), ingameName, null, null, null);
+                await GoogleSheetsDataWriter.RegisterUserToRegearSheets(guildUserName, ingameName, null, null, null);
 
                 var embed = new EmbedBuilder()
                .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
@@ -186,6 +141,18 @@ namespace CommandModule
                 //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
 
                 await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}>", false, embed.Build());
+
+                List<string> insultList = new List<string>
+                {
+                    $"food",
+                    $"weapon in Albion",
+                    $"drink",
+                    $"hobby",
+                    $"car",
+                };
+                Random rnd = new Random();
+                int r = rnd.Next(insultList.Count);
+                await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}> We want to get to know you! Tell us... What's your favorite {(string)insultList[r]}?");
             }
             else
             {
@@ -337,20 +304,69 @@ namespace CommandModule
         [SlashCommand("view-paychex", "Views your current paychex amount")]
         public async Task GetCurrentPaychexAmount()
         {
+            await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            if (sUserNickname.Contains("!sl"))
+            {
+                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+            }
+
             List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
             string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
 
-            var embed = new EmbedBuilder()
+            if(paychexRunningTotal.Count > 0)
+            {
+                var embed = new EmbedBuilder()
                 .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
                 .AddField("Last weeks Paychex total", $"${paychexRunningTotal[0]:n0}")
                 .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
                 .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}");
 
-            await RespondAsync(null, null, false, true, null, null, null, embed.Build());
+                await RespondAsync(null, null, false, true, null, null, null, embed.Build());
+            }
+            else
+            {
+                await RespondAsync("Sorry you don't seem to be registed. Ask for a @AO - REGEARS officer to get you squared away.", null, false, true);
+            }
+
         }
 
+        [SlashCommand("transfer-paychex", "Convert your current paychex to Mini Mart credits")]
+        public async Task TransferPaychexToMiniMart()
+        {
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Mini-Mart Submit", $"User: {Context.User.Username}, Command: mm-transaction", null));
 
+            await DeferAsync();
+            await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
+            await FollowupAsync("Transfer Complete");
+            await DeleteOriginalResponseAsync();
+        }
+
+        [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
+        public async Task MiniMartTransactions(SocketGuildUser GuildUser, int Amount, MiniMarketType TransactionType)
+        {
+            await DeferAsync();
+            string? sManagerNickname = ((Context.User as SocketGuildUser).Nickname != null)  ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
+            string? sUserNickname = (GuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(GuildUser.Nickname) : GuildUser.Username;
+
+            //var miniMarketCreditsTotal = Convert.ToInt32(GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname).Replace(",", "").Replace("$", ""));
+            
+            await GoogleSheetsDataWriter.MiniMartTransaction(Context.User as SocketGuildUser, GuildUser, Amount, TransactionType);
+
+            var miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+
+            if (TransactionType == MiniMarketType.Purchase)
+            {
+                int discount = Convert.ToInt32(Amount * .10);
+
+                await ReplyAsync($"{TransactionType} of {Amount.ToString("N0")} is complete. Discount of {discount.ToString("N0")} was subtracted. {sUserNickname } current balance is {miniMarketCreditsTotal} ");
+                await FollowupAsync("React :thumbsup: when you pickup your items.");
+            }
+            else
+            {
+                await FollowupAsync($"{sUserNickname} {TransactionType} of {Amount.ToString("N0")} is complete");
+            }
+        }
 
         [SlashCommand("regear", "Submit a regear")]
         public async Task RegearSubmission(int EventID, SocketGuildUser callerName, EventTypeEnum EventType, SocketGuildUser mentor = null)
@@ -389,10 +405,14 @@ namespace CommandModule
                 PlayerName = PlayerEventData.Victim.Name
             });
 
-            //Check If The Player Got 5 Regear Or Not 1054273070749204520
+            //Check If The Player Got 5 Regear Or Not 
             if ((guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) && mentor == null)
             {
                 await RespondAsync($"Hey bud. You need to submit your regear with your mentor tagged. They are the optional choice at the end of the command. ", null, false, true);
+            }
+            else if(mentor != null && !mentor.Roles.Any(x => x.Id == 1049889855619989515) && (guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")))
+            {
+                await RespondAsync($"Cleary you need a mentor you idiot. Make sure you select an ACTUAL mentor", null, false, true);
             }
             else
             {
@@ -461,9 +481,10 @@ namespace CommandModule
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
 
-                var guildUsertest = Context.Guild.GetUser(regearPoster);
+                var guildUsertest = Context.Guild.GetUser(regearPoster); // this could be null due to the regearposter number.
                 
                 await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
+
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
@@ -485,8 +506,8 @@ namespace CommandModule
             string callername = Regex.Replace(interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.ToString(), @"\p{C}+", string.Empty);
             int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
             ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
-            string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[8].Value.ToString();
-            string mentor = interaction.Message.Embeds.FirstOrDefault().Fields[9].Value.ToString();
+            string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value.ToString();
+            string? mentor = (interaction.Message.Embeds.Count >= 8) ? interaction.Message.Embeds.FirstOrDefault().Fields[8].Value.ToString() : null  ;
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
@@ -687,7 +708,6 @@ namespace CommandModule
             }
         }
 
-
         [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
         public async Task SplitLoot()
         {
@@ -707,8 +727,8 @@ namespace CommandModule
 
             //strings for python.exe path and the tessaract python script (with the downloaded image as argument)
             string cmd = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\venv\\Scripts\\Python.exe";
-            string pythArgs = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\main.py " +
-            lootSplitMod.freeBeerDirectory + "\\Temp\\image1.png";
+            string pythArgs = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\main.py " + lootSplitMod.freeBeerDirectory + "\\Temp\\image1.png";
+
             for (int n = 2; n < lootSplitMod.imageCount; n++)
             {
                 pythArgs += " " + lootSplitMod.freeBeerDirectory + "\\Temp\\image" + n.ToString() + ".png";

@@ -1,9 +1,14 @@
 ﻿using Discord;
 using Discord.Interactions;
 using DiscordbotLogging.Log;
+using PlayerData;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
+using static PlayerData.PlayerDataHandler;
 
 namespace DNet_V3_Tutorial
 {
@@ -26,10 +31,12 @@ namespace DNet_V3_Tutorial
                 .WithTitle($" Bot Commands")
                 .AddField(@"\help", "Displays commands and info about Free Beer Bot")
                 .AddField(@"\recent-deaths", "Review your last 5 deaths and display KILL IDs")
-                .AddField(@"\regear {REQUIRED: KILLID} {REQUIRED: Shotcaller}", "Submit a regear for gear refund")
+                .AddField(@"\regear {REQUIRED: KILLID} {REQUIRED: Shotcaller} {REQUIRED: Event Type}", "Submit a regear for gear refund")
+                .AddField(@"\regear-oc {REQUIRED: Item Codes} {REQUIRED: Shotcaller} {REQUIRED: Event Type}", "Submit OC breaks for gear refund")
                 .AddField(@"\register {REQUIRED DiscordName},{REQUIRED InGameName}", "RECRUITERS AND OFFICERS ONLY: Registers user to Free Beer guild")
                 .AddField(@"\blacklist {REQUIRED DiscordName},{REQUIRED InGameName}", "RECRUITERS AND OFFICERS ONLY: Add someone to the shit list")
                 .AddField(@"\view-paychex", "View your current weeks running paychex balance.")
+                .AddField(@"\transfer-paychex", "Transfer paychex to mini-mart credits.")
                 .AddField(@"\get-player-info {REQUIRED: Player name}", "RECRUITERS AND OFFICERS ONLY Search Albion API for player info");
 
 
@@ -59,7 +66,7 @@ namespace DNet_V3_Tutorial
         [SlashCommand("insult", "Receive a insult!")]
         public async Task Getinsult()
         {
-            //var chnl = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
+            var chnl = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
             Random rnd = new Random();
 
 
@@ -81,7 +88,7 @@ namespace DNet_V3_Tutorial
                 $"TwoLiner",
                 $"SuperBad",
                 $"Bum",
-                $"<@{Context.User.Id}> I checked your stats. I think your in the wrong guild? Here let me point you to the correct one. https://discord.com/invite/v7XCS9ZVaU",
+                //$"<@{Context.User.Id}> I checked your stats. I think your in the wrong guild? Here let me point you to the correct one. https://discord.com/invite/v7XCS9ZVaU",
                 $"I'm not saying you're fat <@{Context.User.Id}>, but it looks like you were poured into your clothes and forgot to say when",
                 $"You couldn't pour the water out of a boot if the instructions were written on the heel.",
                 $"Everyone who's ever loved you was wrong.",
@@ -89,17 +96,33 @@ namespace DNet_V3_Tutorial
                 $"I would love to insult you but I'm afraid I won't do as well as nature did.",
                 $"I envy the people that don't know you.",
                 $"I find the fact that you've lived this long both surprising and disappointing.",
-                $"Logged",
+                //$"Logged",
                 $"HEY <@&930220030820515850>! You have some explaining to do. I wasn't the one that invited this shitter in here.",
-            };
+                $"You have beautiful hair.",
+                $"If free beer had a dick size requirement, you would be removed for inactivity",
+                $"Jisungi died less then you",
+                $"<@{Context.User.Id}> Regear denied, Reason: Skill Issue",
+                $"You know all the shotcallers have you muted right?",
+                $"Congratulations!!! You have found the mystery insult.",
+                $"You should of bought a pair of Nutmollers boots.",
+                $"Image",
+                $"Paychex",
+                $"Thanks for your opinion, no1 cares",
+                $"Gif",
+                //$"SlotMachine",
+                //$"Gif",
+                //$"Gif",
+                //$"Gif",
+                //$"Gif",
 
+            };
             int r = rnd.Next(insultList.Count);
-            
+
             // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
             await _logger.Log(new LogMessage(LogSeverity.Info, "Insult Time!!!", $"User: {Context.User.Username}, Command: insult", null));
             // Respond to the user
 
-            switch((string)insultList[r])
+            switch ((string)insultList[r])
             {
                 case "TwoLiner":
                     await RespondAsync($"You’re my favorite person <@{Context.User.Id}>!");
@@ -107,9 +130,9 @@ namespace DNet_V3_Tutorial
                     await FollowupAsync($"Besides every other person I’ve ever met.");
                     break;
                 case "SuperBad":
-                    await RespondAsync($"Hahahah Your gonna hate me. Lemme whisper you something <@{Context.User.Id}>!");
+                    await RespondAsync($"Let me tell you a secret <@{Context.User.Id}>...");
                     System.Threading.Thread.Sleep(2000);
-                    await FollowupAsync("YOU FUCKING SUCK", null, false, true, null, null, null, null);
+                    await FollowupAsync("YOU SUCK", null, false, true, null, null, null, null);
                     break;
                 case "Logged":
                     await Context.Guild.CurrentUser.AddRoleAsync(1004428809409409024);
@@ -117,15 +140,74 @@ namespace DNet_V3_Tutorial
                     System.Threading.Thread.Sleep(3000);
                     await FollowupAsync($"@here <@{Context.User.Id}>! has been LOGGED. SHAME THEM!!!!");
                     break;
-
-
+                case "Paychex":
+                    await RespondAsync($"<@{Context.User.Id}> Can I get my paychex?");
+                    System.Threading.Thread.Sleep(3000);
+                    await Context.User.SendMessageAsync($"Bro for real where my paychex at?");
+                    break;
+                case "Gif":
+                    await RespondAsync("https://tenor.com/view/aqua-teen-hunger-force-carl-mooning-peek-a-boo-gif-17477491");
+                    break;
+                case "SlotMachine":
+                    await RespondAsync("");
+                    break;
+                //$"attachment://image.jpg"
                 default:
                     await RespondAsync((string)insultList[r]);
                     break;
             }
-            
 
-            
+            //var message = await Context.Channel.GetMessageAsync(1079801885025914910);
+
+            //var users = message.Reactions.Values;
+            //IEmote emoji = Emoji.Parse(":thumbsup:");
+            //RequestOptions options = new RequestOptions();
+
+            ////var userslist = message.GetReactionUsersAsync(emoji, 300);
+
+            //var temp = await (message.GetReactionUsersAsync(emoji, 300)).FlattenAsync();
+
+
+            //List<string> usersreacted= new List<string>();
+            //string? usernameCleanup = "";
+            //foreach (var user in temp) 
+            //{
+            //    var userinfo = Context.Guild.GetUser(user.Id);
+            //    if (userinfo != null)
+            //    {
+            //        usernameCleanup = (userinfo.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(userinfo.Nickname) : userinfo.Username;
+            //        usersreacted.Add(usernameCleanup);
+            //    }
+            //    else
+            //    {
+            //        usersreacted.Add(user.Username);
+            //    }
+
+
+            //}
+
+            //WriteToCSV(usersreacted);
+            //Console.WriteLine("Reactions grabbed");
+        }
+
+        public void WriteToCSV(List<string>UsersList)
+        {
+            var csv = new StringBuilder();
+            foreach (var item in UsersList)
+            {
+                //string line = "Users Reacted";
+                //csv.AppendLine(line);
+                //line = string.Format(item.ToString());
+                csv.AppendLine(string.Format(item.ToString()));
+            }
+
+
+
+            string fileName = @"C:\Repos\WriteText.csv";
+            if (File.Exists(fileName))
+                System.IO.File.AppendAllText(fileName, csv.ToString());
+            else
+                System.IO.File.WriteAllText(fileName, csv.ToString());
         }
     }
 }

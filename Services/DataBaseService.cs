@@ -61,8 +61,12 @@ namespace DiscordBot.Services
         public void DeletePlayerLootByKillId(string killID)
         {
             var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.KillId == killID).FirstOrDefault();
-            freeBeerdbContext.PlayerLoot.Remove(playerLoot);
-            freeBeerdbContext.SaveChanges();
+            if (playerLoot != null)
+            {
+                freeBeerdbContext.PlayerLoot.Remove(playerLoot);
+                freeBeerdbContext.SaveChanges();
+            }
+            
         }
 
         public void DeletePlayerLootByQueueId(string queueID)
