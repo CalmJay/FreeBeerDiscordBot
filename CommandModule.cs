@@ -331,6 +331,17 @@ namespace CommandModule
 
         }
 
+        [SlashCommand("render-paychex", "If you don't know what this means at this point don't use it")]
+        public async Task RenderPaychex()
+        {
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Render Paychex", $"User: {Context.User.Username}, Command: render-paychex", null));
+
+            await DeferAsync();
+            await GoogleSheetsDataWriter.RenderPaychex();
+            await FollowupAsync("Render Complete");
+            
+        }
+
         [SlashCommand("transfer-paychex", "Convert your current paychex to Mini Mart credits")]
         public async Task TransferPaychexToMiniMart()
         {

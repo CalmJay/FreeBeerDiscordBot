@@ -281,8 +281,9 @@ namespace GoogleSheetsData
             {
                 if (users[0].ToString().ToLower() == a_sUserName.ToLower())
                 {
-                    paychexData.Add(users[users.Count - 2].ToString() + $" {DaterowValues[dateIndex - 2]}");
-                    paychexData.Add(users.Last().ToString() + $" {DaterowValues[dateIndex - 1]}");
+                    paychexData.Add(users[users.Count - 3].ToString() + $" {DaterowValues[dateIndex - 3]}");
+                    paychexData.Add(users[users.Count - 2 ].ToString() + $" {DaterowValues[dateIndex - 2]}");
+                    break;
                 }
 
                 i++;
@@ -297,9 +298,9 @@ namespace GoogleSheetsData
                 sheetList.Add(sheet.Properties.Title);
             }
 
-            paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{DaterowValues[dateIndex - 2]} Paychex!R2C1:R350C4").Execute().Values;
+            paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{DaterowValues[dateIndex - 3]} Paychex!R2C1:R350C4").Execute().Values;
 
-            if (sheetList.Contains($"{DaterowValues[dateIndex - 2]} Paychex"))
+            if (sheetList.Contains($"{DaterowValues[dateIndex - 3]} Paychex"))
             {
 
                 i = 0;
@@ -358,6 +359,18 @@ namespace GoogleSheetsData
 
             //serviceValues.Sheets.CopyTo()
 
+            CopySheetToAnotherSpreadsheetRequest requestBody = new CopySheetToAnotherSpreadsheetRequest();
+            requestBody.DestinationSpreadsheetId = RegearSheetID;
+
+            SpreadsheetsResource.SheetsResource.CopyToRequest request = serviceValues.Sheets.CopyTo(requestBody, RegearSheetID, 887023490);
+
+            // To execute asynchronously in an async method, replace `request.Execute()` as shown:
+            SheetProperties response = request.Execute();
+
+            //SheetProperties response = new SheetProperties();
+            //response.Title = "test";
+ 
+            //request.Execute();
 
         }
 
