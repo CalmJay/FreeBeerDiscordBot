@@ -77,7 +77,7 @@ namespace DNet_V3_Tutorial
                 $"<@{Context.User.Id}>....I guess you prove that even god makes mistakes sometimes.",
                 $"<@{Context.User.Id}> Last night I heard you went to a gathering CTA and MrAlbionOnline ganked you.",
                 $"<@{Context.User.Id}>....Your family tree must be a cactus because everybody on it is a prick.",
-                $"I hear Savage is recruiting <@{Context.User.Id}>. You meet their PVE expecations.",
+                //$"I hear Savage is recruiting <@{Context.User.Id}>. You meet their PVE expecations.",
                 $"https://www.youtube.com/watch?v=xfr64zoBTAQ&t=3s",
                 $"I'd slap you but that'd be animal abuse",
                 $"Don't worry bud. We saw you die in that 8.3 set to ARCH. That's why were now raising the requirements on IQ",

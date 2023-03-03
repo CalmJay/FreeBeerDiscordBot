@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Discord.Net;
 using Discord.WebSocket;
 using DiscordBot.Enums;
 using DiscordBot.Models;
@@ -19,6 +20,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using static PlayerData.PlayerDataHandler;
 
 namespace GoogleSheetsData
 {
@@ -253,7 +255,6 @@ namespace GoogleSheetsData
         {
             var serviceValues = GetSheetsService().Spreadsheets;
             DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
-            var testmonth = DateTime.Now - lastSunday;
             var shortmonth = DateTime.Now.ToShortMonthName();
 
             IList<IList<object>> paychexClaimedColumn = null;
@@ -289,18 +290,9 @@ namespace GoogleSheetsData
                 i++;
             }
 
-            var ssRequest = serviceValues.Get(RegearSheetID);
-            Spreadsheet ss = ssRequest.Execute();
-            List<string> sheetList = new List<string>();
-
-            foreach (Sheet sheet in ss.Sheets)
-            {
-                sheetList.Add(sheet.Properties.Title);
-            }
-
             paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{DaterowValues[dateIndex - 3]} Paychex!R2C1:R350C4").Execute().Values;
 
-            if (sheetList.Contains($"{DaterowValues[dateIndex - 3]} Paychex"))
+            if (CheckIfSheetExists($"{DaterowValues[dateIndex - 3]} Paychex"))
             {
 
                 i = 0;
@@ -353,25 +345,105 @@ namespace GoogleSheetsData
             return returnValue;
         }
 
-        public static async Task RenderPaychex()
+        public static async Task RenderPaychex(SocketInteractionContext a_socketInteraction)
         {
             var serviceValues = GetSheetsService().Spreadsheets;
 
-            //serviceValues.Sheets.CopyTo()
+            SocketGuildUser socketGuildUser = (SocketGuildUser)a_socketInteraction.User;
 
-            CopySheetToAnotherSpreadsheetRequest requestBody = new CopySheetToAnotherSpreadsheetRequest();
-            requestBody.DestinationSpreadsheetId = RegearSheetID;
+            string lastSundayMonth = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday).ToShortMonthName();
+            int lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday).Day;
+            string paychexRenderedName = $"{lastSundayMonth}-{lastSunday} Paychex";
 
-            SpreadsheetsResource.SheetsResource.CopyToRequest request = serviceValues.Sheets.CopyTo(requestBody, RegearSheetID, 887023490);
+            BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest();
+            batchUpdateSpreadsheetRequest.Requests = new List<Request>();
 
-            // To execute asynchronously in an async method, replace `request.Execute()` as shown:
-            SheetProperties response = request.Execute();
+            batchUpdateSpreadsheetRequest.Requests.Add(new Request()
+            {
+                DuplicateSheet = new DuplicateSheetRequest()
+                {
+                    NewSheetName = paychexRenderedName,
+                    SourceSheetId = 887023490
 
-            //SheetProperties response = new SheetProperties();
-            //response.Title = "test";
- 
-            //request.Execute();
+                },
+            });
 
+            var req = serviceValues.BatchUpdate(batchUpdateSpreadsheetRequest, RegearSheetID);  //public SheetsService Service; property of parent class
+
+            if (!CheckIfSheetExists(paychexRenderedName))
+            {
+                BatchUpdateSpreadsheetResponse response = req.Execute();
+
+                ////COPY DATA FROM Payouts TO Newly Rendered Paychex sheet
+                //List<string> GuildMembersNames = null;
+                //List<int> GuildMembersAmounts = null;
+
+                //var numberOfGuildMembers = serviceValues.Values.Get(RegearSheetID, "Payouts!B4:B").Execute().Values;
+                //var dateRowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
+                ////var testPaymentAmounts = serviceValues.Values.Get(RegearSheetID, "Payouts!B4:B").Execute().Values;
+
+
+                //DateTime lastSundayPaychexDate = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+                //string shortmonth = DateTime.Now.ToShortMonthName();
+
+                //string combinedDate = $"{lastSundayMonth}-{lastSunday}";//This gets the running total
+                //List<string> paychexData = new List<string>();
+                //List<string> row2 = new List<string>();
+
+
+                ////get all user info
+
+
+                ////get all paychex info
+
+
+
+
+                //int dateIndex = 1;
+
+                //foreach (var dates in dateRowValues)
+                //{
+                //    if (dates.ToString() == combinedDate)
+                //    {
+
+                //        break;
+
+                //    }
+                //    dateIndex++;
+                //}
+
+                //var rowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R4C2:R{numberOfGuildMembers.Count}C{dateIndex}").Execute().Values;
+
+                //int i = 0;
+                //foreach (var payoutUsers in rowValues)
+                //{
+
+                //    paychexData.Add(payoutUsers[0].ToString());
+                //    row2.Add(payoutUsers.Last().ToString());
+
+                //    i++;
+                //}
+
+
+
+
+
+                //WriteRange = $"A2:B{numberOfGuildMembers.Count}";
+                //var testrowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + "PlayerName", DateTime.UtcNow.Date.ToString("M/d/yyyy"), } } };
+                //var update = serviceValues.Values.Update(testrowValues, RegearSheetID, WriteRange);
+
+                //update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                //await update.ExecuteAsync();
+
+
+
+
+                await a_socketInteraction.Interaction.RespondAsync($"Paychex rendered. Sheet is called {paychexRenderedName}", null, false, true);
+            }
+            else
+            {
+                await a_socketInteraction.Interaction.RespondAsync("Paychex has already been rendered for the week. Aborting rendering", null, false, true);
+            }
         }
 
         public static async Task TransferPaychexToMiniMartCredits(SocketGuildUser a_SocketGuildUser)
@@ -498,9 +570,30 @@ namespace GoogleSheetsData
             update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
             await update.ExecuteAsync();
 
+
         }
 
-        
+        public static  bool CheckIfSheetExists(string a_sSheetName)
+        {
+            
+            var serviceValues = GetSheetsService().Spreadsheets;
+            var ssRequest = serviceValues.Get(RegearSheetID);
+            Spreadsheet ss = ssRequest.Execute();
+            List<string> sheetList = new List<string>();
+
+            foreach (Sheet sheet in ss.Sheets)
+            {
+                sheetList.Add(sheet.Properties.Title);
+            }
+
+            if (sheetList.Contains(a_sSheetName))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
 
     }
 
@@ -521,5 +614,6 @@ namespace GoogleSheetsData
         {
             return CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(dateTime.Month);
         }
+
     }
 }

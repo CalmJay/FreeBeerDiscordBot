@@ -228,7 +228,7 @@ namespace CommandModule
         }
 
         [SlashCommand("fetchprice", "Testing market item finder")]
-        public async Task FetchMarketPrice(int PriceOption, string a_sItemType, int a_iQuality, string? a_sMarketLocation = "")
+        public async Task FetchMarketPrice(int PriceOption, string a_sItemType, int a_iQuality, string a_sMarketLocation = "")
         {
             //Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(a_sItemType);
             Task<List<EquipmentMarketData>> marketData = null;
@@ -285,7 +285,7 @@ namespace CommandModule
         }
 
         [SlashCommand("blacklist", "Put a player on the shit list")]
-        public async Task BlacklistPlayer(SocketGuildUser a_DiscordUsername, string? IngameName = null, string Reason = null, string Fine = null, string AdditionalNotes = null)
+        public async Task BlacklistPlayer(SocketGuildUser a_DiscordUsername, string IngameName = null, string Reason = null, string Fine = null, string AdditionalNotes = null)
         {
             await DeferAsync();
 
@@ -336,9 +336,7 @@ namespace CommandModule
         {
             await _logger.Log(new LogMessage(LogSeverity.Info, "Render Paychex", $"User: {Context.User.Username}, Command: render-paychex", null));
 
-            await DeferAsync();
-            await GoogleSheetsDataWriter.RenderPaychex();
-            await FollowupAsync("Render Complete");
+            await GoogleSheetsDataWriter.RenderPaychex(Context);        
             
         }
 
@@ -361,21 +359,27 @@ namespace CommandModule
             string? sUserNickname = (GuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(GuildUser.Nickname) : GuildUser.Username;
 
             //var miniMarketCreditsTotal = Convert.ToInt32(GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname).Replace(",", "").Replace("$", ""));
-            
+
             await GoogleSheetsDataWriter.MiniMartTransaction(Context.User as SocketGuildUser, GuildUser, Amount, TransactionType);
 
             var miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
-
-            if (TransactionType == MiniMarketType.Purchase)
+            if (GuildUser.Roles.Any(r => r.Name == "AO - Officers")|| GuildUser.Roles.Any(r => r.Name == "AO - HO Manager") || GuildUser.Roles.Any(r => r.Name == "AO - Minimart"))
             {
-                int discount = Convert.ToInt32(Amount * .10);
+                if (TransactionType == MiniMarketType.Purchase)
+                {
+                    int discount = Convert.ToInt32(Amount * .10);
 
-                await ReplyAsync($"{TransactionType} of {Amount.ToString("N0")} is complete. Discount of {discount.ToString("N0")} was subtracted. {sUserNickname } current balance is {miniMarketCreditsTotal} ");
-                await FollowupAsync("React :thumbsup: when you pickup your items.");
+                    await ReplyAsync($"{TransactionType} of {Amount.ToString("N0")} is complete. Discount of {discount.ToString("N0")} was subtracted. {sUserNickname} current balance is {miniMarketCreditsTotal} ");
+                    await FollowupAsync("React :thumbsup: when you pickup your items.");
+                }
+                else
+                {
+                    await FollowupAsync($"{sUserNickname} {TransactionType} of {Amount.ToString("N0")} is complete");
+                }
             }
             else
             {
-                await FollowupAsync($"{sUserNickname} {TransactionType} of {Amount.ToString("N0")} is complete");
+                await RespondAsync($"You need perms to do this ya bum.",null,false,true,null,null,null,null);
             }
         }
 
@@ -392,6 +396,8 @@ namespace CommandModule
 
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
             string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
+
+            bool bRegearAllowed = true;
 
 
             if (sUserNickname.Contains("!sl"))
@@ -416,20 +422,28 @@ namespace CommandModule
                 PlayerName = PlayerEventData.Victim.Name
             });
 
-            //Check If The Player Got 5 Regear Or Not 
-            if ((guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) && mentor == null)
+            
+            if (EventType == EventTypeEnum.SpecialEvent)
+            {
+                bRegearAllowed = true;
+            }
+            else if ((guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) && mentor == null)
             {
                 await RespondAsync($"Hey bud. You need to submit your regear with your mentor tagged. They are the optional choice at the end of the command. ", null, false, true);
+                bRegearAllowed = false;
             }
-            else if(mentor != null && !mentor.Roles.Any(x => x.Id == 1049889855619989515) && (guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")))
+            else if (mentor != null && !mentor.Roles.Any(x => x.Id == 1049889855619989515) && (guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")))
             {
                 await RespondAsync($"Cleary you need a mentor you idiot. Make sure you select an ACTUAL mentor", null, false, true);
+                bRegearAllowed= false;
             }
-            else
-            {
+
+            
+
+            if (bRegearAllowed)
+            { 
                 if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                 {
-                    //CheckToSeeIfRegearHasAlreadyBeenClaimed
                     if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
                     {
                         if (PlayerEventData != null)
@@ -466,7 +480,7 @@ namespace CommandModule
                 {
                     await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
                 }
-            }          
+            }
         }
 
         [ComponentInteraction("deny")]
