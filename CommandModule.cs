@@ -304,6 +304,7 @@ namespace CommandModule
         [SlashCommand("view-paychex", "Views your current paychex amount")]
         public async Task GetCurrentPaychexAmount()
         {
+            await DeferAsync(true);
             await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
             if (sUserNickname.Contains("!sl"))
@@ -321,8 +322,8 @@ namespace CommandModule
                 .AddField("Last weeks Paychex total", $"${paychexRunningTotal[0]:n0}")
                 .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
                 .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}");
-
-                await RespondAsync(null, null, false, true, null, null, null, embed.Build());
+                
+                await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
             }
             else
             {
@@ -354,17 +355,20 @@ namespace CommandModule
         [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
         public async Task MiniMartTransactions(SocketGuildUser GuildUser, int Amount, MiniMarketType TransactionType)
         {
-            await DeferAsync();
+            
             string? sManagerNickname = ((Context.User as SocketGuildUser).Nickname != null)  ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
             string? sUserNickname = (GuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(GuildUser.Nickname) : GuildUser.Username;
 
             //var miniMarketCreditsTotal = Convert.ToInt32(GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname).Replace(",", "").Replace("$", ""));
 
-            await GoogleSheetsDataWriter.MiniMartTransaction(Context.User as SocketGuildUser, GuildUser, Amount, TransactionType);
-
-            var miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+            
             if (GuildUser.Roles.Any(r => r.Name == "AO - Officers")|| GuildUser.Roles.Any(r => r.Name == "AO - HO Manager") || GuildUser.Roles.Any(r => r.Name == "AO - Minimart"))
             {
+                await DeferAsync();
+                await GoogleSheetsDataWriter.MiniMartTransaction(Context.User as SocketGuildUser, GuildUser, Amount, TransactionType);
+
+                var miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+
                 if (TransactionType == MiniMarketType.Purchase)
                 {
                     int discount = Convert.ToInt32(Amount * .10);

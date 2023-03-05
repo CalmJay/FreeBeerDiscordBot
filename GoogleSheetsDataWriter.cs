@@ -253,47 +253,47 @@ namespace GoogleSheetsData
 
         public static List<string> GetRunningPaychexTotal(string a_sUserName)
         {
-            var serviceValues = GetSheetsService().Spreadsheets;
-            DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
-            var shortmonth = DateTime.Now.ToShortMonthName();
+            SpreadsheetsResource serviceValues = GetSheetsService().Spreadsheets;
 
-            IList<IList<object>> paychexClaimedColumn = null;
-            string combinedDate = $"{shortmonth}-{lastSunday.Day}";//This gets the running total
+            DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+            DateTime lastbiweeklySunday = HelperMethods.StartOfWeek(lastSunday.AddDays(-7), DayOfWeek.Sunday);
+       
+            string biweeklyLastSundayDate = $"{lastbiweeklySunday.ToShortMonthName()}-{lastbiweeklySunday.Day}";
+            string currentWeekPaychexDate = $"{DateTime.Now.ToShortMonthName()}-{lastSunday.Day}";
 
             List<string> paychexData = new List<string>();
-            var DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
+            List<object> DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
 
-            int dateIndex = 0;
-
-            foreach (var dates in DaterowValues)
-            {
-                if (dates.ToString() == combinedDate)
-                {
-
-                    break;
-                }
-                dateIndex++;
-            }
-
-            var rowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R4C2:R350C{dateIndex}").Execute().Values;
+            IList<IList<object>> paychexClaimedColumn = null;
+            IList<IList<object>> rowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R3C2:R350C{DaterowValues.Count}").Execute().Values;
 
             int i = 0;
+
             foreach (var users in rowValues)
             {
                 if (users[0].ToString().ToLower() == a_sUserName.ToLower())
                 {
-                    paychexData.Add(users[users.Count - 3].ToString() + $" {DaterowValues[dateIndex - 3]}");
-                    paychexData.Add(users[users.Count - 2 ].ToString() + $" {DaterowValues[dateIndex - 2]}");
+                    foreach(var dates in rowValues[0])
+                    {
+                        if (dates.ToString() == biweeklyLastSundayDate)
+                        {
+                            paychexData.Add(users[i].ToString() + $" {biweeklyLastSundayDate}");
+                        }
+
+                        if(dates.ToString() == currentWeekPaychexDate)
+                        {
+                            paychexData.Add(users[i].ToString() + $" {currentWeekPaychexDate}");
+                        }
+                        i++;
+
+                    }
                     break;
                 }
-
-                i++;
             }
 
-            paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{DaterowValues[dateIndex - 3]} Paychex!R2C1:R350C4").Execute().Values;
-
-            if (CheckIfSheetExists($"{DaterowValues[dateIndex - 3]} Paychex"))
+            if (CheckIfSheetExists($"{biweeklyLastSundayDate} Paychex"))
             {
+                paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{biweeklyLastSundayDate} Paychex!R2C1:R350C4").Execute().Values;
 
                 i = 0;
                 foreach (var users in paychexClaimedColumn)
