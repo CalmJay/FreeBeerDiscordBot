@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using DiscordBot.Enums;
 using Discord;
+using Microsoft.EntityFrameworkCore;
 
 namespace DiscordBot.Services
 {
@@ -61,8 +62,27 @@ namespace DiscordBot.Services
         public void DeletePlayerLootByKillId(string killID)
         {
             var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.KillId == killID).FirstOrDefault();
-            freeBeerdbContext.PlayerLoot.Remove(playerLoot);
-            freeBeerdbContext.SaveChanges();
+            if (playerLoot != null)
+            {
+                freeBeerdbContext.PlayerLoot.Remove(playerLoot);
+                freeBeerdbContext.SaveChanges();
+            }
+            
+        }
+
+        public void DeletePlayerLootByQueueId(string queueID)
+        {
+            var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.QueueId == queueID).FirstOrDefault();
+            if(playerLoot != null)
+            {
+                freeBeerdbContext.PlayerLoot.Remove(playerLoot);
+                freeBeerdbContext.SaveChanges();
+            }
+            else
+            {
+                Console.WriteLine($"Issue writing OC Break to database. Null Reference. QeueueID={queueID}");
+            }
+            
         }
         public MoneyType GetMoneyTypeByName(MoneyTypes moneyType)
         {

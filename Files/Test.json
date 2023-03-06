@@ -1,0 +1,110 @@
+[
+  {
+    "LocalizationNameVariable": "@ITEMS_T4_MAIN_DAGGER_HELL",
+    "LocalizationDescriptionVariable": "@ITEMS_GENERAL_EQUIPMENT_ITEM_DESC",
+    "LocalizedNames": {
+      "EN-US": "Adept's Demonfang",
+      "DE-DE": "Dämonenzahn des Adepten",
+      "FR-FR": "Croc-de-démon de l'adepte",
+      "RU-RU": "Клык демона (знаток)",
+      "PL-PL": "Demoniczny Kieł Adepta",
+      "ES-ES": "Colmillo demoníaco del iniciado",
+      "PT-BR": "Presa Demoníaca do Adepto",
+      "IT-IT": "Zanna di demone del sapiente",
+      "ZH-CN": "老手级恶魔之牙",
+      "KO-KR": "숙련자의 데몬팽",
+      "JA-JP": "デーモンファング（名人）",
+      "ZH-TW": "老手級惡魔之牙",
+      "ID-ID": "Taringiblis Mahir"
+    },
+    "LocalizedDescriptions": {
+      "EN-US": "Equipment Item",
+      "DE-DE": "Ausrüstungsgegenstand",
+      "FR-FR": "Pièce d'équipement",
+      "RU-RU": "Снаряжение",
+      "PL-PL": "Przedmiot do wyposażenia",
+      "ES-ES": "Objeto de equipo",
+      "PT-BR": "Item de Equipamento",
+      "IT-IT": "Oggetto d'equipaggiamento",
+      "ZH-CN": "装备物品",
+      "KO-KR": "장비 아이템",
+      "JA-JP": "装備アイテム",
+      "ZH-TW": "裝備物品",
+      "ID-ID": "Item Perlengkapan"
+    },
+    "Index": "7153",
+    "UniqueName": "T4_MAIN_DAGGER_HELL"
+  },
+  {
+    "LocalizationNameVariable": "@ITEMS_T4_MAIN_DAGGER_HELL",
+    "LocalizationDescriptionVariable": "@ITEMS_GENERAL_EQUIPMENT_ITEM_DESC",
+    "LocalizedNames": {
+      "EN-US": "Adept's Demonfang",
+      "DE-DE": "Dämonenzahn des Adepten",
+      "FR-FR": "Croc-de-démon de l'adepte",
+      "RU-RU": "Клык демона (знаток)",
+      "PL-PL": "Demoniczny Kieł Adepta",
+      "ES-ES": "Colmillo demoníaco del iniciado",
+      "PT-BR": "Presa Demoníaca do Adepto",
+      "IT-IT": "Zanna di demone del sapiente",
+      "ZH-CN": "老手级恶魔之牙",
+      "KO-KR": "숙련자의 데몬팽",
+      "JA-JP": "デーモンファング（名人）",
+      "ZH-TW": "老手級惡魔之牙",
+      "ID-ID": "Taringiblis Mahir"
+    },
+    "LocalizedDescriptions": {
+      "EN-US": "Equipment Item",
+      "DE-DE": "Ausrüstungsgegenstand",
+      "FR-FR": "Pièce d'équipement",
+      "RU-RU": "Снаряжение",
+      "PL-PL": "Przedmiot do wyposażenia",
+      "ES-ES": "Objeto de equipo",
+      "PT-BR": "Item de Equipamento",
+      "IT-IT": "Oggetto d'equipaggiamento",
+      "ZH-CN": "装备物品",
+      "KO-KR": "장비 아이템",
+      "JA-JP": "装備アイテム",
+      "ZH-TW": "裝備物品",
+      "ID-ID": "Item Perlengkapan"
+    },
+    "Index": "7154",
+    "UniqueName": "T4_MAIN_DAGGER_HELL@1"
+  },
+  {
+    "LocalizationNameVariable": "@ITEMS_T4_MAIN_DAGGER_HELL",
+    "LocalizationDescriptionVariable": "@ITEMS_GENERAL_EQUIPMENT_ITEM_DESC",
+    "LocalizedNames": {
+      "EN-US": "Adept's Demonfang",
+      "DE-DE": "Dämonenzahn des Adepten",
+      "FR-FR": "Croc-de-démon de l'adepte",
+      "RU-RU": "Клык демона (знаток)",
+      "PL-PL": "Demoniczny Kieł Adepta",
+      "ES-ES": "Colmillo demoníaco del iniciado",
+      "PT-BR": "Presa Demoníaca do Adepto",
+      "IT-IT": "Zanna di demone del sapiente",
+      "ZH-CN": "老手级恶魔之牙",
+      "KO-KR": "숙련자의 데몬팽",
+      "JA-JP": "デーモンファング（名人）",
+      "ZH-TW": "老手級惡魔之牙",
+      "ID-ID": "Taringiblis Mahir"
+    },
+    "LocalizedDescriptions": {
+      "EN-US": "Equipment Item",
+      "DE-DE": "Ausrüstungsgegenstand",
+      "FR-FR": "Pièce d'équipement",
+      "RU-RU": "Снаряжение",
+      "PL-PL": "Przedmiot do wyposażenia",
+      "ES-ES": "Objeto de equipo",
+      "PT-BR": "Item de Equipamento",
+      "IT-IT": "Oggetto d'equipaggiamento",
+      "ZH-CN": "装备物品",
+      "KO-KR": "장비 아이템",
+      "JA-JP": "装備アイテム",
+      "ZH-TW": "裝備物品",
+      "ID-ID": "Item Perlengkapan"
+    },
+    "Index": "7155",
+    "UniqueName": "T4_MAIN_DAGGER_HELL@2"
+  }
+]

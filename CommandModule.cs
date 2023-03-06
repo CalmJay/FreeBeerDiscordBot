@@ -30,6 +30,8 @@ using Microsoft.VisualBasic;
 using Aspose.Imaging.FileFormats.Emf.EmfPlus.Consts;
 using Aspose.Words.Fields;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
+using System.Data;
 
 namespace CommandModule
 {
@@ -60,25 +62,17 @@ namespace CommandModule
                 var embed = new EmbedBuilder()
                 .WithTitle($"Player Search Results")
                 .AddField("Player Name", (playerInfo.Name == null) ? "No info" : playerInfo.Name, true)
-                //.AddField("Player ID: ", (playerInfo.Id == null) ? "No info" : playerInfo.Id, true)
-
                 .AddField("Kill Fame", (playerInfo.KillFame == 0) ? 0 : playerInfo.KillFame)
                 .AddField("Death Fame: ", (playerInfo.DeathFame == 0) ? 0 : playerInfo.DeathFame, true)
-
                 .AddField("Guild Name ", (playerInfo.GuildName == null || playerInfo.GuildName == "") ? "No info" : playerInfo.GuildName, true)
-                //.AddField("Guild ID: ", (playerInfo.GuildId == null || playerInfo.GuildId == "") ? "No info" : playerInfo.GuildId, true)
-
-                    .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
-                //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
+                .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
 
                 await RespondAsync(null, null, false, true, null, null, null, embed.Build());
             }
-
             catch (Exception ex)
             {
                 await RespondAsync("Player info not found");
             }
-
         }
 
         [SlashCommand("register", "Register player to Free Beer guild")]
@@ -97,15 +91,20 @@ namespace CommandModule
 
             var user = guildUserName.Guild.GetUser(guildUserName.Id);
 
-            if (ingameName != null)
+            if (ingameName != null || sUserNickname != ingameName)
             {
-                sUserNickname = ingameName;
-                await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
+
+                if (sUserNickname != ingameName)
+                {
+                    sUserNickname = ingameName;
+                    await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
+                }
+
             }
 
             playerInfo = await albionData.GetPlayerInfo(Context, sUserNickname);
 
-            if (sUserNickname == playerInfo.Name)
+            if (sUserNickname.ToLower() == playerInfo.Name.ToLower())
             {
                 await dataBaseService.AddPlayerInfo(new Player
                 {
@@ -114,24 +113,35 @@ namespace CommandModule
                 });
 
                 await user.AddRoleAsync(newMemberRole);
-                await user.AddRoleAsync(freeRegearRole);//free regear role
+                await user.AddRoleAsync(freeRegearRole);
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
 
                 await GoogleSheetsDataWriter.RegisterUserToDataRoster(playerInfo.Name.ToString(), ingameName, null, null, null);
+                await GoogleSheetsDataWriter.RegisterUserToRegearSheets(guildUserName, ingameName, null, null, null);
 
                 var embed = new EmbedBuilder()
                .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
-               //.WithImageUrl($"attachment://logo.png")
                .WithDescription("We're glad to have you. Please checkout the following below.")
                .AddField($"Don't get kicked", "<#995798935631302667>")
                .AddField($"General info / location of the guild stuff", "<#880598854947454996>")
                .AddField($"Regear program", "<#970081185176891412>")
                .AddField($"ZVZ builds", "<#906375085449945131>")
                .AddField($"Before you do ANYTHING else", "Your existence in the guild relies you on reading these");
-                //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
 
                 await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}>", false, embed.Build());
+
+                List<string> insultList = new List<string>
+                {
+                    $"food",
+                    $"weapon in Albion",
+                    $"drink",
+                    $"hobby",
+                    $"car",
+                };
+                Random rnd = new Random();
+                int r = rnd.Next(insultList.Count);
+                await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}> We want to get to know you! Tell us... What's your favorite {(string)insultList[r]}?");
             }
             else
             {
@@ -144,11 +154,11 @@ namespace CommandModule
         {
             var testuser = Context.User.Id;
             string? sPlayerData = null;
-            var sPlayerAlbionId = new PlayerDataLookUps().GetPlayerInfo(Context, null); //either get from google sheet or search in albion API;
+            var sPlayerAlbionId = new PlayerDataLookUps().GetPlayerInfo(Context, null);
             string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).Nickname != null) ? (Context.Interaction.User as SocketGuildUser).Nickname : Context.Interaction.User.Username;
 
             int iDeathDisplayCounter = 1;
-            int iVisibleDeathsShown = Int32.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths //Add to config
+            int iVisibleDeathsShown = Int32.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths. Adjust in config
 
             if (sPlayerAlbionId.Result != null)
             {
@@ -158,8 +168,7 @@ namespace CommandModule
                     {
                         sPlayerData = await response.Content.ReadAsStringAsync();
                         var parsedObjects = JArray.Parse(sPlayerData);
-                        //TODO: Add killer and date of death
-
+                        var component = new ComponentBuilder();
                         var searchDeaths = parsedObjects.Children<JObject>()
                         .Select(jo => (int)jo["EventId"])
                         .ToList();
@@ -174,9 +183,7 @@ namespace CommandModule
                             Style = ButtonStyle.Secondary
                         };
 
-                        var component = new ComponentBuilder();
-
-
+                        
                         for (int i = 0; i < searchDeaths.Count; i++)
                         {
                             if (i <= iVisibleDeathsShown)
@@ -192,7 +199,6 @@ namespace CommandModule
                         }
                         //await RespondAsync(null, null, false, true, null, null, component.Build(), embed.Build()); //Enable once buttons are working
                         await RespondAsync(null, null, false, true, null, null, null, embed.Build());
-
                     }
                     else
                     {
@@ -207,7 +213,7 @@ namespace CommandModule
         }
 
         [SlashCommand("fetchprice", "Testing market item finder")]
-        public async Task FetchMarketPrice(int PriceOption, string a_sItemType, int a_iQuality, string? a_sMarketLocation = "")
+        public async Task FetchMarketPrice(int PriceOption, string a_sItemType, int a_iQuality, string a_sMarketLocation = "")
         {
             //Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(a_sItemType);
             Task<List<EquipmentMarketData>> marketData = null;
@@ -259,12 +265,10 @@ namespace CommandModule
             {
                 await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
             }
-
-
         }
 
         [SlashCommand("blacklist", "Put a player on the shit list")]
-        public async Task BlacklistPlayer(SocketGuildUser a_DiscordUsername, string? IngameName = null, string Reason = null, string Fine = null, string AdditionalNotes = null)
+        public async Task BlacklistPlayer(SocketGuildUser a_DiscordUsername, string IngameName = null, string Reason = null, string Fine = null, string AdditionalNotes = null)
         {
             await DeferAsync();
 
@@ -280,9 +284,98 @@ namespace CommandModule
             await FollowupAsync(a_DiscordUsername.ToString() + " has been blacklisted <:kekw:816748015372861512> ", null, false, false);
         }
 
-        [SlashCommand("regear", "Submit a regear")]
-        public async Task RegearSubmission(int EventID, SocketGuildUser callerName)
+        [SlashCommand("view-paychex", "Views your current paychex amount")]
+        public async Task GetCurrentPaychexAmount()
         {
+            
+            await DeferAsync(true);
+            await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            if (sUserNickname.Contains("!sl"))
+            {
+                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+            }
+
+            if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
+            {
+                List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
+                string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+
+                if (paychexRunningTotal.Count > 0)
+                {
+                    var embed = new EmbedBuilder()
+                    .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
+                    .AddField("Last weeks Paychex total", $"${paychexRunningTotal[0]:n0}")
+                    .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
+                    .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}");
+
+                    await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
+                }
+                else
+                {
+                    await RespondAsync("Sorry you don't seem to be registed. Ask for a @AO - REGEARS officer to get you squared away.", null, false, true);
+                }
+            }
+            else
+            {
+                await FollowupAsync("Looks like your not fully registered to the guild. Please contact a recruiter or officer to fix the issue.", null, false, true);
+            }
+        }
+
+        [SlashCommand("render-paychex", "If you don't know what this means at this point don't use it")]
+        public async Task RenderPaychex()
+        {
+            await DeferAsync();
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Render Paychex", $"User: {Context.User.Username}, Command: render-paychex", null));
+            await GoogleSheetsDataWriter.RenderPaychex(Context);                  
+        }
+
+        [SlashCommand("transfer-paychex", "Convert your current paychex to Mini Mart credits")]
+        public async Task TransferPaychexToMiniMart()
+        {
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Mini-Mart Submit", $"User: {Context.User.Username}, Command: mm-transaction", null));
+
+            await DeferAsync();
+            await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
+            await FollowupAsync("Transfer Complete");
+            await DeleteOriginalResponseAsync();
+        }
+
+        [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
+        public async Task MiniMartTransactions(SocketGuildUser GuildUser, int Amount, MiniMarketType TransactionType)
+        {          
+            string? sManagerNickname = ((Context.User as SocketGuildUser).Nickname != null)  ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
+            string? sUserNickname = (GuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(GuildUser.Nickname) : GuildUser.Username;
+            
+            if (GuildUser.Roles.Any(r => r.Name == "AO - Officers")|| GuildUser.Roles.Any(r => r.Name == "AO - HO Manager") || GuildUser.Roles.Any(r => r.Name == "AO - Minimart"))
+            {
+                await DeferAsync();
+                await GoogleSheetsDataWriter.MiniMartTransaction(Context.User as SocketGuildUser, GuildUser, Amount, TransactionType);
+
+                var miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+
+                if (TransactionType == MiniMarketType.Purchase)
+                {
+                    int discount = Convert.ToInt32(Amount * .10);
+
+                    await ReplyAsync($"{TransactionType} of {Amount.ToString("N0")} is complete. Discount of {discount.ToString("N0")} was subtracted. {sUserNickname} current balance is {miniMarketCreditsTotal} ");
+                    await FollowupAsync("React :thumbsup: when you pickup your items.");
+                }
+                else
+                {
+                    await FollowupAsync($"{sUserNickname} {TransactionType} of {Amount.ToString("N0")} is complete");
+                }
+            }
+            else
+            {
+                await RespondAsync($"You need perms to do this ya bum.",null,false,true,null,null,null,null);
+            }
+        }
+
+        [SlashCommand("regear", "Submit a regear")]
+        public async Task RegearSubmission(int EventID, SocketGuildUser callerName, EventTypeEnum EventType, SocketGuildUser mentor = null)
+        {
+            List<string> args = new List<string>();
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
             RegearModule regearModule = new RegearModule();
@@ -293,6 +386,7 @@ namespace CommandModule
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
             string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
 
+            bool bRegearAllowed = true;
 
             if (sUserNickname.Contains("!sl"))
             {
@@ -315,60 +409,62 @@ namespace CommandModule
                 PlayerId = PlayerEventData.Victim.Id,
                 PlayerName = PlayerEventData.Victim.Name
             });
-
-            //Check If The Player Got 5 Regear Or Not
-            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+          
+            if (EventType == EventTypeEnum.SpecialEvent)
             {
-                //CheckToSeeIfRegearHasAlreadyBeenClaimed
-                if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
+                bRegearAllowed = true;
+            }
+            else if ((guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) && mentor == null)
+            {
+                await RespondAsync($"Hey bud. You need to submit your regear with your mentor tagged. They are the optional choice at the end of the command. ", null, false, true);
+                bRegearAllowed = false;
+            }
+            else if (mentor != null && !mentor.Roles.Any(x => x.Id == 1049889855619989515) && (guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")))
+            {
+                await RespondAsync($"Cleary you need a mentor you idiot. Make sure you select an ACTUAL mentor", null, false, true);
+                bRegearAllowed= false;
+            }
+
+            if (bRegearAllowed)
+            { 
+                if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                 {
-                    if (PlayerEventData != null)
+                    if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
                     {
-                        var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
-
-                        if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                        if (PlayerEventData != null)
                         {
-                            await DeferAsync();
+                            var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-                            if (PlayerEventData.groupMemberCount >= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                            if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                             {
-                                await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "ZVZ content", moneyType);
+                                await DeferAsync();
+
+                                await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, EventType, moneyType, mentor);
                                 await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
 
+                                await FollowupAsync("Regear Submission Complete", null, false, true);
+                                await DeleteOriginalResponseAsync();
                             }
-                            else if (PlayerEventData.groupMemberCount <= 20 && PlayerEventData.BattleId != PlayerEventData.EventId)
+                            else
                             {
-                                await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "Small group content", moneyType);
-                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
+                                await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Victim.Name}", null));
                             }
-                            else if (PlayerEventData.BattleId == 0 || PlayerEventData.BattleId == PlayerEventData.EventId)
-                            {
-                                await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, "Solo or small group content", moneyType);
-                                await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
-                            }
-
-                            await FollowupAsync("Regear Submission Complete", null, false, true);
-                            await DeleteOriginalResponseAsync();
                         }
                         else
                         {
-                            await RespondAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Victim.Name}. Ask the Regear team if there's an issue.", null, false, true);
-                            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Victim.Name}", null));
+                            await RespondAsync("Event info not found. Please verify Kill ID or event has expired.", null, false, true);
                         }
                     }
                     else
                     {
-                        await RespondAsync("Event info not found. Please verify Kill ID or event has expired.", null, false, true);
+                        await RespondAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam the guild and steal money. You can't submit another regear for same death. :middle_finger: ", null, false, true);
                     }
                 }
                 else
                 {
-                    await RespondAsync($"You dumbass <@{Context.User.Id}>. Don't try to scam the guild and steal money. You can't submit another regear for same death. :middle_finger: ", null, false, true);
+                    await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
                 }
-            }
-            else
-            {
-                await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, false);
             }
         }
 
@@ -382,7 +478,7 @@ namespace CommandModule
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
             {
                 dataBaseService = new DataBaseService();
 
@@ -395,9 +491,10 @@ namespace CommandModule
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
 
-                var guildUsertest = Context.Guild.GetUser(regearPoster);
+                var guildUsertest = Context.Guild.GetUser(regearPoster); // user must be online for it to work.
                 
                 await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
+
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
@@ -418,23 +515,26 @@ namespace CommandModule
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             string callername = Regex.Replace(interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.ToString(), @"\p{C}+", string.Empty);
             int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
-            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
+            ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
+            string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value.ToString();
+            string? mentor = (interaction.Message.Embeds.Count >= 8) ? interaction.Message.Embeds.FirstOrDefault().Fields[8].Value.ToString() : null  ;
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
-                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, MoneyTypes.ReGear);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, eventType, MoneyTypes.ReGear);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
 
-                
-                if (Context.Guild.GetUser(regearPoster).Roles.Any(r => r.Name == "Free Regear - Eligible"))
+                IReadOnlyCollection<Discord.Rest.RestGuildUser> guildUsers = await Context.Guild.SearchUsersAsync(victimName);
+
+                if (guildUsers.Any(x => x.RoleIds.Any(x => x == 1052241667329118349)) || Context.Guild.GetUser(regearPosterID).Roles.Any(r => r.Name == "Free Regear - Eligible"))
                 {
-                    await Context.Guild.GetUser(regearPoster).RemoveRoleAsync(1052241667329118349);
+                    await Context.Guild.GetUser(regearPosterID).RemoveRoleAsync(1052241667329118349);
                 }
 
-                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"<@{Context.Guild.GetUser(regearPoster).Id}> your regear https://albiononline.com/en/killboard/kill/{killId} has been approved! ${refundAmount.ToString("N0")} has been added to your paychex");
+                await Context.Guild.GetUser(regearPosterID).SendMessageAsync($"<@{Context.Guild.GetUser(regearPosterID).Id}> your regear https://albiononline.com/en/killboard/kill/{killId} has been approved! ${refundAmount.ToString("N0")} has been added to your paychex");
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear {killId} for {victimName} ", null));
             }
@@ -487,14 +587,137 @@ namespace CommandModule
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
             }          
         }
-        [SlashCommand("view-paychex","Views your current paychex amount")]
-        public async Task GetCurrentPaychexAmount()
-        {
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
-            string returnValue = GoogleSheetsDataWriter.GetCurrentPaychexAmount(sUserNickname);
 
-            await RespondAsync($"Your current paychex total is ${returnValue}",null,false,true);
+        [SlashCommand("regear-oc", "Submit a OC-break regear")]
+        public async Task RegearOCSubmission(string items, SocketGuildUser callerName, EventTypeEnum enumEventType, int? a_iEstimatedGearPrice = null)
+        {
+
+            PlayerDataLookUps eventData = new PlayerDataLookUps();
+            RegearModule regearModule = new RegearModule();
+            var guildUser = (SocketGuildUser)Context.User;
+
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+            string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
+            
+            if (sUserNickname.Contains("!sl"))
+            {
+                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+            }
+
+            if (sCallerNickname.Contains("!sl"))
+            {
+                sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
+            }
+
+            var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
+            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
+
+            dataBaseService = new DataBaseService();
+
+            await dataBaseService.AddPlayerInfo(new Player
+            {
+                PlayerId = PlayerEventData.Id,
+                PlayerName = PlayerEventData.Name
+            });
+
+
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
+
+            
+            
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
+            {
+                await DeferAsync();
+                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
+
+                if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                {
+                    await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak, enumEventType);
+                    await Context.User.SendMessageAsync($"Your OC Break ID:{regearModule.RegearQueueID} has been submitted successfully.");
+
+                    await FollowupAsync("Regear Submission Complete", null, false, true);
+                    await DeleteOriginalResponseAsync();
+                }
+                else
+                {
+                    await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                    await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Name}", null));
+                }
+            }
+            else
+            {
+                await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, true);
+            }
+
         }
+
+        [ComponentInteraction("oc-approve")]
+        public async Task OCApproved()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+            var interaction = Context.Interaction as IComponentInteraction;
+
+            string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString();
+            string callername = Regex.Replace(interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString(), @"\p{C}+", string.Empty);
+            int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[2].Value);
+            string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.ToString();
+            ulong queueID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+            
+
+            PlayerDataLookUps eventData = new PlayerDataLookUps();
+
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            {
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, eventType, MoneyTypes.OCBreak);
+                await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+
+                await Context.Guild.GetUser(regearPosterID).SendMessageAsync($"Your OC Break {queueID} has been approved by {sUserNickname}! ${refundAmount.ToString("N0")} has been added to your paychex");
+                await _logger.Log(new LogMessage(LogSeverity.Info, "OC Break Approved", $"User: {Context.User.Username}, Approved the regear {queueID} for {victimName} ", null));
+            }
+            else
+            {
+                await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.", null, false, true);
+            }
+        }
+
+        [ComponentInteraction("oc-deny")]
+        public async Task OCDenied()
+        {
+            var guildUser = (SocketGuildUser)Context.User;
+
+            var interaction = Context.Interaction as IComponentInteraction;
+            string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString();
+            var iQueueID = interaction.Message.Embeds.FirstOrDefault().Fields[4].Value;
+            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            {
+                dataBaseService = new DataBaseService();
+
+                try
+                {
+                    dataBaseService.DeletePlayerLootByQueueId(iQueueID.ToString());
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
+                }
+
+                var guildUsertest = Context.Guild.GetUser(regearPoster);
+
+                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"OC Regear {iQueueID} was denied.");
+                await _logger.Log(new LogMessage(LogSeverity.Info, "OC Regear Denied", $"User: {Context.User.Username}, Denied regear {iQueueID} for {victimName} ", null));
+
+                await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+            }
+            else
+            {
+                await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
+            }
+        }
+
         [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
         public async Task SplitLoot()
         {
@@ -514,8 +737,8 @@ namespace CommandModule
 
             //strings for python.exe path and the tessaract python script (with the downloaded image as argument)
             string cmd = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\venv\\Scripts\\Python.exe";
-            string pythArgs = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\main.py " +
-            lootSplitMod.freeBeerDirectory + "\\Temp\\image1.png";
+            string pythArgs = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\main.py " + lootSplitMod.freeBeerDirectory + "\\Temp\\image1.png";
+
             for (int n = 2; n < lootSplitMod.imageCount; n++)
             {
                 pythArgs += " " + lootSplitMod.freeBeerDirectory + "\\Temp\\image" + n.ToString() + ".png";

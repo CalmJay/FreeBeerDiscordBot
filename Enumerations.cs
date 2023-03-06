@@ -4,15 +4,21 @@ using System.Text;
 
 namespace DiscordBot.Enums
 {
-    //public enum Enumerations
-    //{
-    //    ReGear,
-    //    LootSplit,
-    //    Other,
-    //    OCBreak,
-    //    FocusSale,
-    //    Hellgates,
-    //}
+    public enum EventTypeEnum
+    {
+        Castle,
+        Chest,
+        Ganking,
+        Hellgates,
+        Hideout,
+        Mages,
+        Orb,
+        Other,
+        SpecialEvent,
+        Territory,
+        Vortex,
+        DrinkingBeer
+    }
 
     public enum AlbionAPIDataTypesEnum
     {
@@ -75,5 +81,15 @@ namespace DiscordBot.Enums
         Support,
         Healer,
         Unknown
+    }
+
+    public enum MiniMarketType
+    {
+        Purchase,
+        Deposit,
+        Withdrawal,
+        CreditsTransfer,
+        AccountSetup,
+        Other
     }
 }
