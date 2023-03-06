@@ -49,7 +49,6 @@ namespace CommandModule
             _logger = logger;
         }
 
-
         [SlashCommand("get-player-info", "Search for Player Info")]
         public async Task GetBasicPlayerInfo(string a_sPlayerName)
         {
@@ -63,25 +62,17 @@ namespace CommandModule
                 var embed = new EmbedBuilder()
                 .WithTitle($"Player Search Results")
                 .AddField("Player Name", (playerInfo.Name == null) ? "No info" : playerInfo.Name, true)
-                //.AddField("Player ID: ", (playerInfo.Id == null) ? "No info" : playerInfo.Id, true)
-
                 .AddField("Kill Fame", (playerInfo.KillFame == 0) ? 0 : playerInfo.KillFame)
                 .AddField("Death Fame: ", (playerInfo.DeathFame == 0) ? 0 : playerInfo.DeathFame, true)
-
                 .AddField("Guild Name ", (playerInfo.GuildName == null || playerInfo.GuildName == "") ? "No info" : playerInfo.GuildName, true)
-                //.AddField("Guild ID: ", (playerInfo.GuildId == null || playerInfo.GuildId == "") ? "No info" : playerInfo.GuildId, true)
-
-                    .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
-                //.AddField("Alliance ID", (playerInfo.AllianceId == null || playerInfo.AllianceId == "") ? "No info" : playerInfo.AllianceId, true);
+                .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
 
                 await RespondAsync(null, null, false, true, null, null, null, embed.Build());
             }
-
             catch (Exception ex)
             {
                 await RespondAsync("Player info not found");
             }
-
         }
 
         [SlashCommand("register", "Register player to Free Beer guild")]
@@ -122,7 +113,7 @@ namespace CommandModule
                 });
 
                 await user.AddRoleAsync(newMemberRole);
-                await user.AddRoleAsync(freeRegearRole);//free regear role
+                await user.AddRoleAsync(freeRegearRole);
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
 
@@ -131,14 +122,12 @@ namespace CommandModule
 
                 var embed = new EmbedBuilder()
                .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
-               //.WithImageUrl($"attachment://logo.png")
                .WithDescription("We're glad to have you. Please checkout the following below.")
                .AddField($"Don't get kicked", "<#995798935631302667>")
                .AddField($"General info / location of the guild stuff", "<#880598854947454996>")
                .AddField($"Regear program", "<#970081185176891412>")
                .AddField($"ZVZ builds", "<#906375085449945131>")
                .AddField($"Before you do ANYTHING else", "Your existence in the guild relies you on reading these");
-                //.AddField(new EmbedFieldBuilder() { Name = "This is the name field? ", Value = "This is the value in the name field" });
 
                 await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}>", false, embed.Build());
 
@@ -165,11 +154,11 @@ namespace CommandModule
         {
             var testuser = Context.User.Id;
             string? sPlayerData = null;
-            var sPlayerAlbionId = new PlayerDataLookUps().GetPlayerInfo(Context, null); //either get from google sheet or search in albion API;
+            var sPlayerAlbionId = new PlayerDataLookUps().GetPlayerInfo(Context, null);
             string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).Nickname != null) ? (Context.Interaction.User as SocketGuildUser).Nickname : Context.Interaction.User.Username;
 
             int iDeathDisplayCounter = 1;
-            int iVisibleDeathsShown = Int32.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths //Add to config
+            int iVisibleDeathsShown = Int32.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths. Adjust in config
 
             if (sPlayerAlbionId.Result != null)
             {
@@ -179,8 +168,7 @@ namespace CommandModule
                     {
                         sPlayerData = await response.Content.ReadAsStringAsync();
                         var parsedObjects = JArray.Parse(sPlayerData);
-                        //TODO: Add killer and date of death
-
+                        var component = new ComponentBuilder();
                         var searchDeaths = parsedObjects.Children<JObject>()
                         .Select(jo => (int)jo["EventId"])
                         .ToList();
@@ -195,9 +183,7 @@ namespace CommandModule
                             Style = ButtonStyle.Secondary
                         };
 
-                        var component = new ComponentBuilder();
-
-
+                        
                         for (int i = 0; i < searchDeaths.Count; i++)
                         {
                             if (i <= iVisibleDeathsShown)
@@ -213,7 +199,6 @@ namespace CommandModule
                         }
                         //await RespondAsync(null, null, false, true, null, null, component.Build(), embed.Build()); //Enable once buttons are working
                         await RespondAsync(null, null, false, true, null, null, null, embed.Build());
-
                     }
                     else
                     {
@@ -280,8 +265,6 @@ namespace CommandModule
             {
                 await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
             }
-
-
         }
 
         [SlashCommand("blacklist", "Put a player on the shit list")]
@@ -344,9 +327,7 @@ namespace CommandModule
         {
             await DeferAsync();
             await _logger.Log(new LogMessage(LogSeverity.Info, "Render Paychex", $"User: {Context.User.Username}, Command: render-paychex", null));
-
-            await GoogleSheetsDataWriter.RenderPaychex(Context);        
-            
+            await GoogleSheetsDataWriter.RenderPaychex(Context);                  
         }
 
         [SlashCommand("transfer-paychex", "Convert your current paychex to Mini Mart credits")]
@@ -362,13 +343,9 @@ namespace CommandModule
 
         [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
         public async Task MiniMartTransactions(SocketGuildUser GuildUser, int Amount, MiniMarketType TransactionType)
-        {
-            
+        {          
             string? sManagerNickname = ((Context.User as SocketGuildUser).Nickname != null)  ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
             string? sUserNickname = (GuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(GuildUser.Nickname) : GuildUser.Username;
-
-            //var miniMarketCreditsTotal = Convert.ToInt32(GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname).Replace(",", "").Replace("$", ""));
-
             
             if (GuildUser.Roles.Any(r => r.Name == "AO - Officers")|| GuildUser.Roles.Any(r => r.Name == "AO - HO Manager") || GuildUser.Roles.Any(r => r.Name == "AO - Minimart"))
             {
@@ -411,7 +388,6 @@ namespace CommandModule
 
             bool bRegearAllowed = true;
 
-
             if (sUserNickname.Contains("!sl"))
             {
                 sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
@@ -433,8 +409,7 @@ namespace CommandModule
                 PlayerId = PlayerEventData.Victim.Id,
                 PlayerName = PlayerEventData.Victim.Name
             });
-
-            
+          
             if (EventType == EventTypeEnum.SpecialEvent)
             {
                 bRegearAllowed = true;
@@ -449,8 +424,6 @@ namespace CommandModule
                 await RespondAsync($"Cleary you need a mentor you idiot. Make sure you select an ACTUAL mentor", null, false, true);
                 bRegearAllowed= false;
             }
-
-            
 
             if (bRegearAllowed)
             { 
@@ -518,7 +491,7 @@ namespace CommandModule
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
 
-                var guildUsertest = Context.Guild.GetUser(regearPoster); // this could be null due to the regearposter number.
+                var guildUsertest = Context.Guild.GetUser(regearPoster); // user must be online for it to work.
                 
                 await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
 

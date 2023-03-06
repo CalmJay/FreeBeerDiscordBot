@@ -255,9 +255,6 @@ namespace GoogleSheetsData
 
             IList<IList<object>> rowValues = serviceValues.Get(RegearSheetID, $"Payouts!B4:B").Execute().Values;
 
-
-            //var rowValues = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!R2C1:R305C2").Execute().Values;
-
             int i = 0;
             foreach (var users in rowValues)
             {
@@ -531,7 +528,7 @@ namespace GoogleSheetsData
                 }
                 await a_SocketGuildUser.SendMessageAsync($"Your Paychex have successfully been transfered to mini-mart credits. Total: {cleanupedTotal}");
             }
-            else if (paychexRunningTotal[0].Contains("(CLAIMED"))
+            else if (paychexRunningTotal[0].Contains("(CLAIMED)"))
             {
                 await a_SocketGuildUser.SendMessageAsync("You already claimed or transferred your paychex");
             }
