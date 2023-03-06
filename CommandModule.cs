@@ -304,6 +304,7 @@ namespace CommandModule
         [SlashCommand("view-paychex", "Views your current paychex amount")]
         public async Task GetCurrentPaychexAmount()
         {
+            
             await DeferAsync(true);
             await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
@@ -312,29 +313,36 @@ namespace CommandModule
                 sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
             }
 
-            List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
-            string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
-
-            if(paychexRunningTotal.Count > 0)
+            if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
             {
-                var embed = new EmbedBuilder()
-                .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
-                .AddField("Last weeks Paychex total", $"${paychexRunningTotal[0]:n0}")
-                .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
-                .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}");
-                
-                await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
+                List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
+                string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+
+                if (paychexRunningTotal.Count > 0)
+                {
+                    var embed = new EmbedBuilder()
+                    .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
+                    .AddField("Last weeks Paychex total", $"${paychexRunningTotal[0]:n0}")
+                    .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
+                    .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}");
+
+                    await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
+                }
+                else
+                {
+                    await RespondAsync("Sorry you don't seem to be registed. Ask for a @AO - REGEARS officer to get you squared away.", null, false, true);
+                }
             }
             else
             {
-                await RespondAsync("Sorry you don't seem to be registed. Ask for a @AO - REGEARS officer to get you squared away.", null, false, true);
+                await FollowupAsync("Looks like your not fully registered to the guild. Please contact a recruiter or officer to fix the issue.", null, false, true);
             }
-
         }
 
         [SlashCommand("render-paychex", "If you don't know what this means at this point don't use it")]
         public async Task RenderPaychex()
         {
+            await DeferAsync();
             await _logger.Log(new LogMessage(LogSeverity.Info, "Render Paychex", $"User: {Context.User.Username}, Command: render-paychex", null));
 
             await GoogleSheetsDataWriter.RenderPaychex(Context);        

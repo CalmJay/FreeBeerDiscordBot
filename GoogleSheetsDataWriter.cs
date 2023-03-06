@@ -218,8 +218,6 @@ namespace GoogleSheetsData
             var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
             update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
             await update.ExecuteAsync();
-
-
         }
 
         public static async Task RegisterUserToRegearSheets(SocketGuildUser a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
@@ -250,6 +248,30 @@ namespace GoogleSheetsData
                 Console.WriteLine(ex.ToString()); 
             }
         }
+
+        public static bool GetRegisteredUser(string a_sUserName)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+
+            IList<IList<object>> rowValues = serviceValues.Get(RegearSheetID, $"Payouts!B4:B").Execute().Values;
+
+
+            //var rowValues = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!R2C1:R305C2").Execute().Values;
+
+            int i = 0;
+            foreach (var users in rowValues)
+            {
+                if (users[0].ToString().ToLower() == a_sUserName.ToLower())
+                {
+                    return true;
+                }
+
+                i++;
+            }
+
+            return false;
+        }
+
 
         public static List<string> GetRunningPaychexTotal(string a_sUserName)
         {
@@ -324,7 +346,6 @@ namespace GoogleSheetsData
         public static string GetMiniMarketCredits(string a_sUserName)
         {
             var serviceValues = GetSheetsService().Spreadsheets.Values;
-            string returnValue = "0";
 
             ReadRange = $"Mini-Market Credits!A2:A305";
 
@@ -335,18 +356,18 @@ namespace GoogleSheetsData
             {
                 if (users[0].ToString().ToLower() == a_sUserName.ToLower())
                 {
-                    returnValue = users.Last().ToString();
-                    break;
+                    return  users.Last().ToString();
                 }
 
                 i++;
             }
 
-            return returnValue;
+            return "$0 (NOT ENROLLED)";
         }
 
         public static async Task RenderPaychex(SocketInteractionContext a_socketInteraction)
         {
+            
             var serviceValues = GetSheetsService().Spreadsheets;
 
             SocketGuildUser socketGuildUser = (SocketGuildUser)a_socketInteraction.User;
@@ -369,12 +390,18 @@ namespace GoogleSheetsData
             });
 
             var req = serviceValues.BatchUpdate(batchUpdateSpreadsheetRequest, RegearSheetID);  //public SheetsService Service; property of parent class
-
+            
             if (!CheckIfSheetExists(paychexRenderedName))
             {
                 BatchUpdateSpreadsheetResponse response = req.Execute();
 
                 ////COPY DATA FROM Payouts TO Newly Rendered Paychex sheet
+                
+                //List<object> DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
+                //IList<IList<object>> rowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R3C2:R350C{DaterowValues.Count}").Execute().Values;
+
+
+
                 //List<string> GuildMembersNames = null;
                 //List<int> GuildMembersAmounts = null;
 
@@ -438,7 +465,7 @@ namespace GoogleSheetsData
 
 
 
-                await a_socketInteraction.Interaction.RespondAsync($"Paychex rendered. Sheet is called {paychexRenderedName}", null, false, true);
+                await a_socketInteraction.Interaction.FollowupAsync($"Paychex rendered. Sheet is called {paychexRenderedName}", null, false, true);
             }
             else
             {
