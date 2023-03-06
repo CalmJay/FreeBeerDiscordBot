@@ -1,6 +1,8 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
 using DiscordbotLogging.Log;
+using GoogleSheetsData;
 using PlayerData;
 using System;
 using System.Collections.Generic;
@@ -8,6 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using static PlayerData.PlayerDataHandler;
 
 namespace DNet_V3_Tutorial
@@ -77,7 +80,7 @@ namespace DNet_V3_Tutorial
                 $"<@{Context.User.Id}>....I guess you prove that even god makes mistakes sometimes.",
                 $"<@{Context.User.Id}> Last night I heard you went to a gathering CTA and MrAlbionOnline ganked you.",
                 $"<@{Context.User.Id}>....Your family tree must be a cactus because everybody on it is a prick.",
-                $"I hear Savage is recruiting <@{Context.User.Id}>. You meet their PVE expecations.",
+                $"I hear ARCH is recruiting <@{Context.User.Id}>. You meet their PVE expecations.",
                 $"https://www.youtube.com/watch?v=xfr64zoBTAQ&t=3s",
                 $"I'd slap you but that'd be animal abuse",
                 $"Don't worry bud. We saw you die in that 8.3 set to ARCH. That's why were now raising the requirements on IQ",
@@ -105,22 +108,22 @@ namespace DNet_V3_Tutorial
                 $"You know all the shotcallers have you muted right?",
                 $"Congratulations!!! You have found the mystery insult.",
                 $"You should of bought a pair of Nutmollers boots.",
-                $"Image",
+                $"Whoever told you to be yourself gave you bad advice",
                 $"Paychex",
                 $"Thanks for your opinion, no1 cares",
                 $"Gif",
                 //$"SlotMachine",
-                //$"Gif",
-                //$"Gif",
-                //$"Gif",
-                //$"Gif",
-
+                $"You do realize we're just tolerating you, right?",
+                $"It's all about balance… you start talking, I stop listening.",
+                $"You're the reason this country has to put directions on shampoo bottles.",
+                $"Don't worry… the first 40 years of childhood are always the hardest.",
+                $"I was thinking about you today. It reminded me to take out the trash.",
+                $"You are the human equivalent of a participation award",
+                //$"Directions"
             };
             int r = rnd.Next(insultList.Count);
 
-            // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
             await _logger.Log(new LogMessage(LogSeverity.Info, "Insult Time!!!", $"User: {Context.User.Username}, Command: insult", null));
-            // Respond to the user
 
             switch ((string)insultList[r])
             {
@@ -148,8 +151,25 @@ namespace DNet_V3_Tutorial
                 case "Gif":
                     await RespondAsync("https://tenor.com/view/aqua-teen-hunger-force-carl-mooning-peek-a-boo-gif-17477491");
                     break;
-                case "SlotMachine":
-                    await RespondAsync("");
+                case "Directions":
+                    await DeferAsync();
+                    string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+                    string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+
+                    await RespondAsync("I hear you can't follow directions. Lets put it to the test...");
+                    await FollowupAsync($"I see you have {miniMarketCreditsTotal} mini-mart credits.");
+
+                    var directionsButton = new ButtonBuilder()
+                    {
+                        Label = "DANGER DON'T PUSH!!!",
+                        CustomId = "directions",
+                        Style = ButtonStyle.Danger
+                    };
+
+
+                    var component = new ComponentBuilder();
+                    component.WithButton(directionsButton);
+                    
                     break;
                 //$"attachment://image.jpg"
                 default:
@@ -188,6 +208,18 @@ namespace DNet_V3_Tutorial
 
             //WriteToCSV(usersreacted);
             //Console.WriteLine("Reactions grabbed");
+        }
+
+        [ComponentInteraction("directions")]
+        public async Task directionsButton()
+        {
+            await DeferAsync();
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+            string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+            await ReplyAsync($"Donating 10% of your paychex to the Learn how to read foundation. {miniMarketCreditsTotal}" );
+            
+
+            
         }
 
         public void WriteToCSV(List<string>UsersList)

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using DiscordBot.Enums;
 using Discord;
+using Microsoft.EntityFrameworkCore;
 
 namespace DiscordBot.Services
 {

@@ -52,13 +52,14 @@ namespace DiscordBot.LootSplitModule
 
             //scrape thread for image uploads
             var msgsIterable = context.Channel.GetMessagesAsync().ToListAsync().Result.ToList();
-
+            
             //create and fill list with n urls from channel
             List<string> msgsUrls = new List<string>();
 
             ////NEED FIX TO GET ALL ATTACHMENTS FROM EACH MESSAGE INSTEAD OF JUST 1
             foreach (var msg in msgsIterable.FirstOrDefault())
             {
+                
                 if (msg.Attachments.FirstOrDefault() != null)
                 {
                     msgsUrls.Add(msg.Attachments.FirstOrDefault().Url);
