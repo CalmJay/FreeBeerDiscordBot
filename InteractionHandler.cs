@@ -4,6 +4,8 @@ using Discord.WebSocket;
 using System.Reflection;
 using System;
 using System.Threading.Tasks;
+using GoogleSheetsData;
+using PlayerData;
 
 namespace InteractionHandlerService
 {
@@ -12,7 +14,9 @@ namespace InteractionHandlerService
         private readonly DiscordSocketClient _client;
         private readonly InteractionService _commands;
         private readonly IServiceProvider _services;
+        private ulong HQMiniMarketChannelID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
 
+        private ulong ChannelThreadId { get; set; }
         // Using constructor injection
         public InteractionHandler(DiscordSocketClient client, InteractionService commands, IServiceProvider services)
         {
@@ -28,13 +32,14 @@ namespace InteractionHandlerService
 
             // Process the InteractionCreated payloads to execute Interactions commands
             _client.InteractionCreated += HandleInteraction;
+            _client.ThreadCreated += ThreadCreationExecuted;
 
             // Process the command execution results 
             _commands.SlashCommandExecuted += SlashCommandExecuted;
             _commands.ContextCommandExecuted += ContextCommandExecuted;
             _commands.ComponentCommandExecuted += ComponentCommandExecuted;
             _commands.ModalCommandExecuted += ModalCommandExecuted;
-            
+
         }
 
         private Task ComponentCommandExecuted(ComponentCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
@@ -54,6 +59,23 @@ namespace InteractionHandlerService
         private Task ModalCommandExecuted(ModalCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
         {
             return Task.CompletedTask;
+        }
+
+        
+        private async Task ThreadCreationExecuted (SocketThreadChannel arg)
+        {    
+            string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
+            if (sUserNickname.Contains("!sl"))
+            {
+                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+            }
+
+            if (arg.ParentChannel.Id == HQMiniMarketChannelID && ChannelThreadId != arg.Owner.Thread.Id)
+            {
+                ChannelThreadId = arg.Owner.Thread.Id;
+                string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+                await arg.SendMessageAsync($"{sUserNickname} Mini market credits balance: {miniMarketCreditsTotal}");
+            }
         }
 
         private async Task HandleInteraction(SocketInteraction arg)

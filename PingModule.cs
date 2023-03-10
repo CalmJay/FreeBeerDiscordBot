@@ -91,7 +91,7 @@ namespace DNet_V3_Tutorial
                 $"TwoLiner",
                 $"SuperBad",
                 $"Bum",
-                //$"<@{Context.User.Id}> I checked your stats. I think your in the wrong guild? Here let me point you to the correct one. https://discord.com/invite/v7XCS9ZVaU",
+                $"<@{Context.User.Id}> I checked your stats. I think your in the wrong guild? Here let me point you to a spot I know a few that fit your caliber. https://discord.gg/archgayy",
                 $"I'm not saying you're fat <@{Context.User.Id}>, but it looks like you were poured into your clothes and forgot to say when",
                 $"You couldn't pour the water out of a boot if the instructions were written on the heel.",
                 $"Everyone who's ever loved you was wrong.",

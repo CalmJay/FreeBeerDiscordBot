@@ -12,10 +12,6 @@ using System.Threading.Tasks;
 using Discord.Interactions;
 using MarketData;
 using DiscordBot.Models;
-using Aspose.Words.Lists;
-using Newtonsoft.Json;
-using Microsoft.EntityFrameworkCore.Internal;
-using System.Security.Cryptography.X509Certificates;
 
 namespace DiscordBot.RegearModule
 {
@@ -27,23 +23,19 @@ namespace DiscordBot.RegearModule
         private int silverTierRegearCap = 1300000;
         private int bronzeTierRegearCap = 1000000;
         private int shitTierRegearCap = 600000;
-        private int iTankMinimumIP = 1450;
+        private int iTankMinimumIP = 1400;
         private int iDPSMinimumIP = 1450;
         private int iHealerMinmumIP = 1350;
         private int iSupportMinimumIP = 1350;
 
         public double TotalRegearSilverAmount { get; set; }
         public ulong RegearQueueID { get; set; }
-        private ClassType eRegearClassType { get; set; }
-
         private string regearRoleIcon { get; set; }
 
 
         public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
         {
-            ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
-
-            var chnl = command.Client.GetChannel(id) as IMessageChannel;
+            var chnl = command.Client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"))) as IMessageChannel;
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, a_EventData);
 
             var converter = new HtmlConverter();
@@ -131,7 +123,7 @@ namespace DiscordBot.RegearModule
                         embed.Color = Color.Green;
                     }
 
-                    //Check for if Siphoned Energy is in players inventory\
+                    //Check for if Siphoned Energy is in players inventory
                     foreach (var item in a_EventData.Victim.Inventory)
                     {
                         if (item != null && item.Type == "UNIQUE_GVGTOKEN_GENERIC")
@@ -237,11 +229,10 @@ namespace DiscordBot.RegearModule
 
             if (socketInteractionUser.User is SocketGuildUser guildUser)
             {
-                if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible" || r.Name == "Bronze Tier Regear - Elligible")) || (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID)))
+                if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible" || r.Name == "Bronze Tier Regear - Elligible") || guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID))
                 {
                     return true;
                 }
-                //ADD BRONZE REGEAR LOGIC
             }
             return true;
 
@@ -250,7 +241,7 @@ namespace DiscordBot.RegearModule
         public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Rootobject a_Playerdata)
         {
             double returnValue = 0;
-            string sMarketLocation = "Bridgewatch,BridgewatchPortal,Caerleon,FortSterling,FortSterling,Lymhurst,LymhurstPortal,Martlock,martlockportal,Thetford,Thetfordportal";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
+            string sMarketLocation = System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all selling locations market data will be pulled
             var guildUser = (SocketGuildUser)command.User;
             var regearIconType = "";
             PlayerDataHandler.Equipment1 victimEquipment = a_Playerdata.Victim.Equipment;
@@ -359,7 +350,6 @@ namespace DiscordBot.RegearModule
                             var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
                             returnValue += equipmentFetchPrice;
                             underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
-                            //underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                         }
                     }
                     else
@@ -368,7 +358,6 @@ namespace DiscordBot.RegearModule
                         var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
                         returnValue += equipmentFetchPrice;
                         underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
-                        //underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                     }
                 }
                 else
@@ -378,7 +367,6 @@ namespace DiscordBot.RegearModule
 
                     returnValue += equipmentFetchPrice;
                     underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
-                    //underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                 }
             }
 
@@ -707,7 +695,7 @@ namespace DiscordBot.RegearModule
         private bool IsRegearSupportClass(string a_sGearItem)
         {
 
-            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("FLAIL") || a_sGearItem.Contains("ENIGMATICORB") || a_sGearItem.Contains("CURSEDSTAFF"))
+            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("ENIGMATICORB") || a_sGearItem.Contains("CURSEDSTAFF"))
             {
                 return true;
             }
@@ -809,19 +797,19 @@ namespace DiscordBot.RegearModule
 
             var guildUser = (SocketGuildUser)a_SocketContext.User;
 
-            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
+            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible"))
             {
                 return true;
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible"))
             {
                 return true;
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible"))
             {
                 return true;
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible"))
             {
                 return true;
             }

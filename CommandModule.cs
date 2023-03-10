@@ -16,21 +16,8 @@ using DiscordBot.RegearModule;
 using MarketData;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.IO;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using System.Runtime.CompilerServices;
-using System.Collections.ObjectModel;
 using DiscordBot.LootSplitModule;
-using System.Diagnostics;
 using Microsoft.Data.SqlClient;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using Discord.Commands;
-using Microsoft.VisualBasic;
-using Aspose.Imaging.FileFormats.Emf.EmfPlus.Consts;
-using Aspose.Words.Fields;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using System.Data;
 
 namespace CommandModule
@@ -43,6 +30,7 @@ namespace CommandModule
         private static Logger _logger;
         private DataBaseService dataBaseService;
         private static LootSplitModule lootSplitModule;
+        private SocketThreadChannel _thread;
 
         public CommandModule(ConsoleLogger logger)
         {
@@ -286,9 +274,7 @@ namespace CommandModule
 
         [SlashCommand("view-paychex", "Views your current paychex amount")]
         public async Task GetCurrentPaychexAmount()
-        {
-            
-            await DeferAsync(true);
+        {  
             await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
             if (sUserNickname.Contains("!sl"))
@@ -298,6 +284,7 @@ namespace CommandModule
 
             if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
             {
+                await DeferAsync(true);
                 List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
                 string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
 
@@ -335,10 +322,10 @@ namespace CommandModule
         {
             await _logger.Log(new LogMessage(LogSeverity.Info, "Mini-Mart Submit", $"User: {Context.User.Username}, Command: mm-transaction", null));
 
-            await DeferAsync();
+            await DeferAsync(true);
             await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
-            await FollowupAsync("Transfer Complete");
-            await DeleteOriginalResponseAsync();
+            await FollowupAsync("Transfer Complete", null, false, true);
+            
         }
 
         [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
@@ -346,10 +333,12 @@ namespace CommandModule
         {          
             string? sManagerNickname = ((Context.User as SocketGuildUser).Nickname != null)  ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
             string? sUserNickname = (GuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(GuildUser.Nickname) : GuildUser.Username;
-            
-            if (GuildUser.Roles.Any(r => r.Name == "AO - Officers")|| GuildUser.Roles.Any(r => r.Name == "AO - HO Manager") || GuildUser.Roles.Any(r => r.Name == "AO - Minimart"))
+            var socketUser = (SocketGuildUser)Context.User;
+
+            if (socketUser.Roles.Any(r => r.Name == "AO - Officers")|| socketUser.Roles.Any(r => r.Name == "AO - HO Manager") || socketUser.Roles.Any(r => r.Name == "AO - Minimart"))
             {
                 await DeferAsync();
+                await _logger.Log(new LogMessage(LogSeverity.Info, "mm Transaction", $"User: {Context.User.Username}, Command: mm-transaction", null));
                 await GoogleSheetsDataWriter.MiniMartTransaction(Context.User as SocketGuildUser, GuildUser, Amount, TransactionType);
 
                 var miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
