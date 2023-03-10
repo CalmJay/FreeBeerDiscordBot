@@ -4,6 +4,8 @@ using Discord.WebSocket;
 using System.Reflection;
 using System;
 using System.Threading.Tasks;
+using GoogleSheetsData;
+using PlayerData;
 
 namespace InteractionHandlerService
 {
@@ -28,13 +30,14 @@ namespace InteractionHandlerService
 
             // Process the InteractionCreated payloads to execute Interactions commands
             _client.InteractionCreated += HandleInteraction;
+            _client.ThreadCreated += ThreadCreationExecuted;
 
             // Process the command execution results 
             _commands.SlashCommandExecuted += SlashCommandExecuted;
             _commands.ContextCommandExecuted += ContextCommandExecuted;
             _commands.ComponentCommandExecuted += ComponentCommandExecuted;
             _commands.ModalCommandExecuted += ModalCommandExecuted;
-            
+
         }
 
         private Task ComponentCommandExecuted(ComponentCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
@@ -54,6 +57,25 @@ namespace InteractionHandlerService
         private Task ModalCommandExecuted(ModalCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
         {
             return Task.CompletedTask;
+        }
+
+        private ulong ChannelThreadId { get; set; }
+        private async Task ThreadCreationExecuted (SocketThreadChannel arg)
+        {
+            
+            string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
+            if (sUserNickname.Contains("!sl"))
+            {
+                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+            }
+
+            //return Task.CompletedTask;
+            if (arg.ParentChannel.Id == 1083448728632954950 && ChannelThreadId != arg.Owner.Thread.Id)
+            {
+                ChannelThreadId = arg.Owner.Thread.Id;
+                string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+                await arg.SendMessageAsync($"{sUserNickname} Mini market credits balance: {miniMarketCreditsTotal}");
+            }
         }
 
         private async Task HandleInteraction(SocketInteraction arg)

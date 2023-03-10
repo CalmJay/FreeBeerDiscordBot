@@ -18,10 +18,6 @@ namespace FreeBeerBot
     {
         public static DiscordSocketClient _client;
         private DataBaseService dataBaseService;
-        private int TotalRegearSilverAmount { get; set; }
-        private PlayerDataHandler.Rootobject PlayerEventData { get; set; }
-
-        private bool resetGuildCommands = true;
         ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
 
         // Program entry point
@@ -81,7 +77,7 @@ namespace FreeBeerBot
             _client.Log += _ => provider.GetRequiredService<ConsoleLogger>().Log(_);
             // Subscribe to slash command log events
             commands.Log += _ => provider.GetRequiredService<ConsoleLogger>().Log(_);
-
+            //_client.ThreadCreated += AuditThreadCreated;
             _client.Ready += async () =>
             {
                 //if (IsDebug())
