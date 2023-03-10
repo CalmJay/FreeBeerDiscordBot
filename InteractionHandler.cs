@@ -14,7 +14,9 @@ namespace InteractionHandlerService
         private readonly DiscordSocketClient _client;
         private readonly InteractionService _commands;
         private readonly IServiceProvider _services;
+        private ulong HQMiniMarketChannelID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
 
+        private ulong ChannelThreadId { get; set; }
         // Using constructor injection
         public InteractionHandler(DiscordSocketClient client, InteractionService commands, IServiceProvider services)
         {
@@ -59,18 +61,16 @@ namespace InteractionHandlerService
             return Task.CompletedTask;
         }
 
-        private ulong ChannelThreadId { get; set; }
+        
         private async Task ThreadCreationExecuted (SocketThreadChannel arg)
-        {
-            
+        {    
             string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
             if (sUserNickname.Contains("!sl"))
             {
                 sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
             }
 
-            //return Task.CompletedTask;
-            if (arg.ParentChannel.Id == 1083448728632954950 && ChannelThreadId != arg.Owner.Thread.Id)
+            if (arg.ParentChannel.Id == HQMiniMarketChannelID && ChannelThreadId != arg.Owner.Thread.Id)
             {
                 ChannelThreadId = arg.Owner.Thread.Id;
                 string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
