@@ -211,8 +211,7 @@ namespace DiscordBot.RegearModule
                                         .AddField("Discord User ID: ", command.User.Id, true)
                                         .WithImageUrl($"attachment://image.jpg");
 
-                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
-
+                    await command.Channel.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
                 }
             }
             catch (Exception ex)

@@ -467,7 +467,7 @@ namespace CommandModule
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible" || r.Id == regearPoster))
             {
                 dataBaseService = new DataBaseService();
 
@@ -611,9 +611,7 @@ namespace CommandModule
 
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
-
-            
-            
+   
             if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
             {
                 await DeferAsync();
@@ -653,7 +651,8 @@ namespace CommandModule
             string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.ToString();
             ulong queueID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
             ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
-            
+
+            PlayerEventData.Victim.Name = victimName;
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
@@ -681,7 +680,7 @@ namespace CommandModule
             var iQueueID = interaction.Message.Embeds.FirstOrDefault().Fields[4].Value;
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Id == regearPoster))
             {
                 dataBaseService = new DataBaseService();
 

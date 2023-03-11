@@ -84,11 +84,8 @@ namespace FreeBeerBot
                 //{
                 //    var guild = _client.GetGuild(GuildID);
 
-                //    if (resetGuildCommands)
-                //    {
-                //        await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
-                //        await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
-                //    }
+                //    await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+                //    await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
                 //    //guild.ModifyAsync()
                 //    // Id of the test guild can be provided from the Configuration object
                 //    await commands.RegisterCommandsToGuildAsync(GuildID);

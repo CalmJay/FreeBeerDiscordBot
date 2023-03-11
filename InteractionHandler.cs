@@ -14,7 +14,7 @@ namespace InteractionHandlerService
         private readonly DiscordSocketClient _client;
         private readonly InteractionService _commands;
         private readonly IServiceProvider _services;
-        private ulong HQMiniMarketChannelID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
+        private ulong HQMiniMarketChannelID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HQMiniMarketChannelID"));
 
         private ulong ChannelThreadId { get; set; }
         // Using constructor injection
