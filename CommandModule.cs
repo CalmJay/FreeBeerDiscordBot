@@ -467,7 +467,7 @@ namespace CommandModule
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible" || r.Id == regearPoster))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible") || regearPoster == guildUser.Id)
             {
                 dataBaseService = new DataBaseService();
 
@@ -652,16 +652,30 @@ namespace CommandModule
             ulong queueID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
             ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
 
-            PlayerEventData.Victim.Name = victimName;
+            PlayerDataHandler.Rootobject tempPlayerEventData = new PlayerDataHandler.Rootobject();
+
+            tempPlayerEventData.Victim = new()
+            {
+                Name = victimName
+            };
+
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
-                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, eventType, MoneyTypes.OCBreak);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, tempPlayerEventData, refundAmount, callername, eventType, MoneyTypes.OCBreak);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
 
-                await Context.Guild.GetUser(regearPosterID).SendMessageAsync($"Your OC Break {queueID} has been approved by {sUserNickname}! ${refundAmount.ToString("N0")} has been added to your paychex");
+                try
+                {
+                    await Context.Guild.GetUser(regearPosterID).SendMessageAsync($"Your OC Break {queueID} has been approved by {sUserNickname}! ${refundAmount.ToString("N0")} has been added to your paychex");
+                }
+                catch
+                {
+                    Console.WriteLine("DISCORD ERROR: 50007. User is blocking message from bot or has settings to preventing me to DM them");
+                }
+                
                 await _logger.Log(new LogMessage(LogSeverity.Info, "OC Break Approved", $"User: {Context.User.Username}, Approved the regear {queueID} for {victimName} ", null));
             }
             else
