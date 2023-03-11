@@ -641,6 +641,7 @@ namespace CommandModule
         [ComponentInteraction("oc-approve")]
         public async Task OCApproved()
         {
+            await DeferAsync();
             var guildUser = (SocketGuildUser)Context.User;
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
             var interaction = Context.Interaction as IComponentInteraction;
@@ -675,13 +676,15 @@ namespace CommandModule
                 {
                     Console.WriteLine("DISCORD ERROR: 50007. User is blocking message from bot or has settings to preventing me to DM them");
                 }
-                
+
                 await _logger.Log(new LogMessage(LogSeverity.Info, "OC Break Approved", $"User: {Context.User.Username}, Approved the regear {queueID} for {victimName} ", null));
             }
             else
             {
                 await RespondAsync($"Just because the button is green <@{Context.User.Id}> doesn't mean you can press it. Bug off.", null, false, true);
             }
+
+            await FollowupAsync("OC Approved. This thread can be deleted.");
         }
 
         [ComponentInteraction("oc-deny")]
@@ -694,22 +697,23 @@ namespace CommandModule
             var iQueueID = interaction.Message.Embeds.FirstOrDefault().Fields[4].Value;
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Id == regearPoster))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || regearPoster == guildUser.Id)
             {
                 dataBaseService = new DataBaseService();
 
                 try
                 {
                     dataBaseService.DeletePlayerLootByQueueId(iQueueID.ToString());
+                    var guildUsertest = Context.Guild.GetUser(regearPoster);
+
+                    await Context.Guild.GetUser(regearPoster).SendMessageAsync($"OC Regear {iQueueID} was denied.");
+                    
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
 
-                var guildUsertest = Context.Guild.GetUser(regearPoster);
-
-                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"OC Regear {iQueueID} was denied.");
                 await _logger.Log(new LogMessage(LogSeverity.Info, "OC Regear Denied", $"User: {Context.User.Username}, Denied regear {iQueueID} for {victimName} ", null));
 
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
