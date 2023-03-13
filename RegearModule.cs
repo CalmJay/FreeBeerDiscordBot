@@ -128,7 +128,16 @@ namespace DiscordBot.RegearModule
                     {
                         if (item != null && item.Type == "UNIQUE_GVGTOKEN_GENERIC")
                         {
-                            embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.First(z => z.Type == "UNIQUE_GVGTOKEN_GENERIC").Count}", true);
+                            var something = a_EventData.Victim.Inventory.Where(x => x.Type == "UNIQUE_GVGTOKEN_GENERIC");
+                            foreach (var stuff in a_EventData.Victim.Inventory)
+                            {
+                                if(stuff != null && stuff.Type == "UNIQUE_GVGTOKEN_GENERIC")
+                                {
+                                    embed.AddField("OC in Bag", $"Amount: {stuff.Count}", true);
+                                    break;
+                                }
+                            }
+                            //embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.FirstOrDefault(z => z.Type == "UNIQUE_GVGTOKEN_GENERIC").Count}", true);
                         }
                     }
 
@@ -211,8 +220,7 @@ namespace DiscordBot.RegearModule
                                         .AddField("Discord User ID: ", command.User.Id, true)
                                         .WithImageUrl($"attachment://image.jpg");
 
-                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
-
+                    await command.Channel.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
                 }
             }
             catch (Exception ex)

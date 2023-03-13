@@ -92,4 +92,10 @@ namespace DiscordBot.Enums
         AccountSetup,
         Other
     }
+
+    public enum LootSplitType
+    {
+        Guild,
+        Personal,
+    }
 }
