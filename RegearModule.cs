@@ -128,7 +128,16 @@ namespace DiscordBot.RegearModule
                     {
                         if (item != null && item.Type == "UNIQUE_GVGTOKEN_GENERIC")
                         {
-                            embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.First(z => z.Type == "UNIQUE_GVGTOKEN_GENERIC").Count}", true);
+                            var something = a_EventData.Victim.Inventory.Where(x => x.Type == "UNIQUE_GVGTOKEN_GENERIC");
+                            foreach (var stuff in a_EventData.Victim.Inventory)
+                            {
+                                if(stuff != null && stuff.Type == "UNIQUE_GVGTOKEN_GENERIC")
+                                {
+                                    embed.AddField("OC in Bag", $"Amount: {stuff.Count}", true);
+                                    break;
+                                }
+                            }
+                            //embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.FirstOrDefault(z => z.Type == "UNIQUE_GVGTOKEN_GENERIC").Count}", true);
                         }
                     }
 
