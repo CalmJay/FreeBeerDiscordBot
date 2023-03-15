@@ -123,28 +123,15 @@ namespace DiscordBot.RegearModule
                         embed.Color = Color.Green;
                     }
 
-                    //Check for if Siphoned Energy is in players inventory
-                    foreach (var item in a_EventData.Victim.Inventory)
+                    if (a_EventData.Victim.Inventory.Any(x => x != null && x.Type == "UNIQUE_GVGTOKEN_GENERIC"))
                     {
-                        if (item != null && item.Type == "UNIQUE_GVGTOKEN_GENERIC")
-                        {
-                            var something = a_EventData.Victim.Inventory.Where(x => x.Type == "UNIQUE_GVGTOKEN_GENERIC");
-                            foreach (var stuff in a_EventData.Victim.Inventory)
-                            {
-                                if(stuff != null && stuff.Type == "UNIQUE_GVGTOKEN_GENERIC")
-                                {
-                                    embed.AddField("OC in Bag", $"Amount: {stuff.Count}", true);
-                                    break;
-                                }
-                            }
-                            //embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.FirstOrDefault(z => z.Type == "UNIQUE_GVGTOKEN_GENERIC").Count}", true);
-                        }
+                        embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.Where(x => x != null && x.Type == "UNIQUE_GVGTOKEN_GENERIC").FirstOrDefault().Count}", true);
                     }
 
                     if(a_Mentor != null)
                     {      
                         embed.AddField("Mentor", (a_Mentor.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_Mentor.Nickname) : a_Mentor.Username, true);
-                        await a_Mentor.SendMessageAsync($"Your mentee {a_EventData.Victim.Name} has submitted a regear. https://discord.com/channels/157626637913948160/602243828266696720/{command.Interaction.Id}");
+                        await a_Mentor.SendMessageAsync($"Your mentee {a_EventData.Victim.Name} has submitted a regear. https://discord.com/channels/335894087397933056/1047554594420564130/{command.Interaction.Id}");
                     }
 
                     await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());

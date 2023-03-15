@@ -13,6 +13,7 @@ namespace DiscordBot.Enums
         Hideout,
         Mages,
         Orb,
+        Outpost,
         Other,
         SpecialEvent,
         Territory,

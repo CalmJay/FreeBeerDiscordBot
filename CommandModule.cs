@@ -19,6 +19,7 @@ using System.Text.RegularExpressions;
 using DiscordBot.LootSplitModule;
 using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Runtime.ConstrainedExecution;
 
 namespace CommandModule
 {
@@ -391,15 +392,12 @@ namespace CommandModule
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
-            dataBaseService = new DataBaseService();
-
-            await dataBaseService.AddPlayerInfo(new Player
+            if (DateTime.Parse(PlayerEventData.TimeStamp) <= DateTime.Now.AddHours(-24) && !guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
-                PlayerId = PlayerEventData.Victim.Id,
-                PlayerName = PlayerEventData.Victim.Name
-            });
-          
-            if (EventType == EventTypeEnum.SpecialEvent)
+                await RespondAsync($"Requirement failed. Your time to submit this regear is past 24 hours. Regear denied. ", null, false, true);
+                bRegearAllowed = false;
+            }
+            else if (EventType == EventTypeEnum.SpecialEvent)
             {
                 bRegearAllowed = true;
             }
@@ -414,9 +412,16 @@ namespace CommandModule
                 bRegearAllowed= false;
             }
 
-            if (bRegearAllowed)
-            { 
-                if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+            if (bRegearAllowed || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+            {
+                dataBaseService = new DataBaseService();
+                await dataBaseService.AddPlayerInfo(new Player
+                {
+                    PlayerId = PlayerEventData.Victim.Id,
+                    PlayerName = PlayerEventData.Victim.Name
+                });
+
+                if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname))
                 {
                     if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
                     {
@@ -424,7 +429,7 @@ namespace CommandModule
                         {
                             var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-                            if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+                            if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower())
                             {
                                 await DeferAsync();
 
@@ -507,10 +512,11 @@ namespace CommandModule
             ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
             string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value.ToString();
             string? mentor = (interaction.Message.Embeds.Count >= 8) ? interaction.Message.Embeds.FirstOrDefault().Fields[8].Value.ToString() : null  ;
+            string? sUserNickname = (guildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.Nickname) : guildUser.Username;
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible") && mentor == sUserNickname)
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(killId);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, eventType, MoneyTypes.ReGear);
