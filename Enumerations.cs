@@ -99,4 +99,20 @@ namespace DiscordBot.Enums
         Guild,
         Personal,
     }
+
+    public enum PricingOptions
+    {
+        MonthlyAverage,
+        DayAverage,
+        CurrentPrice
+    }
+
+    public enum ItemQuality
+    {
+        Normal,
+        Good,
+        Outstanding,
+        Excellent,
+        Masterpiece
+    }
 }

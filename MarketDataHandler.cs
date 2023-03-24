@@ -151,7 +151,7 @@ namespace MarketData
             List<EquipmentMarketDataMonthylyAverage> marketData = null;
             //https://www.albion-online-data.com/api/v2/stats/charts/T8_HEAD_PLATE_SET2?date=11-1-2022&end_date=11-20-2022&locations=Martlock&qualities=4&time-scale=24
             //EXAMPLE TIME SCALE THE WORKS https://www.albion-online-data.com/api/v2/stats/charts/T4_MOUNT_HORSE?locations=&qualities=4&time-scale=24&date=11-1-2022&end_date=11-20-2022
-            //broken down
+            //https://www.albion-online-data.com/api/v2/stats/history/T5_ARMOR_PLATE_HELL@3?date=2-15-2023&end_date=3-16-2023&locations=&qualities=3&time-scale=24
 
             DateTime endDate = DateTime.Today.AddDays(-1);
             DateTime startDate = endDate.AddDays(-24);

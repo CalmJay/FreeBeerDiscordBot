@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using InteractionHandlerService;
 using DiscordbotLogging.Log;
 using DiscordBot.Services;
+using SharpLink;
 
 namespace FreeBeerBot
 {
@@ -18,6 +19,7 @@ namespace FreeBeerBot
     {
         public static DiscordSocketClient _client;
         private DataBaseService dataBaseService;
+        public static LavalinkManager lavalinkManager;
         ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
 
         // Program entry point
@@ -78,26 +80,29 @@ namespace FreeBeerBot
             // Subscribe to slash command log events
             commands.Log += _ => provider.GetRequiredService<ConsoleLogger>().Log(_);
             //_client.ThreadCreated += AuditThreadCreated;
+
+            lavalinkManager = new LavalinkManager(_client, new LavalinkManagerConfig());
             _client.Ready += async () =>
             {
-                //if (IsDebug())
-                //{
-                //    var guild = _client.GetGuild(GuildID);
+              await lavalinkManager.StartAsync();
+              //if (IsDebug())
+              //{
+              //var guild = _client.GetGuild(GuildID);
 
-                //    await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
-                //    await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
-                //    //guild.ModifyAsync()
-                //    // Id of the test guild can be provided from the Configuration object
-                //    await commands.RegisterCommandsToGuildAsync(GuildID);
+              //await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+              // await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
+                                                            //guild.ModifyAsync()
+                                                            // Id of the test guild can be provided from the Configuration object
+              //await commands.RegisterCommandsToGuildAsync(GuildID);
 
-                //}
-                //else
-                //{
-                //    //If not debug, register commands globally
-                //    await commands.RegisterCommandsGloballyAsync(true);
-                //}
+              //}
+              //else
+              //{
+              //  //If not debug, register commands globally
+                //await commands.RegisterCommandsGloballyAsync(true);
+              //}
             };
-
+      
             //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);
             await _client.LoginAsync(TokenType.Bot, System.Configuration.ConfigurationManager.AppSettings.Get("discordBotToken"));
             await _client.StartAsync();

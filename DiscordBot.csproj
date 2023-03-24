@@ -48,4 +48,8 @@
     <Folder Include="Temp\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\Users\ragej\Downloads\SharpLink-master\SharpLink-master\SharpLink\SharpLink.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -20,6 +20,10 @@ using DiscordBot.LootSplitModule;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Runtime.ConstrainedExecution;
+using Microsoft.VisualBasic;
+using SharpLink;
+using FreeBeerBot;
+using Aspose.Imaging.MemoryManagement;
 
 namespace CommandModule
 {
@@ -27,7 +31,7 @@ namespace CommandModule
     {
         public InteractionService Commands { get; set; }
         private PlayerDataHandler.Rootobject PlayerEventData { get; set; }
-
+        private ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
         private static Logger _logger;
         private DataBaseService dataBaseService;
         private static LootSplitModule lootSplitModule;
@@ -202,7 +206,7 @@ namespace CommandModule
         }
 
         [SlashCommand("fetchprice", "Testing market item finder")]
-        public async Task FetchMarketPrice(int PriceOption, string a_sItemType, int a_iQuality, string a_sMarketLocation = "")
+        public async Task FetchMarketPrice(PricingOptions PriceOption, string ItemCode, ItemQuality ItemQuality, AlbionCitiesEnum MarketLocation)
         {
             //Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(a_sItemType);
             Task<List<EquipmentMarketData>> marketData = null;
@@ -214,46 +218,46 @@ namespace CommandModule
             int itemCost = 0;
             await _logger.Log(new LogMessage(LogSeverity.Info, "Price Check", $"User: {Context.User.Username}, Command: Price check", null));
 
-            switch (PriceOption)
-            {
-                case 1:
-                    combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
-                    marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
-                    break;
+            //switch (PriceOption)
+            //{
+            //    case 1:
+            //        combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
+            //        marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
+            //        break;
 
-                case 2:
+            //    case 2:
 
-                    combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
-                    marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
+            //        combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
+            //        marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
 
-                    break;
+            //        break;
 
-                case 3:
-                    combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
-                    marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
+            //    case 3:
+            //        combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
+            //        marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
 
-                    break;
+            //        break;
 
-                default:
-                    await ReplyAsync($"<@{Context.User.Id}> Option doesn't exist");
-                    break;
-            }
+            //    default:
+            //        await ReplyAsync($"<@{Context.User.Id}> Option doesn't exist");
+            //        break;
+            //}
 
-            if (marketData.Result != null)
-            {
-                if (marketData.Result.Count > 0 && marketData.Result.FirstOrDefault().sell_price_min > 0)
-                {
-                    await RespondAsync($"<@{Context.User.Id}> Price for {a_sItemType} is: " + marketData.Result.FirstOrDefault().sell_price_min, null, false, true);
-                }
-                else
-                {
-                    await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
-                }
-            }
-            else
-            {
-                await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
-            }
+            //if (marketData.Result != null)
+            //{
+            //    if (marketData.Result.Count > 0 && marketData.Result.FirstOrDefault().sell_price_min > 0)
+            //    {
+            //        await RespondAsync($"<@{Context.User.Id}> Price for {a_sItemType} is: " + marketData.Result.FirstOrDefault().sell_price_min, null, false, true);
+            //    }
+            //    else
+            //    {
+            //        await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
+            //    }
+            //}
+            //else
+            //{
+            //    await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
+            //}
         }
 
         [SlashCommand("blacklist", "Put a player on the shit list")]
@@ -392,12 +396,13 @@ namespace CommandModule
 
             PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
-            if (DateTime.Parse(PlayerEventData.TimeStamp) <= DateTime.Now.AddHours(-24) && !guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+            if (DateTime.Parse(PlayerEventData.TimeStamp) <= DateTime.Now.AddHours(-72) && !guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
                 await RespondAsync($"Requirement failed. Your time to submit this regear is past 24 hours. Regear denied. ", null, false, true);
                 bRegearAllowed = false;
             }
-            else if (EventType == EventTypeEnum.SpecialEvent)
+
+            if (EventType == EventTypeEnum.SpecialEvent)
             {
                 bRegearAllowed = true;
             }
@@ -429,7 +434,7 @@ namespace CommandModule
                         {
                             var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-                            if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower())
+                            if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                             {
                                 await DeferAsync();
 
@@ -484,10 +489,16 @@ namespace CommandModule
                 {
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
-
-                var guildUsertest = Context.Guild.GetUser(regearPoster); // user must be online for it to work.
                 
-                await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
+                try
+                {
+                    await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Could find user guild ID. Guild collection too large");
+                }
+                
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
@@ -502,36 +513,35 @@ namespace CommandModule
         [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
-            var guildUser = (SocketGuildUser)Context.User;
-            var interaction = Context.Interaction as IComponentInteraction;
-
-            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
-            string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
-            string callername = Regex.Replace(interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.ToString(), @"\p{C}+", string.Empty);
-            int refundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
-            ulong regearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
-            string eventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value.ToString();
-            string? mentor = (interaction.Message.Embeds.Count >= 8) ? interaction.Message.Embeds.FirstOrDefault().Fields[8].Value.ToString() : null  ;
+            SocketGuildUser guildUser = (SocketGuildUser)Context.User;
+            IComponentInteraction interaction = Context.Interaction as IComponentInteraction;
+            int iKillId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
+            string sVictimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
+            string sCallername = Regex.Replace(interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.ToString(), @"\p{C}+", string.Empty);
+            int iRefundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
+            ulong uRegearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
+            string sEventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value.ToString();
             string? sUserNickname = (guildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.Nickname) : guildUser.Username;
+            string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name =="Mentor").FirstOrDefault().Value.ToString() : null;
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible") && mentor == sUserNickname)
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor!= null && ((guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible") && sSelectedMentor.ToLower() == sUserNickname.ToLower())))
             {
-                PlayerEventData = await eventData.GetAlbionEventInfo(killId);
-                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, refundAmount, callername, eventType, MoneyTypes.ReGear);
+                PlayerEventData = await eventData.GetAlbionEventInfo(iKillId);
+                await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, iRefundAmount, sCallername, sEventType, MoneyTypes.ReGear);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
 
-                IReadOnlyCollection<Discord.Rest.RestGuildUser> guildUsers = await Context.Guild.SearchUsersAsync(victimName);
+                IReadOnlyCollection<Discord.Rest.RestGuildUser> regearPoster = await Context.Guild.SearchUsersAsync(sVictimName);
 
-                if (guildUsers.Any(x => x.RoleIds.Any(x => x == 1052241667329118349)) || Context.Guild.GetUser(regearPosterID).Roles.Any(r => r.Name == "Free Regear - Eligible"))
+                if (regearPoster.Any(x => x.RoleIds.Any(x => x == 1052241667329118349)) || Context.Guild.GetUser(uRegearPosterID).Roles.Any(r => r.Name == "Free Regear - Eligible"))
                 {
-                    await Context.Guild.GetUser(regearPosterID).RemoveRoleAsync(1052241667329118349);
+                    await Context.Guild.GetUser(uRegearPosterID).RemoveRoleAsync(1052241667329118349);
                 }
 
-                await Context.Guild.GetUser(regearPosterID).SendMessageAsync($"<@{Context.Guild.GetUser(regearPosterID).Id}> your regear https://albiononline.com/en/killboard/kill/{killId} has been approved! ${refundAmount.ToString("N0")} has been added to your paychex");
+                await Context.Guild.GetUser(uRegearPosterID).SendMessageAsync($"<@{Context.Guild.GetUser(uRegearPosterID).Id}> your regear https://albiononline.com/en/killboard/kill/{iKillId} has been approved! ${iRefundAmount.ToString("N0")} has been added to your paychex");
 
-                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear {killId} for {victimName} ", null));
+                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear {iKillId} for {sVictimName} ", null));
             }
             else
             {
@@ -542,18 +552,16 @@ namespace CommandModule
         [ComponentInteraction("audit")]
         public async Task AuditRegear()
         {
-            var guildUser = (SocketGuildUser)Context.User;
-            var interaction = Context.Interaction as IComponentInteraction;
-            int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
+            SocketGuildUser socketGuildUser = (SocketGuildUser)Context.User;
+            IComponentInteraction interaction = Context.Interaction as IComponentInteraction;
+            int iKillId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             
-            PlayerDataLookUps eventData = new PlayerDataLookUps();
-            PlayerEventData = await eventData.GetAlbionEventInfo(killId);
+            PlayerEventData = await new PlayerDataLookUps().GetAlbionEventInfo(iKillId);
 
             string sBattleID = (PlayerEventData.EventId == PlayerEventData.BattleId) ? "No battle found" : PlayerEventData.BattleId.ToString();
-
             string sKillerGuildName = (PlayerEventData.Killer.GuildName == "" || PlayerEventData.Killer.GuildName == null) ? "No Guild" : PlayerEventData.Killer.GuildName;
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+            if (socketGuildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
             {
                 var embed = new EmbedBuilder()
                 .WithTitle($"Regear audit on {PlayerEventData.Victim.Name}")
@@ -618,7 +626,7 @@ namespace CommandModule
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
    
-            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible"))
+            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
                 await DeferAsync();
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
@@ -727,10 +735,38 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
-            }
-        }
+      }
+    }
 
-        [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
+    [SlashCommand("play-song", "Play a song test")]
+    public async Task PlaySong(string SongName)
+    {
+
+      IVoiceChannel voiceChannel = ((IGuildUser)Context.User).VoiceChannel;
+      //IVoiceChannel voicechanneltest = (SocketVoiceChannel)Context.Guild.GetVoiceChannel(511213879137665049);
+      LavalinkPlayer player = Program.lavalinkManager.GetPlayer(GuildID) ?? await Program.lavalinkManager.JoinAsync(voiceChannel);
+
+      // Now that we have a player we can go ahead and grab a track and play it
+      LoadTracksResponse response = await Program.lavalinkManager.GetTracksAsync($"ytsearch:{SongName}");
+      // Gets the first track from the response
+      LavalinkTrack track = response.Tracks.First();
+      await player.PlayAsync(track);
+
+      await RespondAsync($"Playing song: {player.CurrentTrack.Url}");
+    }
+
+    [SlashCommand("stop-song", "stop a song ")]
+    public async Task StopSong()
+    {
+
+      var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id) ??
+      await Program.lavalinkManager.JoinAsync((Context.User as IGuildUser)?.VoiceChannel);
+      await player.StopAsync();
+      await ReplyAsync("Stopped playing. Your queue is still intact though. Use `clear` to Destroy Queue");
+    }
+
+
+    [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
         public async Task SplitLoot()
         {
             await DeferAsync();
