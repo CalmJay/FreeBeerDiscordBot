@@ -6,12 +6,9 @@ using GoogleSheetsData;
 using PlayerData;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using static PlayerData.PlayerDataHandler;
 
 namespace DNet_V3_Tutorial
 {
@@ -55,7 +52,7 @@ namespace DNet_V3_Tutorial
         {
             var channels = Context.Guild.Channels;
             var chnl = Context.Client.GetChannel(1036552362380251157) as IMessageChannel;
-            
+
 
             // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
             await _logger.Log(new LogMessage(LogSeverity.Info, "PingModule : Ping", $"User: {Context.User.Username}, Command: ping", null));
@@ -169,7 +166,7 @@ namespace DNet_V3_Tutorial
 
                     var component = new ComponentBuilder();
                     component.WithButton(directionsButton);
-                    
+
                     break;
                 //$"attachment://image.jpg"
                 default:
@@ -216,13 +213,13 @@ namespace DNet_V3_Tutorial
             await DeferAsync();
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
             string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
-            await ReplyAsync($"Donating 10% of your paychex to the Learn how to read foundation. {miniMarketCreditsTotal}" );
-            
+            await ReplyAsync($"Donating 10% of your paychex to the Learn how to read foundation. {miniMarketCreditsTotal}");
 
-            
+
+
         }
 
-        public void WriteToCSV(List<string>UsersList)
+        public void WriteToCSV(List<string> UsersList)
         {
             var csv = new StringBuilder();
             foreach (var item in UsersList)

@@ -1,11 +1,11 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using System.Reflection;
-using System;
-using System.Threading.Tasks;
 using GoogleSheetsData;
 using PlayerData;
+using System;
+using System.Reflection;
+using System.Threading.Tasks;
 
 namespace InteractionHandlerService
 {
@@ -61,9 +61,9 @@ namespace InteractionHandlerService
             return Task.CompletedTask;
         }
 
-        
-        private async Task ThreadCreationExecuted (SocketThreadChannel arg)
-        {    
+
+        private async Task ThreadCreationExecuted(SocketThreadChannel arg)
+        {
             string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
             if (sUserNickname.Contains("!sl"))
             {

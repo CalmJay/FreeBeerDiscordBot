@@ -1,12 +1,10 @@
-﻿using DiscordBot.Models;
+﻿using DiscordBot.Enums;
+using DiscordBot.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using DiscordBot.Enums;
-using Discord;
-using Microsoft.EntityFrameworkCore;
 
 namespace DiscordBot.Services
 {
@@ -29,7 +27,7 @@ namespace DiscordBot.Services
         public async Task<Boolean> CheckPlayerIsDid5RegearBefore(string playerName)
         {
             List<PlayerLoot> playerLoots = new List<PlayerLoot>();
-            var playerLoot =  freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
+            var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
             foreach (var item in playerLoot)
             {
                 if (item.CreateDate.Value.ToString("yyyy-MM-dd").Equals(DateTime.UtcNow.ToString("yyyy-MM-dd")))
@@ -41,7 +39,7 @@ namespace DiscordBot.Services
             {
                 return false;
             }
-            else if(playerLoots.Count > 5)
+            else if (playerLoots.Count > 5)
             {
                 return true;
             }
@@ -67,13 +65,13 @@ namespace DiscordBot.Services
                 freeBeerdbContext.PlayerLoot.Remove(playerLoot);
                 freeBeerdbContext.SaveChanges();
             }
-            
+
         }
 
         public void DeletePlayerLootByQueueId(string queueID)
         {
             var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.QueueId == queueID).FirstOrDefault();
-            if(playerLoot != null)
+            if (playerLoot != null)
             {
                 freeBeerdbContext.PlayerLoot.Remove(playerLoot);
                 freeBeerdbContext.SaveChanges();
@@ -82,7 +80,7 @@ namespace DiscordBot.Services
             {
                 Console.WriteLine($"Issue writing OC Break to database. Null Reference. QeueueID={queueID}");
             }
-            
+
         }
         public MoneyType GetMoneyTypeByName(MoneyTypes moneyType)
         {

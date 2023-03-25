@@ -2,28 +2,25 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Enums;
+using DiscordBot.LootSplitModule;
 using DiscordBot.Models;
+using DiscordBot.RegearModule;
 using DiscordBot.Services;
 using DiscordbotLogging.Log;
+using FreeBeerBot;
 using GoogleSheetsData;
+using MarketData;
+using Microsoft.Data.SqlClient;
 using Newtonsoft.Json.Linq;
 using PlayerData;
+using SharpLink;
 using System;
+using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net.Http;
-using System.Threading.Tasks;
-using DiscordBot.RegearModule;
-using MarketData;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using DiscordBot.LootSplitModule;
-using Microsoft.Data.SqlClient;
-using System.Data;
-using System.Runtime.ConstrainedExecution;
-using Microsoft.VisualBasic;
-using SharpLink;
-using FreeBeerBot;
-using Aspose.Imaging.MemoryManagement;
+using System.Threading.Tasks;
 
 namespace CommandModule
 {
@@ -141,8 +138,13 @@ namespace CommandModule
                 await ReplyAsync($"The discord name doen't match the ingame name. {playerInfo.Name}");
             }
         }
+        [SlashCommand("Deregister", "Register player to Free Beer guild")]
+        public async Task DeRegister(SocketGuildUser guildUserName, string ingameName)
+        {
 
-        [SlashCommand("recent-deaths", "View recent deaths")]
+
+        }
+            [SlashCommand("recent-deaths", "View recent deaths")]
         public async Task GetRecentDeaths()
         {
             var testuser = Context.User.Id;
@@ -176,7 +178,7 @@ namespace CommandModule
                             Style = ButtonStyle.Secondary
                         };
 
-                        
+
                         for (int i = 0; i < searchDeaths.Count; i++)
                         {
                             if (i <= iVisibleDeathsShown)
@@ -279,7 +281,7 @@ namespace CommandModule
 
         [SlashCommand("view-paychex", "Views your current paychex amount")]
         public async Task GetCurrentPaychexAmount()
-        {  
+        {
             await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
             if (sUserNickname.Contains("!sl"))
@@ -319,7 +321,7 @@ namespace CommandModule
         {
             await DeferAsync();
             await _logger.Log(new LogMessage(LogSeverity.Info, "Render Paychex", $"User: {Context.User.Username}, Command: render-paychex", null));
-            await GoogleSheetsDataWriter.RenderPaychex(Context);                  
+            await GoogleSheetsDataWriter.RenderPaychex(Context);
         }
 
         [SlashCommand("transfer-paychex", "Convert your current paychex to Mini Mart credits")]
@@ -330,17 +332,17 @@ namespace CommandModule
             await DeferAsync(true);
             await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
             await FollowupAsync("Transfer Complete", null, false, true);
-            
+
         }
 
         [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
         public async Task MiniMartTransactions(SocketGuildUser GuildUser, int Amount, MiniMarketType TransactionType)
-        {          
-            string? sManagerNickname = ((Context.User as SocketGuildUser).Nickname != null)  ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
+        {
+            string? sManagerNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
             string? sUserNickname = (GuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(GuildUser.Nickname) : GuildUser.Username;
             var socketUser = (SocketGuildUser)Context.User;
 
-            if (socketUser.Roles.Any(r => r.Name == "AO - Officers")|| socketUser.Roles.Any(r => r.Name == "AO - HO Manager") || socketUser.Roles.Any(r => r.Name == "AO - Minimart"))
+            if (socketUser.Roles.Any(r => r.Name == "AO - Officers") || socketUser.Roles.Any(r => r.Name == "AO - HO Manager") || socketUser.Roles.Any(r => r.Name == "AO - Minimart"))
             {
                 await DeferAsync();
                 await _logger.Log(new LogMessage(LogSeverity.Info, "mm Transaction", $"User: {Context.User.Username}, Command: mm-transaction", null));
@@ -362,7 +364,7 @@ namespace CommandModule
             }
             else
             {
-                await RespondAsync($"You need perms to do this ya bum.",null,false,true,null,null,null,null);
+                await RespondAsync($"You need perms to do this ya bum.", null, false, true, null, null, null, null);
             }
         }
 
@@ -414,7 +416,7 @@ namespace CommandModule
             else if (mentor != null && !mentor.Roles.Any(x => x.Id == 1049889855619989515) && (guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")))
             {
                 await RespondAsync($"Cleary you need a mentor you idiot. Make sure you select an ACTUAL mentor", null, false, true);
-                bRegearAllowed= false;
+                bRegearAllowed = false;
             }
 
             if (bRegearAllowed || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
@@ -489,7 +491,7 @@ namespace CommandModule
                 {
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
-                
+
                 try
                 {
                     await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
@@ -498,7 +500,7 @@ namespace CommandModule
                 {
                     Console.WriteLine("Could find user guild ID. Guild collection too large");
                 }
-                
+
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
@@ -509,7 +511,7 @@ namespace CommandModule
                 await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
             }
         }
-        
+
         [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
@@ -522,11 +524,11 @@ namespace CommandModule
             ulong uRegearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
             string sEventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value.ToString();
             string? sUserNickname = (guildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.Nickname) : guildUser.Username;
-            string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name =="Mentor").FirstOrDefault().Value.ToString() : null;
+            string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name == "Mentor").FirstOrDefault().Value.ToString() : null;
 
             PlayerDataLookUps eventData = new PlayerDataLookUps();
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor!= null && ((guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible") && sSelectedMentor.ToLower() == sUserNickname.ToLower())))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor != null && ((guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible") && sSelectedMentor.ToLower() == sUserNickname.ToLower())))
             {
                 PlayerEventData = await eventData.GetAlbionEventInfo(iKillId);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, iRefundAmount, sCallername, sEventType, MoneyTypes.ReGear);
@@ -555,7 +557,7 @@ namespace CommandModule
             SocketGuildUser socketGuildUser = (SocketGuildUser)Context.User;
             IComponentInteraction interaction = Context.Interaction as IComponentInteraction;
             int iKillId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
-            
+
             PlayerEventData = await new PlayerDataLookUps().GetAlbionEventInfo(iKillId);
 
             string sBattleID = (PlayerEventData.EventId == PlayerEventData.BattleId) ? "No battle found" : PlayerEventData.BattleId.ToString();
@@ -588,7 +590,7 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"You cannot see this juicy info <@{Context.User.Id}> Not like you can read anyways.", null, false, true, null, null, null, null);
-            }          
+            }
         }
 
         [SlashCommand("regear-oc", "Submit a OC-break regear")]
@@ -601,7 +603,7 @@ namespace CommandModule
 
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
             string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
-            
+
             if (sUserNickname.Contains("!sl"))
             {
                 sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
@@ -625,7 +627,7 @@ namespace CommandModule
 
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
-   
+
             if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
                 await DeferAsync();
@@ -721,7 +723,7 @@ namespace CommandModule
                     var guildUsertest = Context.Guild.GetUser(regearPoster);
 
                     await Context.Guild.GetUser(regearPoster).SendMessageAsync($"OC Regear {iQueueID} was denied.");
-                    
+
                 }
                 catch (Exception ex)
                 {
@@ -735,38 +737,48 @@ namespace CommandModule
             else
             {
                 await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
-      }
-    }
+            }
+        }
 
-    [SlashCommand("play-song", "Play a song test")]
-    public async Task PlaySong(string SongName)
-    {
+        [SlashCommand("play-song", "Play a song test")]
+        public async Task PlaySong(string SongName)
+        {
 
-      IVoiceChannel voiceChannel = ((IGuildUser)Context.User).VoiceChannel;
-      //IVoiceChannel voicechanneltest = (SocketVoiceChannel)Context.Guild.GetVoiceChannel(511213879137665049);
-      LavalinkPlayer player = Program.lavalinkManager.GetPlayer(GuildID) ?? await Program.lavalinkManager.JoinAsync(voiceChannel);
+            IVoiceChannel voiceChannel = ((IGuildUser)Context.User).VoiceChannel;
 
-      // Now that we have a player we can go ahead and grab a track and play it
-      LoadTracksResponse response = await Program.lavalinkManager.GetTracksAsync($"ytsearch:{SongName}");
-      // Gets the first track from the response
-      LavalinkTrack track = response.Tracks.First();
-      await player.PlayAsync(track);
+            LavalinkPlayer player = Program.lavalinkManager.GetPlayer(GuildID) ?? await Program.lavalinkManager.JoinAsync(voiceChannel);
+            LoadTracksResponse response = null;
 
-      await RespondAsync($"Playing song: {player.CurrentTrack.Url}");
-    }
+            var TodaysDate = DateTime.Today;
 
-    [SlashCommand("stop-song", "stop a song ")]
-    public async Task StopSong()
-    {
+            if (TodaysDate.Month == 4 && TodaysDate.Day == 1)
+            {
+                response = await Program.lavalinkManager.GetTracksAsync($"ytsearch:https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+            }
+            else
+            {
+                response = await Program.lavalinkManager.GetTracksAsync($"ytsearch:{SongName}");
+            }
+            
+            // Gets the first track from the response
+            LavalinkTrack track = response.Tracks.First();
+            await player.PlayAsync(track);
 
-      var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id) ??
-      await Program.lavalinkManager.JoinAsync((Context.User as IGuildUser)?.VoiceChannel);
-      await player.StopAsync();
-      await ReplyAsync("Stopped playing. Your queue is still intact though. Use `clear` to Destroy Queue");
-    }
+            await RespondAsync($"Playing song: {player.CurrentTrack.Url}");
+        }
+
+        [SlashCommand("stop-song", "stop a song ")]
+        public async Task StopSong()
+        {
+
+            var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id) ??
+            await Program.lavalinkManager.JoinAsync((Context.User as IGuildUser)?.VoiceChannel);
+            await player.StopAsync();
+            await ReplyAsync("Stopped playing. Your queue is still intact though. Use `clear` to Destroy Queue");
+        }
 
 
-    [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
+        [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
         public async Task SplitLoot()
         {
             await DeferAsync();

@@ -1,17 +1,14 @@
-﻿using System;
-using System.Threading.Tasks;
-using Discord;
-using DiscordBot.Services;
+﻿using Discord;
 using Discord.Interactions;
-using System.Threading.Channels;
-using System.ComponentModel;
-using System.IO;
+using Discord.WebSocket;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
-using Newtonsoft.Json;
-using System.Diagnostics;
-using Discord.WebSocket;
+using System.Threading.Tasks;
 
 namespace DiscordBot.LootSplitModule
 {
@@ -52,14 +49,14 @@ namespace DiscordBot.LootSplitModule
 
             //scrape thread for image uploads
             var msgsIterable = context.Channel.GetMessagesAsync().ToListAsync().Result.ToList();
-            
+
             //create and fill list with n urls from channel
             List<string> msgsUrls = new List<string>();
 
             ////NEED FIX TO GET ALL ATTACHMENTS FROM EACH MESSAGE INSTEAD OF JUST 1
             foreach (var msg in msgsIterable.FirstOrDefault())
             {
-                
+
                 if (msg.Attachments.FirstOrDefault() != null)
                 {
                     msgsUrls.Add(msg.Attachments.FirstOrDefault().Url);
@@ -205,7 +202,7 @@ namespace DiscordBot.LootSplitModule
                             submitter = guildUser.Nickname;
                         }
                     }
-                    else 
+                    else
                     {
                         if (!results.Contains(guildUser.Username))
                         {
@@ -414,8 +411,8 @@ namespace DiscordBot.LootSplitModule
 
             try
             {
-                    await channel.SendMessageAsync(" ", isTTS: false, embed: null, options: null, allowedMentions: null, messageReference: null,
-                    components: comp.Build(), stickers: null, embeds: null, flags: MessageFlags.None);
+                await channel.SendMessageAsync(" ", isTTS: false, embed: null, options: null, allowedMentions: null, messageReference: null,
+                components: comp.Build(), stickers: null, embeds: null, flags: MessageFlags.None);
             }
             catch (Exception ex)
             {

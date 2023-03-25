@@ -1,14 +1,12 @@
-﻿using Discord.WebSocket;
+﻿using Discord.Interactions;
+using Discord.WebSocket;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
-using AlbionOnlineDataParser;
-using Discord.Interactions;
 
 namespace PlayerData
 {
@@ -832,7 +830,7 @@ namespace PlayerData
         public List<object> guilds { get; set; }
         public List<PlayerLookupInfo> players { get; set; }
     }
-    
+
 
     public class PlayerDataLookUps
     {
@@ -843,11 +841,11 @@ namespace PlayerData
             string? sPlayerAlbionId = null; //either get from google sheet or search in albion API
             string? sUserNickname = ((a_socketInteraction.User as SocketGuildUser).Nickname != null) ? (a_socketInteraction.User as SocketGuildUser).Nickname : a_socketInteraction.User.Username;
 
-            if(userNickname != null)
+            if (userNickname != null)
             {
                 sUserNickname = userNickname;
             }
-        
+
             if (sUserNickname.Contains("!sl"))
             {
                 sUserNickname = CleanUpShotCallerName(sUserNickname);
@@ -864,7 +862,7 @@ namespace PlayerData
                     //USE THIS LOGIC TO CREATE METHOD TO ADD USER TO DATABASE
                     if (playerSearchData.players.FirstOrDefault() != null)
                     {
-                        
+
 
                         if (playerSearchData.players.Count > 1)
                         {

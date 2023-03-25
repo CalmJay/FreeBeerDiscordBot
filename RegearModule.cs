@@ -1,17 +1,17 @@
 ﻿using CoreHtmlToImage;
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Enums;
+using DiscordBot.Models;
 using DiscordBot.Services;
+using MarketData;
 using PlayerData;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Discord.Interactions;
-using MarketData;
-using DiscordBot.Models;
 
 namespace DiscordBot.RegearModule
 {
@@ -128,8 +128,8 @@ namespace DiscordBot.RegearModule
                         embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.Where(x => x != null && x.Type == "UNIQUE_GVGTOKEN_GENERIC").FirstOrDefault().Count}", true);
                     }
 
-                    if(a_Mentor != null)
-                    {      
+                    if (a_Mentor != null)
+                    {
                         embed.AddField("Mentor", (a_Mentor.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_Mentor.Nickname) : a_Mentor.Username, true);
                         await a_Mentor.SendMessageAsync($"Your mentee {a_EventData.Victim.Name} has submitted a regear. https://discord.com/channels/335894087397933056/1047554594420564130/{command.Interaction.Id}");
                     }
@@ -198,12 +198,12 @@ namespace DiscordBot.RegearModule
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                        .WithTitle($" {regearRoleIcon} OC Submission from {sUserNickname}{regearRoleIcon}")                                
+                                        .WithTitle($" {regearRoleIcon} OC Submission from {sUserNickname}{regearRoleIcon}")
                                         .AddField("Victim", sUserNickname, true)
                                         .AddField("Caller Name: ", a_sPartyLeader, true)
                                         .AddField("Refund Amount: ", TotalRegearSilverAmount, true)
                                         .AddField("Event Type: ", a_eEventTypes, true)
-                                        .AddField("QueueID", command.Interaction.Id,true)
+                                        .AddField("QueueID", command.Interaction.Id, true)
                                         .AddField("Discord User ID: ", command.User.Id, true)
                                         .WithImageUrl($"attachment://image.jpg");
 
@@ -330,7 +330,7 @@ namespace DiscordBot.RegearModule
 
                     if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
                     {
-                        
+
 
                         //Check for 24 Day Average
                         List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(item);
@@ -442,36 +442,7 @@ namespace DiscordBot.RegearModule
 
             List<Equipment> underRegearItem = new List<Equipment>();
 
-            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1049889855619989515
-            {
-                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
-                regearIconType = "Gold Tier Regear - Elligible";
-                regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
-            }
-            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
-            {
-                returnValue = Math.Min(silverTierRegearCap, returnValue);
-                regearIconType = "Silver Tier Regear - Elligible";
-                regearRoleIcon = "<:FreeBeerSilverCreditCard:1071163029493919905> ";
-            }
-            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
-            {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
-                regearIconType = "Bronze Tier Regear - Elligible";
-                regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
-            }
-            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
-            {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
-                regearIconType = "Free Regear - Eligible";
-                regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
-            }
-            else
-            {
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
-                regearIconType = "Shit Tier Regear - Elligible";
-                regearRoleIcon = ":poop:";
-            }
+
 
             foreach (var item in submittedOCItems)
             {
@@ -541,6 +512,37 @@ namespace DiscordBot.RegearModule
                         //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
                     });
                 }
+            }
+
+            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
+            {
+                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
+                regearIconType = "Gold Tier Regear - Eligible";
+                regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
+            {
+                returnValue = Math.Min(silverTierRegearCap, returnValue);
+                regearIconType = "Silver Tier Regear - Eligible";
+                regearRoleIcon = "<:FreeBeerSilverCreditCard:1071163029493919905> ";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
+            {
+                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                regearIconType = "Bronze Tier Regear - Eligible";
+                regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
+            {
+                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                regearIconType = "Free Regear - Eligible";
+                regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
+            }
+            else
+            {
+                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                regearIconType = "Shit Tier Regear - Eligible";
+                regearRoleIcon = ":poop:";
             }
 
             TotalRegearSilverAmount = returnValue;

@@ -1,9 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
-using DiscordbotLogging.Log;
-using Newtonsoft.Json;
 
 namespace MarketData
 {
@@ -180,9 +179,9 @@ namespace MarketData
         }
 
 
-        
 
-        
+
+
 
 
 

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DiscordBot.Enums
+﻿namespace DiscordBot.Enums
 {
     public enum EventTypeEnum
     {
