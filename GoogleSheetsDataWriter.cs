@@ -611,10 +611,87 @@ namespace GoogleSheetsData
 
             return false;
         }
+        public static async Task UnResgisterUserFromDataSources(string a_MemberName, SocketGuildUser SocketUser)
+        {
+            DateTime todaysdate = DateTime.Now;
 
+            if(todaysdate.DayOfWeek == DayOfWeek.Sunday)
+            {
+
+            }
+
+            
+
+        }
+
+        public static async Task PruneSheets(SocketGuildUser a_Manager, SocketGuildUser a_User, int a_iAmount, MiniMarketType a_eTransactionType)
+        {
+
+        }
+
+        public static async Task UpdateRegearRole(List<SocketGuildUser> a_SocketGuildUser, DateTime a_dExpirationDate)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+
+            var UserList = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D").Execute().Values;
+
+            foreach (var user in UserList)
+            {
+
+            }
+
+
+            var col1 = 2;
+            var col2 = 2;
+
+            WriteRange = $"Guild Roster!B{col1}:D{col2}";
+
+            ValueRange GetResponse = null;
+            IList<IList<object>> values = null;
+
+            
+
+            if (values == null || !values.Any())
+            {
+                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "Bronze", "TRUE", a_dExpirationDate } } };
+                var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+                await update.ExecuteAsync();
+            }
+
+        }
+
+
+        public static string GetRegearStatus(string a_MemberName)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+
+            var rowValues = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D").Execute().Values;
+
+            int i = 0;
+            foreach (var users in rowValues)
+            {
+                if (users[0].ToString().ToLower() == a_MemberName.ToLower())
+                {
+                    switch(users[1].ToString().ToLower())
+                    {
+                        case "bronze":
+                            return users[1].ToString() + " expires on " + users[2].ToString();
+                        case "silver":
+                            return users[1].ToString() + ": No expiration";
+                        case "gold":
+                            return users[1].ToString() + ": No expiration";
+
+                        default:
+                            return "Not Enrolled";
+                    }
+                }
+                i++;
+            }
+            return "ERROR FINDING REGEAR INFO";
+        }
 
     }
-
     public static class HelperMethods
     {
         public static DateTime StartOfWeek(this DateTime dt, DayOfWeek startOfWeek)

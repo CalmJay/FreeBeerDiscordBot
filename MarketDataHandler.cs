@@ -60,22 +60,24 @@ namespace MarketData
         public List<EquipmentMarketDataAveragePrice> data { get; set; }
     }
 
-
-    //DateTimeAverage
-    // Root myDeserializedClass = JsonConvert.DeserializeObject<List<Root>>(myJsonResponse);
-    public class EquipmentMarketDataMonthylyAverage
+    public class Rootobject
     {
-        public List<DateTime> timestamps { get; set; }
-        public List<double> prices_avg { get; set; }
-        public List<int> item_count { get; set; }
+        public EquipmentMarketDataMonthylyAverage[] Property1 { get; set; }
     }
 
-    public class DateTimeItems
+    public class EquipmentMarketDataMonthylyAverage
     {
-        public EquipmentMarketDataMonthylyAverage data { get; set; }
         public string location { get; set; }
         public string item_id { get; set; }
         public int quality { get; set; }
+        public Datum[] data { get; set; }
+    }
+
+    public class Datum
+    {
+        public int item_count { get; set; }
+        public int avg_price { get; set; }
+        public DateTime timestamp { get; set; }
     }
 
     public class MarketDataFetching
@@ -148,6 +150,7 @@ namespace MarketData
         {
             string jsonCurrentMarketData = null;
             List<EquipmentMarketDataMonthylyAverage> marketData = null;
+
             //https://www.albion-online-data.com/api/v2/stats/charts/T8_HEAD_PLATE_SET2?date=11-1-2022&end_date=11-20-2022&locations=Martlock&qualities=4&time-scale=24
             //EXAMPLE TIME SCALE THE WORKS https://www.albion-online-data.com/api/v2/stats/charts/T4_MOUNT_HORSE?locations=&qualities=4&time-scale=24&date=11-1-2022&end_date=11-20-2022
             //https://www.albion-online-data.com/api/v2/stats/history/T5_ARMOR_PLATE_HELL@3?date=2-15-2023&end_date=3-16-2023&locations=&qualities=3&time-scale=24
@@ -172,8 +175,6 @@ namespace MarketData
                 }
             }
             marketData = JsonConvert.DeserializeObject<List<EquipmentMarketDataMonthylyAverage>>(jsonCurrentMarketData);
-
-
 
             return marketData;
         }

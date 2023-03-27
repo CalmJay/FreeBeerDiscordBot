@@ -55,13 +55,15 @@ namespace CommandModule
                 .AddField("Kill Fame", (playerInfo.KillFame == 0) ? 0 : playerInfo.KillFame)
                 .AddField("Death Fame: ", (playerInfo.DeathFame == 0) ? 0 : playerInfo.DeathFame, true)
                 .AddField("Guild Name ", (playerInfo.GuildName == null || playerInfo.GuildName == "") ? "No info" : playerInfo.GuildName, true)
-                .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true);
+                .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true)
+                .AddField("Sigma Info" , $"https://app.sigmacomputing.com/embed/2Fb3n6osB7MZ0psRKGqR6?name={a_sPlayerName}")
+                .AddField("AlbionDB Info", $"https://albiondb.net/player/{a_sPlayerName}");
 
                 await RespondAsync(null, null, false, true, null, null, null, embed.Build());
             }
             catch (Exception ex)
             {
-                await RespondAsync("Player info not found");
+                await RespondAsync("Player info not found", null, false, true);
             }
         }
 
@@ -138,13 +140,34 @@ namespace CommandModule
                 await ReplyAsync($"The discord name doen't match the ingame name. {playerInfo.Name}");
             }
         }
-        [SlashCommand("Deregister", "Register player to Free Beer guild")]
-        public async Task DeRegister(SocketGuildUser guildUserName, string ingameName)
+        [SlashCommand("unregister", "Remove player from database and perms from discord")]
+        public async Task Unregister(string InGameName, SocketGuildUser DiscordName = null)
         {
-
-
+            await GoogleSheetsDataWriter.UnResgisterUserFromDataSources(InGameName, DiscordName);
+            await RespondAsync("This command isn't finished yet", null, false, true);
         }
-            [SlashCommand("recent-deaths", "View recent deaths")]
+
+        [SlashCommand("prune-memebers", "Verifies users in discord to registered members in database")]
+        public async Task PruneMembers()
+        {
+            LootSplitModule lootSplitMod = new LootSplitModule();
+            await lootSplitMod.CreateMemberDict(Context);
+            var FreeBeerMembers = lootSplitMod.scrapedDict.ToList();
+
+            await RespondAsync("This command isn't finished yet", null, false, true);
+        }
+
+        [SlashCommand("give-regear", "Assign users regear roles")]
+        public async Task GiveRegear(string GuildUserNames, DateTime SelectedDate)
+        {
+            
+            L//ist<SocketGuildUser> user = TypeConverter;
+            DateTime datepicked = SelectedDate;
+            await RespondAsync("This command isn't finished yet", null, false, true);
+        }
+
+
+        [SlashCommand("recent-deaths", "View recent deaths")]
         public async Task GetRecentDeaths()
         {
             var testuser = Context.User.Id;
@@ -208,58 +231,53 @@ namespace CommandModule
         }
 
         [SlashCommand("fetchprice", "Testing market item finder")]
-        public async Task FetchMarketPrice(PricingOptions PriceOption, string ItemCode, ItemQuality ItemQuality, AlbionCitiesEnum MarketLocation)
+        public async Task FetchMarketPrice(PricingOptions PriceOption, string ItemCode, ItemQuality ItemQuality, AlbionCitiesEnum? MarketLocation = null)
         {
-            //Task<List<EquipmentMarketData>> marketData = new MarketDataFetching().GetMarketPrice24dayAverage(a_sItemType);
-            Task<List<EquipmentMarketData>> marketData = null;
+            Task<List<EquipmentMarketData>> CurrentPriceMarketData = null;
+            Task<List<AverageItemPrice>> DailyAverageMarketData = null;
+            Task<List<EquipmentMarketDataMonthylyAverage>> MonthlyAverageMarketData = null;
+
             string combinedInfo = "";
-            //1 = 24 day average
-            //2 = daily average
-            //3 = current price
-            //
-            int itemCost = 0;
+            string SelectedMarkets = MarketLocation.ToString();
+
             await _logger.Log(new LogMessage(LogSeverity.Info, "Price Check", $"User: {Context.User.Username}, Command: Price check", null));
 
-            //switch (PriceOption)
-            //{
-            //    case 1:
-            //        combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
-            //        marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
-            //        break;
 
-            //    case 2:
+            if(MarketLocation == null)
+            {
+                SelectedMarkets = "Bridgewatch,BridgewatchPortal,Caerleon,FortSterling,FortSterlingPortal,Lymhurst,LymhurstPortal,Martlock,Martlockportal,Thetford,ThetfordPortal";
+            }
 
-            //        combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
-            //        marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
+            switch (PriceOption)
+            {
+                case PricingOptions.CurrentPrice:
+                    combinedInfo = $"{ItemCode}?qualities={(int)ItemQuality}&locations={SelectedMarkets}";
+                    CurrentPriceMarketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
 
-            //        break;
+                    await RespondAsync($"The cheapest {PriceOption} of your {ItemQuality} item found in {CurrentPriceMarketData.Result.FirstOrDefault().city.ToString()} cost: " + CurrentPriceMarketData.Result.FirstOrDefault().sell_price_min.ToString("N0"), null, false, true);
 
-            //    case 3:
-            //        combinedInfo = $"{a_sItemType}?qualities={a_iQuality}&locations={a_sMarketLocation}";
-            //        marketData = new MarketDataFetching().GetMarketPriceCurrentAsync(combinedInfo);
+                    break;
 
-            //        break;
+                case PricingOptions.DayAverage:
 
-            //    default:
-            //        await ReplyAsync($"<@{Context.User.Id}> Option doesn't exist");
-            //        break;
-            //}
+                    combinedInfo = $"{ItemCode}?qualities={(int)ItemQuality}&locations={SelectedMarkets}";
+                    DailyAverageMarketData = new MarketDataFetching().GetMarketPriceDailyAverage(combinedInfo);
+                    await RespondAsync($"The cheapest {PriceOption} of your {ItemQuality} item found in {DailyAverageMarketData.Result.FirstOrDefault().location.ToString()} cost: " + DailyAverageMarketData.Result.FirstOrDefault().data.FirstOrDefault().avg_price.ToString("N0"), null, false, true);
 
-            //if (marketData.Result != null)
-            //{
-            //    if (marketData.Result.Count > 0 && marketData.Result.FirstOrDefault().sell_price_min > 0)
-            //    {
-            //        await RespondAsync($"<@{Context.User.Id}> Price for {a_sItemType} is: " + marketData.Result.FirstOrDefault().sell_price_min, null, false, true);
-            //    }
-            //    else
-            //    {
-            //        await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
-            //    }
-            //}
-            //else
-            //{
-            //    await RespondAsync($"<@{Context.User.Id}> Price not found", null, false, true);
-            //}
+                    break;
+
+                case PricingOptions.MonthlyAverage:
+                    combinedInfo = $"{ItemCode}?qualities={(int)ItemQuality}&locations={SelectedMarkets}";
+                    MonthlyAverageMarketData = new MarketDataFetching().GetMarketPriceMonthlyAverage(combinedInfo);
+                    var test = new AverageItemPrice().location;
+                    await RespondAsync($"The cheapest {PriceOption} of your {ItemQuality} item found in {MonthlyAverageMarketData.Result.FirstOrDefault().location.ToString()} cost: " + MonthlyAverageMarketData.Result.FirstOrDefault().data.FirstOrDefault().avg_price.ToString("N0"), null, false, true);
+                    break;
+
+                default:
+                    await RespondAsync($"<@{Context.User.Id}> Option doesn't exist", null, false, true);
+                    break;
+            }
+
         }
 
         [SlashCommand("blacklist", "Put a player on the shit list")]
@@ -284,6 +302,7 @@ namespace CommandModule
         {
             await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
+
             if (sUserNickname.Contains("!sl"))
             {
                 sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
@@ -294,14 +313,16 @@ namespace CommandModule
                 await DeferAsync(true);
                 List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
                 string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+                string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
 
                 if (paychexRunningTotal.Count > 0)
                 {
                     var embed = new EmbedBuilder()
                     .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
-                    .AddField("Last weeks Paychex total", $"${paychexRunningTotal[0]:n0}")
+                    .AddField("Last weeks Paychex total:", $"${paychexRunningTotal[0]:n0}")
                     .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
-                    .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}");
+                    .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}")
+                    .AddField("Regear Status:", $"{regearStatus}");
 
                     await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
                 }
@@ -628,8 +649,8 @@ namespace CommandModule
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
 
-            if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
-            {
+            //if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+            //{
                 await DeferAsync();
                 var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
 
@@ -646,11 +667,11 @@ namespace CommandModule
                     await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Name}. Ask the Regear team if there's an issue.", null, false, true);
                     await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Name}", null));
                 }
-            }
-            else
-            {
-                await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, true);
-            }
+            //}
+            //else
+            //{
+            //    await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, true);
+            //}
 
         }
 

@@ -23,6 +23,7 @@ namespace DiscordBot.RegearModule
         private int silverTierRegearCap = 1300000;
         private int bronzeTierRegearCap = 1000000;
         private int shitTierRegearCap = 600000;
+        private int mountCap = 125000;
         private int iTankMinimumIP = 1400;
         private int iDPSMinimumIP = 1450;
         private int iHealerMinmumIP = 1350;
@@ -316,6 +317,7 @@ namespace DiscordBot.RegearModule
             foreach (var item in equipmentList)
             {
                 string itemType = (item.Split('_')[1] == "2H") ? "MAIN" : item.Split('_')[1];
+                double equipmentFetchPrice = 0;
 
                 Equipment underRegearItem = submittedRegearItems.Where(x => itemType.Contains(x.Type)).FirstOrDefault();
                 MarketDataFetching marketDataFetching = new MarketDataFetching();
@@ -325,16 +327,14 @@ namespace DiscordBot.RegearModule
 
                 if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
                 {
-                    //Check for Daily Average
+                    //Check for daily average price
                     List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(item);
 
                     if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
                     {
-
-
-                        //Check for 24 Day Average
+                        //Check for monthly average price
                         List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(item);
-                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
+                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.data != null).Count() == 0)
                         {
                             notAvailableInMarketList.Add(marketDataCurrent.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
                             underRegearItem.ItemPrice = "$0 (Not Found)";
@@ -342,27 +342,33 @@ namespace DiscordBot.RegearModule
                         else
                         {
                             //get monthly prices
-                            var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
-                            returnValue += equipmentFetchPrice;
+                            equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
                             underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
                         }
                     }
                     else
                     {
                         //get daily prices
-                        var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
-                        returnValue += equipmentFetchPrice;
+                        equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
                         underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
                     }
                 }
                 else
                 {
                     //get current prices
-                    var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
-
-                    returnValue += equipmentFetchPrice;
+                    equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
                     underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
                 }
+
+                //if mount is T5 or higher and exceed cap amount
+                if(underRegearItem.Type != null && underRegearItem.Type == "MOUNT" && equipmentFetchPrice > mountCap)
+                {
+                    equipmentFetchPrice = MountRegearCap(equipmentFetchPrice, victimEquipment);
+                    underRegearItem.ItemPrice = "$" + equipmentFetchPrice.ToString("N0") + (" (CAP REACHED)");
+                }
+
+                returnValue += equipmentFetchPrice;
+
             }
 
 
@@ -463,7 +469,7 @@ namespace DiscordBot.RegearModule
 
                         //Check for 24 Day Average
                         List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(itemDes + "?quality=3");
-                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
+                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.data != null).Count() == 0)
                         {
                             underRegearItem.Add(new Equipment
                             {
@@ -661,6 +667,19 @@ namespace DiscordBot.RegearModule
             }
         }
 
+        private double MountRegearCap(double a_iEquipmentPrice, PlayerDataHandler.Equipment1 a_PlayerEquipment)
+        {
+            double returnValue = a_iEquipmentPrice;
+
+            string mountTier = a_PlayerEquipment.Mount.Type.ToString().Split('_')[0];
+            if (a_PlayerEquipment.Mount.Type.ToString().Contains("UNIQUE_MOUNT") || mountTier == "T5" || mountTier == "T6" || mountTier == "T7" || mountTier == "T8")
+            {
+                returnValue = Math.Min(mountCap, a_iEquipmentPrice);
+            }
+            
+            return returnValue;
+        }
+
 
         private bool IsRegearTankClass(string a_sGearItem)
         {
@@ -699,14 +718,14 @@ namespace DiscordBot.RegearModule
             return false;
         }
 
-        public double FetchItemPrice<T>(T Test, out string? ErrorMessage)
+        public double FetchItemPrice<T>(T ItemData, out string? ErrorMessage)
         {
             double returnValue = 0;
             ErrorMessage = null;
 
-            if (Test.GetType() == typeof(List<EquipmentMarketData>))
+            if (ItemData.GetType() == typeof(List<EquipmentMarketData>))
             {
-                var marketData = (List<EquipmentMarketData>)(object)Test;
+                var marketData = (List<EquipmentMarketData>)(object)ItemData;
                 var itemsData = marketData.Where(x => x.sell_price_min != 0);
 
                 if (itemsData != null)
@@ -731,9 +750,9 @@ namespace DiscordBot.RegearModule
                 }
                 return returnValue;
             }
-            if (Test.GetType() == typeof(List<AverageItemPrice>))
+            if (ItemData.GetType() == typeof(List<AverageItemPrice>))
             {
-                var marketData = (List<AverageItemPrice>)(object)Test;
+                var marketData = (List<AverageItemPrice>)(object)ItemData;
                 var itemsData = marketData.Where(x => x.data.Any(x => x.avg_price != 0));
 
                 if (itemsData != null)
@@ -759,18 +778,18 @@ namespace DiscordBot.RegearModule
                 return returnValue;
 
             }
-            if (Test.GetType() == typeof(List<EquipmentMarketDataMonthylyAverage>))
+            if (ItemData.GetType() == typeof(List<EquipmentMarketDataMonthylyAverage>))
             {
-                var marketData = (List<EquipmentMarketDataMonthylyAverage>)(object)Test;
-                var itemsData = marketData.Where(x => x.prices_avg.Any(x => x != 0));
+                var marketData = (List<EquipmentMarketDataMonthylyAverage>)(object)ItemData;
+                var itemsData = marketData.Where(x => x.data.Any(x => x.avg_price != 0));
 
                 if (itemsData != null)
                 {
-                    if (marketData.Count() != 0 && marketData.Where(x => x.prices_avg.Any(x => x != 0)).FirstOrDefault().prices_avg.FirstOrDefault() != 0)
+                    if (marketData.Count() != 0 && marketData.Where(x => x.data.Any(x => x.avg_price != 0)).FirstOrDefault().data.FirstOrDefault().avg_price != 0)
                     {
-                        var value = marketData.Min(x => x.prices_avg.Min());
+                        var value = marketData.Min(x => x.data.FirstOrDefault().avg_price);
 
-                        if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+                        if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't generally cost over 5 mil. more checks need to be in place)
                         {
                             returnValue = value;
                         }

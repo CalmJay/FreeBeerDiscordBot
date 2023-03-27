@@ -36,7 +36,7 @@ namespace AlbionOnlineDataParser
         public static void InitializeAlbionData24DayAveragePrices()
         {
             ApiAlbionDataProjectMonthlyPrices = new HttpClient();
-            ApiAlbionDataProjectMonthlyPrices.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/prices/");
+            ApiAlbionDataProjectMonthlyPrices.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/history/");
             ApiAlbionDataProjectMonthlyPrices.DefaultRequestHeaders.Accept.Clear();
             ApiAlbionDataProjectMonthlyPrices.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }

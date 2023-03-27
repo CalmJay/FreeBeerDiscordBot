@@ -20,7 +20,8 @@ namespace FreeBeerBot
         private DataBaseService dataBaseService;
         public static LavalinkManager lavalinkManager;
         ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
-
+        private bool EnableMusicCommands = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("enableMusic"));
+        private bool RegisterCommandsAtReboot = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("registerCommands"));
         // Program entry point
         public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -80,26 +81,33 @@ namespace FreeBeerBot
             commands.Log += _ => provider.GetRequiredService<ConsoleLogger>().Log(_);
             //_client.ThreadCreated += AuditThreadCreated;
 
-            lavalinkManager = new LavalinkManager(_client, new LavalinkManagerConfig());
+            if(EnableMusicCommands == true)
+            {
+                lavalinkManager = new LavalinkManager(_client, new LavalinkManagerConfig());
+            }
+            
             _client.Ready += async () =>
             {
-                await lavalinkManager.StartAsync();
-                //if (IsDebug())
-                //{
-                //var guild = _client.GetGuild(GuildID);
+                if(lavalinkManager != null)
+                {
+                    await lavalinkManager.StartAsync();
+                }
 
-                //await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
-                // await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
-                //guild.ModifyAsync()
-                // Id of the test guild can be provided from the Configuration object
-                //await commands.RegisterCommandsToGuildAsync(GuildID);
+                if (IsDebug())
+                {
+                    var guild = _client.GetGuild(GuildID);
 
-                //}
-                //else
-                //{
-                //  //If not debug, register commands globally
-                //await commands.RegisterCommandsGloballyAsync(true);
-                //}
+                    //await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+                    await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
+
+                    await commands.RegisterCommandsToGuildAsync(GuildID);
+
+                }
+                else
+                {
+                    //If not debug, register commands globally
+                    //await commands.RegisterCommandsGloballyAsync(true);
+                }
             };
 
             //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);
