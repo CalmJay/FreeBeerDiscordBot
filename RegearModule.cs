@@ -368,7 +368,6 @@ namespace DiscordBot.RegearModule
                 }
 
                 returnValue += equipmentFetchPrice;
-
             }
 
 

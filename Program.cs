@@ -95,12 +95,12 @@ namespace FreeBeerBot
 
                 if (IsDebug())
                 {
-                    var guild = _client.GetGuild(GuildID);
+                    //var guild = _client.GetGuild(GuildID);
 
-                    //await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
-                    await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
+                    ////await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+                    //await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
 
-                    await commands.RegisterCommandsToGuildAsync(GuildID);
+                    //await commands.RegisterCommandsToGuildAsync(GuildID);
 
                 }
                 else

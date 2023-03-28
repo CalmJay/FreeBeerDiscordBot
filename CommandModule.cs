@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Enums;
@@ -140,30 +141,55 @@ namespace CommandModule
                 await ReplyAsync($"The discord name doen't match the ingame name. {playerInfo.Name}");
             }
         }
-        [SlashCommand("unregister", "Remove player from database and perms from discord")]
-        public async Task Unregister(string InGameName, SocketGuildUser DiscordName = null)
+        [SlashCommand("unregister-member", "Remove player from database and perms from discord")]
+        public async Task Unregister(string InGameName, string ReasonForKick ,SocketGuildUser? DiscordUser = null)
         {
-            await GoogleSheetsDataWriter.UnResgisterUserFromDataSources(InGameName, DiscordName);
-            await RespondAsync("This command isn't finished yet", null, false, true);
-        }
+            PlayerDataLookUps albionData = new PlayerDataLookUps();
+            PlayerLookupInfo playerInfo = new PlayerLookupInfo();
 
-        [SlashCommand("prune-memebers", "Verifies users in discord to registered members in database")]
-        public async Task PruneMembers()
-        {
-            LootSplitModule lootSplitMod = new LootSplitModule();
-            await lootSplitMod.CreateMemberDict(Context);
-            var FreeBeerMembers = lootSplitMod.scrapedDict.ToList();
+            playerInfo = await albionData.GetPlayerInfo(Context, InGameName);
 
-            await RespondAsync("This command isn't finished yet", null, false, true);
+            if(playerInfo != null || DiscordUser != null)
+            {
+                await GoogleSheetsDataWriter.UnResgisterUserFromDataSources(InGameName, DiscordUser);
+
+                if (DiscordUser != null)
+                {
+                    await DiscordUser.RemoveRolesAsync(DiscordUser.Roles);
+                    await DiscordUser.Guild.GetUser(DiscordUser.Id).SendMessageAsync($"You've been removed from Free Beer for the following reason: {ReasonForKick}" );
+                }
+                await RespondAsync("Member was unregistered", null, false, true);
+            }
+            else
+            {
+                await RespondAsync("Player not found", null, false, true);
+            }
+           
+            
         }
 
         [SlashCommand("give-regear", "Assign users regear roles")]
-        public async Task GiveRegear(string GuildUserNames, DateTime SelectedDate)
+        public async Task GiveRegear(string GuildUserNames, DateTime SelectedDate, RegearTiers RegearTier)
         {
+            await DeferAsync(true);
+            List<char> charsToRemove = new List<char>() { '@', '<', '>' };
+            foreach (char c in charsToRemove)
+            {
+                GuildUserNames = GuildUserNames.Replace(c.ToString(), String.Empty);
+            }
+
+            List<string> CommandUsers = GuildUserNames.Split(',').ToList();
             
-            L//ist<SocketGuildUser> user = TypeConverter;
-            DateTime datepicked = SelectedDate;
-            await RespondAsync("This command isn't finished yet", null, false, true);
+            List<SocketGuildUser> SocketUsersList = new List<SocketGuildUser>();
+
+            foreach (var user in CommandUsers)
+            {
+                var userConvert = Convert.ToUInt64(user);
+                SocketUsersList.Add(Context.Guild.GetUser(userConvert));
+            }
+
+            await GoogleSheetsDataWriter.UpdateRegearRole(SocketUsersList, SelectedDate, RegearTier);
+            await FollowupAsync("Members regear roles updated.", null, false, true);
         }
 
 

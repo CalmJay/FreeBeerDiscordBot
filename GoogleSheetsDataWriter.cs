@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using Aspose.Words;
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Enums;
@@ -7,6 +8,7 @@ using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
+using Newtonsoft.Json;
 using PlayerData;
 using System;
 using System.Collections.Generic;
@@ -611,57 +613,107 @@ namespace GoogleSheetsData
 
             return false;
         }
-        public static async Task UnResgisterUserFromDataSources(string a_MemberName, SocketGuildUser SocketUser)
+        public static async Task UnResgisterUserFromDataSources(string a_MemberName, SocketGuildUser? a_SocketUser)
         {
-            DateTime todaysdate = DateTime.Now;
-
-            if(todaysdate.DayOfWeek == DayOfWeek.Sunday)
+            
+            
+            string? UserName = null;
+            if (a_SocketUser != null)
             {
-
+                UserName =(a_SocketUser != null && a_SocketUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketUser.Nickname) : a_SocketUser.Username;
+            }
+            else
+            {
+                UserName = a_MemberName;
             }
 
-            
+            await ClearUserFromSheet(GuildSpreadsheetId, $"Guild Roster!B2:B", "Guild Roster",  UserName);
+            await ClearUserFromSheet(RegearSheetID, $"Payouts!B2:B", "Payouts", UserName);
+            await ClearUserFromSheet(RegearSheetID, $"Mini-Market Credits!B2:B", "Mini-Market Credits", UserName);
+
+
+            //var SheetUserList = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:B").Execute().Values;
+            //var PayoutsList = serviceValues.Get(RegearSheetID, $"Payouts!B2:B").Execute().Values; ;
+            //var MiniMartetCreditsList = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!B2:B").Execute().Values;
+
 
         }
-
-        public static async Task PruneSheets(SocketGuildUser a_Manager, SocketGuildUser a_User, int a_iAmount, MiniMarketType a_eTransactionType)
-        {
-
-        }
-
-        public static async Task UpdateRegearRole(List<SocketGuildUser> a_SocketGuildUser, DateTime a_dExpirationDate)
+        private static async Task ClearUserFromSheet(string a_sSpreadSheetID, string a_sRange, string a_sSpreadSheetName, string a_sUsername)
         {
             var serviceValues = GetSheetsService().Spreadsheets.Values;
+            int i = 2;
 
-            var UserList = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D").Execute().Values;
+            ClearValuesRequest requestBody = new ClearValuesRequest();
+            SpreadsheetsResource.ValuesResource.ClearRequest request = null;
+            var SheetUserList = serviceValues.Get(a_sSpreadSheetID, a_sRange).Execute().Values;
 
-            foreach (var user in UserList)
+            try
             {
+                foreach (var socketuser in SheetUserList)
+                {
+                    if ( socketuser.Count > 0 && socketuser[0].ToString().ToLower() == a_sUsername.ToLower())
+                    {
+                        var col1 = i;
+                        var col2 = i;
+                        //$"Payouts!R3C2:R350C
+                        if(a_sSpreadSheetName == "Guild Roster")
+                        {
+                            request = serviceValues.Clear(requestBody, a_sSpreadSheetID, $"{a_sSpreadSheetName}!R{i}C1:R{i}C12");
+                            await request.ExecuteAsync();
+                        }
+                        else
+                        {
+                            request = serviceValues.Clear(requestBody, a_sSpreadSheetID, $"{a_sSpreadSheetName}!R{i}C1:R{i}C2");
+                            await request.ExecuteAsync();
+                        }
+                        break;
+                    }
+                    i++;
 
+                }
             }
-
-
-            var col1 = 2;
-            var col2 = 2;
-
-            WriteRange = $"Guild Roster!B{col1}:D{col2}";
-
-            ValueRange GetResponse = null;
-            IList<IList<object>> values = null;
-
-            
-
-            if (values == null || !values.Any())
+            catch (Exception ex)
             {
-                var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { a_SocketGuildUser, "Bronze", "TRUE", a_dExpirationDate } } };
-                var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
-                update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
-                await update.ExecuteAsync();
+                Console.WriteLine(ex.ToString());
             }
-
         }
+        public static async Task UpdateRegearRole(List<SocketGuildUser> a_SocketGuildUser, DateTime a_dExpirationDate, RegearTiers a_eRegearTier)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+            string? sSocketUserNameCleaned = "";
 
+            var SheetUserList = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D").Execute().Values;
 
+            int i = 2;
+            int x = 2;
+            try
+            {
+                foreach (var sheetUser in SheetUserList)
+                {
+                    foreach (var socketuser in a_SocketGuildUser)
+                    {
+                        sSocketUserNameCleaned = (socketuser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(socketuser.Nickname) : socketuser.Username;
+                        if (sheetUser[0].ToString().ToLower() == sSocketUserNameCleaned.ToLower())
+                        {
+                            var col1 = i;
+                            var col2 = i;
+                            WriteRange = $"Guild Roster!B{col1}:D{col2}";
+                            ValueRange rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sSocketUserNameCleaned, a_eRegearTier.ToString(), a_dExpirationDate.ToString("M/d/yyyy") } } };
+                            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+                            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                            await update.ExecuteAsync();
+                            break;
+                        }
+                        x++;
+                    }
+                    i++;
+                }
+            }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine(ex.ToString());
+            }
+        }
         public static string GetRegearStatus(string a_MemberName)
         {
             var serviceValues = GetSheetsService().Spreadsheets.Values;

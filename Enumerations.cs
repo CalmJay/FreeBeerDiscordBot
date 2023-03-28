@@ -111,4 +111,12 @@
         Excellent = 4,
         Masterpiece = 5
     }
+
+    public enum RegearTiers
+    {
+        Gold,
+        Silver,
+        Bronze,
+        None
+    }
 }
