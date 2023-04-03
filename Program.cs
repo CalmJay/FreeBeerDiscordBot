@@ -11,6 +11,7 @@ using SharpLink;
 using System;
 using System.Threading.Tasks;
 using static AlbionOnlineDataParser.AlbionOnlineDataParser;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace FreeBeerBot
 {
@@ -52,7 +53,7 @@ namespace FreeBeerBot
             // Required to subscribe to the various client events used in conjunction with Interactions
             .AddSingleton<InteractionHandler>())
             .Build();
-
+            
             InitializeAlbionAPIClient();
             InitializeAlbionDataProjectCurrentPrices();
             InitializeAlbion24HourDataMarketPricesHistory();
@@ -113,7 +114,6 @@ namespace FreeBeerBot
             //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);
             await _client.LoginAsync(TokenType.Bot, System.Configuration.ConfigurationManager.AppSettings.Get("discordBotToken"));
             await _client.StartAsync();
-
             await Task.Delay(-1);
         }
 

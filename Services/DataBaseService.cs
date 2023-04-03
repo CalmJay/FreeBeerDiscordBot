@@ -1,5 +1,6 @@
 ﻿using DiscordBot.Enums;
 using DiscordBot.Models;
+using Google.Apis.Sheets.v4.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -24,7 +25,7 @@ namespace DiscordBot.Services
         {
             return await freeBeerdbContext.Player.AnyAsync(x => x.PlayerName == playerName);
         }
-        public async Task<Boolean> CheckPlayerIsDid5RegearBefore(string playerName)
+        public bool PlayerReachRegearCap(string playerName, int a_iRegearLimitCap)
         {
             List<PlayerLoot> playerLoots = new List<PlayerLoot>();
             var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
@@ -35,11 +36,12 @@ namespace DiscordBot.Services
                     playerLoots.Add(item);
                 }
             }
+
             if (playerLoots == null)
             {
                 return false;
             }
-            else if (playerLoots.Count > 5)
+            else if (playerLoots.Count > a_iRegearLimitCap)
             {
                 return true;
             }

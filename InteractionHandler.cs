@@ -64,14 +64,16 @@ namespace InteractionHandlerService
 
         private async Task ThreadCreationExecuted(SocketThreadChannel arg)
         {
-            string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
-            if (sUserNickname.Contains("!sl"))
-            {
-                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
-            }
+            
 
             if (arg.ParentChannel.Id == HQMiniMarketChannelID && ChannelThreadId != arg.Owner.Thread.Id)
             {
+                string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
+                if (sUserNickname.Contains("!sl"))
+                {
+                    sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+                }
+
                 ChannelThreadId = arg.Owner.Thread.Id;
                 string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
                 await arg.SendMessageAsync($"{sUserNickname} Mini market credits balance: {miniMarketCreditsTotal}");

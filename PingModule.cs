@@ -1,4 +1,5 @@
 ﻿using Discord;
+using DiscordBot.Enums;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordbotLogging.Log;
@@ -9,6 +10,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq;
+using static System.Net.Mime.MediaTypeNames;
+using System.Configuration;
 
 namespace DNet_V3_Tutorial
 {
@@ -18,10 +22,145 @@ namespace DNet_V3_Tutorial
         public InteractionService Commands { get; set; }
         private static Logger _logger;
 
+        public int goldTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegearPriceCap"));
+        public int silverTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegearPriceCap"));
+        public int bronzeTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegearPriceCap"));
+        public int shitTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DefaultTierSubmissionCap"));
+        public int mountCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("MountPriceCap"));
+        public int iTankMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMinimumIP"));
+        public int iDPSMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMinimumIP"));
+        public int iHealerMinmumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMinmumIP"));
+        public int iSupportMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMinimumIP"));
+        public int iTemporaryPeakRegearAdjustment = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TemporaryPeakRegearAdjustment"));
+        public int iTestSetting = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TestSetting"));
+        public static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
+        public static ulong HealerMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMentorID"));
+        public static ulong DPSMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMentorID"));
+        public static ulong SupportMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMentorID"));
+
         public PingModule(ConsoleLogger logger)
         {
             _logger = logger;
         }
+
+
+        // Simple slash command to bring up a message with a button to press
+        [SlashCommand("button", "message with button")]
+        public async Task BotConfiguationMenu()
+        {
+            var components = new ComponentBuilder();
+            var button = new ButtonBuilder()
+            {
+                Label = "Button",
+                CustomId = "button1",
+                Style = ButtonStyle.Primary
+            };
+
+            // Messages take component lists. Either buttons or select menus. The button can not be directly added to the message. It must be added to the ComponentBuilder.
+            // The ComponentBuilder is then given to the message components property.
+            components.WithButton(button);
+
+            await RespondAsync("This message has a button!", components: components.Build());
+            
+        }
+
+        // This is the handler for the button created above. It is triggered by nmatching the customID of the button.
+        [ComponentInteraction("button1")]
+        public async Task ButtonHandler()
+        {
+            // try setting a breakpoint here to see what kind of data is supplied in a ComponentInteraction.
+            var c = Context;
+            await RespondAsync($"You pressed a button!");
+        }
+
+
+
+        // Simple slash command to bring up a message with a select menu
+        [SlashCommand("configation", "Adjust bot settings")]
+        public async Task MenuInput()
+        {
+
+            var components = new ComponentBuilder();
+            var button = new ButtonBuilder()
+            {
+                Label = "Button",
+                CustomId = "button1",
+                Style = ButtonStyle.Primary
+            };
+
+            components.WithButton(button);
+
+            //var mb = new ModalBuilder()
+            //    .WithTitle("Fav Food")
+            //    .WithCustomId("food_menu");
+
+            //.AddTextInput("What??", "food_name", placeholder: "Pizza")
+            //.AddTextInput("Why??", "food_reason", TextInputStyle.Paragraph,"Kus it's so tasty");
+
+
+            //var embedFieldBuilter = new EmbedFieldBuilder()
+            //    .WithName($"Regear Settings")
+            //    .WithIsInline(false)
+            //    .WithValue("Tank /n" +
+            //    "healer /n" +
+            //    "support /n" +
+            //    "dps");
+
+
+            //var embed = new EmbedBuilder()
+            //.WithTitle("Free Beer Bot Menu")
+            //.WithDescription("These are all the settings that control some of the main functions of the bot and regears")
+            //.AddField("Main Menu", "description")
+            //.AddField(embedFieldBuilter)
+            //.AddField(embedFieldBuilter)
+            //.AddField($">>> `Healer Regear Minimum IP` {iHealerMinmumIP}", "test", false)
+            //.AddField(">>> `DPS Regear Minimum IP`", iDPSMinimumIP)
+            //.AddField(">>> `Support Regear Minimum IP`", iSupportMinimumIP)
+            //.AddField(">>> `Gold Tier Regear Cap`", goldTierRegearCap)
+            //.AddField(">>> `Silver Tier Regear Cap`", silverTierRegearCap)
+            //.AddField(">>> `Bronze Tier Regear Cap`", bronzeTierRegearCap)
+            //.AddField(">>> `Shit Tier Regear Cap`", shitTierRegearCap)
+            //.AddField(">>> `Mount cap`", mountCap)
+            //.AddField("bold test", "**boldtest**")
+            //.WithFooter("The Footer");
+
+            //var components = new ComponentBuilder();
+            //// A SelectMenuBuilder is created
+            //var select = new SelectMenuBuilder()
+            //{
+            //    CustomId = "menu1",
+            //    Placeholder = "Select something"
+            //};
+
+            //// Options are added to the select menu. The option values can be generated on execution of the command. You can then use the value in the Handler for the select menu
+            //// to determine what to do next. An example would be including the ID of the user who made the selection in the value.
+            //select.AddOption("abc", "abc_value");
+            //select.AddOption("def", "def_value");
+            //select.AddOption("ghi", "ghi_value");
+
+            //components.WithSelectMenu(select);
+
+            //await RespondAsync("This message has a menu!", components: components.Build(), embed: embed);
+
+            //await Context.Interaction.RespondWithModalAsync(mb.Build());
+
+            await RespondAsync($"Setting currently is: {iTestSetting}");
+
+            Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            config.AppSettings.Settings.Add("TestSetting", "15");
+            config.Save(ConfigurationSaveMode.Minimal);
+
+            await FollowupAsync ($"Setting changed to: {iTestSetting}");
+        }
+
+        // SelectMenu interaction handler. This receives an array of the selections made.
+        [ComponentInteraction("menu1")]
+        public async Task MenuHandler(string[] selections)
+        {
+            // For the sake of demonstration, we only want the first value selected.
+            await RespondAsync($"You selected {selections.First()}");
+        }
+
 
         [SlashCommand("view-commands", "See list of commands")]
         public async Task DisplayCommands()
@@ -37,9 +176,10 @@ namespace DNet_V3_Tutorial
                 .AddField(@"\blacklist {REQUIRED DiscordName},{REQUIRED InGameName}", "RECRUITERS AND OFFICERS ONLY: Add someone to the shit list")
                 .AddField(@"\view-paychex", "View your current weeks running paychex balance.")
                 .AddField(@"\transfer-paychex", "Transfer paychex to mini-mart credits.")
-                .AddField(@"\get-player-info {REQUIRED: Player name}", "RECRUITERS AND OFFICERS ONLY Search Albion API for player info");
-
-
+                .AddField(@"\get-player-info {REQUIRED: Player name}", "RECRUITERS AND OFFICERS ONLY Search Albion API for player info")
+                .AddField(@"\register", "Add player to Database and regear system")
+                .AddField(@"\unregister-member {REQUIRED: Player name} {REASON} {OPTIONAL: DiscordName}", "RECRUITERS AND OFFICERS ONLY Remove player from Free Beer Database")
+                .AddField(@"\configure", "Adjust the bot settings");
             // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
             await _logger.Log(new LogMessage(LogSeverity.Info, "PingModule : Help", $"User: {Context.User.Username}, Help: help", null));
 
@@ -50,6 +190,7 @@ namespace DNet_V3_Tutorial
         [SlashCommand("ping", "Receive a reply!")]
         public async Task Ping(string message)
         {
+            await DeferAsync(true);
             var channels = Context.Guild.Channels;
             var chnl = Context.Client.GetChannel(1036552362380251157) as IMessageChannel;
 
@@ -59,7 +200,7 @@ namespace DNet_V3_Tutorial
             // Respond to the user
             //await Context.Channel.SendMessageAsync();
             //await RespondAsync(message);
-            await ReplyAsync(message);
+            await FollowupAsync(message);
             //await chnl.SendMessageAsync(message);
         }
 
@@ -72,7 +213,7 @@ namespace DNet_V3_Tutorial
 
             List<string> insultList = new List<string>
             {
-                $"Yeahhhhhhh bud. Votel is better than you....",
+                $"Yeahhhhhhh bud. Voltel is better than you....",
                 $"Fuck you <@{Context.User.Id}> I made your Mom cum so hard that they made a Canadian heritage moment out of it and Don Mckellar played my dick",
                 $"<@{Context.User.Id}>....I guess you prove that even god makes mistakes sometimes.",
                 $"<@{Context.User.Id}> Last night I heard you went to a gathering CTA and MrAlbionOnline ganked you.",
@@ -96,7 +237,7 @@ namespace DNet_V3_Tutorial
                 $"I would love to insult you but I'm afraid I won't do as well as nature did.",
                 $"I envy the people that don't know you.",
                 $"I find the fact that you've lived this long both surprising and disappointing.",
-                //$"Logged",
+                $"Logged",
                 $"HEY <@&930220030820515850>! You have some explaining to do. I wasn't the one that invited this shitter in here.",
                 $"You have beautiful hair.",
                 $"If free beer had a dick size requirement, you would be removed for inactivity",
@@ -116,7 +257,9 @@ namespace DNet_V3_Tutorial
                 $"Don't worry… the first 40 years of childhood are always the hardest.",
                 $"I was thinking about you today. It reminded me to take out the trash.",
                 $"You are the human equivalent of a participation award",
-                //$"Directions"
+                "You're about as useful as Anne Frank's drum kit",
+                
+                $"Directions"
             };
             int r = rnd.Next(insultList.Count);
 
@@ -136,14 +279,14 @@ namespace DNet_V3_Tutorial
                     break;
                 case "Logged":
                     await Context.Guild.CurrentUser.AddRoleAsync(1004428809409409024);
-                    await RespondAsync($"<@{Context.User.Id}>! Have the honors of getting LOGGED bitch!!!  <:logs:1008762793404682340> ");
+                    await RespondAsync($"<@{Context.User.Id}> has stolen our logs!!!  <:logs:1008762793404682340> ");
                     System.Threading.Thread.Sleep(3000);
-                    await FollowupAsync($"@here <@{Context.User.Id}>! has been LOGGED. SHAME THEM!!!!");
+                    await FollowupAsync($"@here <@{Context.User.Id}> has been LOGGED. SHAME THEM!!!!");
                     break;
                 case "Paychex":
                     await RespondAsync($"<@{Context.User.Id}> Can I get my paychex?");
-                    System.Threading.Thread.Sleep(3000);
-                    await Context.User.SendMessageAsync($"Bro for real where my paychex at?");
+                    System.Threading.Thread.Sleep(5000);
+                    await Context.User.SendMessageAsync($"Bro for real... Where my paychex at?");
                     break;
                 case "Gif":
                     await RespondAsync("https://tenor.com/view/aqua-teen-hunger-force-carl-mooning-peek-a-boo-gif-17477491");
@@ -153,12 +296,9 @@ namespace DNet_V3_Tutorial
                     string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
                     string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
 
-                    await RespondAsync("I hear you can't follow directions. Lets put it to the test...");
-                    await FollowupAsync($"I see you have {miniMarketCreditsTotal} mini-mart credits.");
-
                     var directionsButton = new ButtonBuilder()
                     {
-                        Label = "DANGER DON'T PUSH!!!",
+                        Label = "DANGER DON'T PUSH!!! YOU MAY LOSE MONEY",
                         CustomId = "directions",
                         Style = ButtonStyle.Danger
                     };
@@ -167,6 +307,8 @@ namespace DNet_V3_Tutorial
                     var component = new ComponentBuilder();
                     component.WithButton(directionsButton);
 
+                    await FollowupAsync("I hear you can't follow directions. Lets put it to the test...", null, false, false, null, null, component.Build(), null);
+                    
                     break;
                 //$"attachment://image.jpg"
                 default:
@@ -174,6 +316,53 @@ namespace DNet_V3_Tutorial
                     break;
             }
 
+            
+        }
+
+        [ComponentInteraction("directions")]
+        public async Task directionsButton()
+        {
+            await DeferAsync();
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+            var miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+            //var convertedCredits = int.Parse(miniMarketCreditsTotal);
+
+            int convertedCredits = int.Parse(miniMarketCreditsTotal.Replace(",", "").Replace("$", ""));
+
+            await ReplyAsync($"Donating 10% of your paychex to the Free Beer Learn how to read foundation.");
+
+            int freebeercut = Convert.ToInt32(Math.Floor(convertedCredits * .10));
+
+
+            await GoogleSheetsDataWriter.MiniMartTransaction(Context.User as SocketGuildUser, Context.User as SocketGuildUser, freebeercut, MiniMarketType.Withdrawal);
+
+            await FollowupAsync($"Your mini-mart balance is now {GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname)}");
+
+
+        }
+
+        public void WriteToCSV(List<string> UsersList)
+        {
+            var csv = new StringBuilder();
+            foreach (var item in UsersList)
+            {
+                //string line = "Users Reacted";
+                //csv.AppendLine(line);
+                //line = string.Format(item.ToString());
+                csv.AppendLine(string.Format(item.ToString()));
+            }
+
+
+
+            string fileName = @"C:\Repos\WriteText.csv";
+            if (File.Exists(fileName))
+                System.IO.File.AppendAllText(fileName, csv.ToString());
+            else
+                System.IO.File.WriteAllText(fileName, csv.ToString());
+        }
+
+        public async Task ServerScript()
+        {
             //var message = await Context.Channel.GetMessageAsync(1079801885025914910);
 
             //var users = message.Reactions.Values;
@@ -205,38 +394,6 @@ namespace DNet_V3_Tutorial
 
             //WriteToCSV(usersreacted);
             //Console.WriteLine("Reactions grabbed");
-        }
-
-        [ComponentInteraction("directions")]
-        public async Task directionsButton()
-        {
-            await DeferAsync();
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
-            string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
-            await ReplyAsync($"Donating 10% of your paychex to the Learn how to read foundation. {miniMarketCreditsTotal}");
-
-
-
-        }
-
-        public void WriteToCSV(List<string> UsersList)
-        {
-            var csv = new StringBuilder();
-            foreach (var item in UsersList)
-            {
-                //string line = "Users Reacted";
-                //csv.AppendLine(line);
-                //line = string.Format(item.ToString());
-                csv.AppendLine(string.Format(item.ToString()));
-            }
-
-
-
-            string fileName = @"C:\Repos\WriteText.csv";
-            if (File.Exists(fileName))
-                System.IO.File.AppendAllText(fileName, csv.ToString());
-            else
-                System.IO.File.WriteAllText(fileName, csv.ToString());
         }
     }
 }

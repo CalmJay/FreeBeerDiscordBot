@@ -210,7 +210,7 @@ namespace GoogleSheetsData
             WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
 
 
-            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes" } } };
+            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", "N/A", "No notes" } } };
             var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
             update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
             await update.ExecuteAsync();
@@ -274,7 +274,7 @@ namespace GoogleSheetsData
             DateTime lastbiweeklySunday = HelperMethods.StartOfWeek(lastSunday.AddDays(-7), DayOfWeek.Sunday);
 
             string biweeklyLastSundayDate = $"{lastbiweeklySunday.ToShortMonthName()}-{lastbiweeklySunday.Day}";
-            string currentWeekPaychexDate = $"{DateTime.Now.ToShortMonthName()}-{lastSunday.Day}";
+            string currentWeekPaychexDate = $"{lastSunday.ToShortMonthName()}-{lastSunday.Day}";
 
             List<string> paychexData = new List<string>();
             List<object> DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
@@ -342,7 +342,7 @@ namespace GoogleSheetsData
 
             ReadRange = $"Mini-Market Credits!A2:A305";
 
-            var rowValues = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!R2C1:R305C2").Execute().Values;
+            var rowValues = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!R2C2:R305C3").Execute().Values;
 
             int i = 0;
             foreach (var users in rowValues)
@@ -720,12 +720,11 @@ namespace GoogleSheetsData
 
             var rowValues = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D").Execute().Values;
 
-            int i = 0;
             foreach (var users in rowValues)
             {
-                if (users[0].ToString().ToLower() == a_MemberName.ToLower())
+                if (users[0].ToString().ToLower() == a_MemberName.ToLower() && users.Count != 1)
                 {
-                    switch(users[1].ToString().ToLower())
+                    switch (users[1].ToString().ToLower())
                     {
                         case "bronze":
                             return users[1].ToString() + " expires on " + users[2].ToString();
@@ -735,14 +734,16 @@ namespace GoogleSheetsData
                             return users[1].ToString() + ": No expiration";
 
                         default:
-                            return "Not Enrolled";
+                            return "Not enrolled or regears expired.";
                     }
                 }
-                i++;
+                else
+                {
+                    return "Not enrolled or regears expired.";
+                }
             }
             return "ERROR FINDING REGEAR INFO";
         }
-
     }
     public static class HelperMethods
     {

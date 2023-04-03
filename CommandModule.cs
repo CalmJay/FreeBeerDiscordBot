@@ -33,7 +33,10 @@ namespace CommandModule
         private static Logger _logger;
         private DataBaseService dataBaseService;
         private static LootSplitModule lootSplitModule;
-        private SocketThreadChannel _thread;
+        private int iRegearLimit = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("RegearSubmissionCap"));
+        private bool bAutomatedRegearProcessing = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("AutomaticRegearProcessing"));
+
+        public IEnumerable<IMessage> msgs { get; set; }
 
         public CommandModule(ConsoleLogger logger)
         {
@@ -71,6 +74,7 @@ namespace CommandModule
         [SlashCommand("register", "Register player to Free Beer guild")]
         public async Task Register(SocketGuildUser guildUserName, string ingameName)
         {
+            await DeferAsync(true);
             PlayerDataHandler playerDataHandler = new PlayerDataHandler();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
             PlayerDataLookUps albionData = new PlayerDataLookUps();
@@ -92,7 +96,6 @@ namespace CommandModule
                     sUserNickname = ingameName;
                     await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
                 }
-
             }
 
             playerInfo = await albionData.GetPlayerInfo(Context, sUserNickname);
@@ -122,24 +125,27 @@ namespace CommandModule
                .AddField($"ZVZ builds", "<#906375085449945131>")
                .AddField($"Before you do ANYTHING else", "Your existence in the guild relies you on reading these");
 
-                await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}>", false, embed.Build());
-
-                List<string> insultList = new List<string>
+                List<string> questionList = new List<string>
                 {
                     $"food",
                     $"weapon in Albion",
                     $"drink",
                     $"hobby",
                     $"car",
+                    "movie",
+                    "video game (Albion doesn't count. It's a shit game)"
                 };
                 Random rnd = new Random();
-                int r = rnd.Next(insultList.Count);
-                await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}> We want to get to know you! Tell us... What's your favorite {(string)insultList[r]}?");
+                int r = rnd.Next(questionList.Count);
+                await freeBeerMainChannel.SendMessageAsync($"<@{Context.Guild.GetUser(guildUserName.Id).Id}> Make to sure read the info below but.... We want to get to know you! Tell us... What's your favorite {(string)questionList[r]}?", false, embed.Build());
+
+                await FollowupAsync($"{ingameName} was registered", null, false, true);
             }
             else
             {
                 await ReplyAsync($"The discord name doen't match the ingame name. {playerInfo.Name}");
             }
+           
         }
         [SlashCommand("unregister-member", "Remove player from database and perms from discord")]
         public async Task Unregister(string InGameName, string ReasonForKick ,SocketGuildUser? DiscordUser = null)
@@ -158,6 +164,9 @@ namespace CommandModule
                     await DiscordUser.RemoveRolesAsync(DiscordUser.Roles);
                     await DiscordUser.Guild.GetUser(DiscordUser.Id).SendMessageAsync($"You've been removed from Free Beer for the following reason: {ReasonForKick}" );
                 }
+
+                //TODO: REMOVE PLAYER FROM DATABASE HERE
+
                 await RespondAsync("Member was unregistered", null, false, true);
             }
             else
@@ -171,6 +180,7 @@ namespace CommandModule
         [SlashCommand("give-regear", "Assign users regear roles")]
         public async Task GiveRegear(string GuildUserNames, DateTime SelectedDate, RegearTiers RegearTier)
         {
+            ulong memberRoleID = 0;
             await DeferAsync(true);
             List<char> charsToRemove = new List<char>() { '@', '<', '>' };
             foreach (char c in charsToRemove)
@@ -189,6 +199,31 @@ namespace CommandModule
             }
 
             await GoogleSheetsDataWriter.UpdateRegearRole(SocketUsersList, SelectedDate, RegearTier);
+
+            switch (RegearTier)
+            {
+                case RegearTiers.Bronze:
+                    memberRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegear"));
+                    break;
+
+                case RegearTiers.Silver:
+                    memberRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
+                    break;
+
+                case RegearTiers.Gold:
+                    memberRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegear"));
+                    break;
+                    
+            }
+
+            foreach (var user in SocketUsersList)
+            {
+                if(!user.Roles.Any(r => r.Id == memberRoleID))
+                {
+                    await user.AddRoleAsync(memberRoleID);
+                }
+            }
+
             await FollowupAsync("Members regear roles updated.", null, false, true);
         }
 
@@ -320,19 +355,14 @@ namespace CommandModule
             Console.WriteLine("Dickhead " + a_DiscordUsername + " has been blacklisted");
 
             await GoogleSheetsDataWriter.WriteToFreeBeerRosterDatabase(a_DiscordUsername.ToString(), sDiscordNickname, sReason, sFine, sNotes);
-            await FollowupAsync(a_DiscordUsername.ToString() + " has been blacklisted <:kekw:816748015372861512> ", null, false, false);
+            await FollowupAsync(a_DiscordUsername.ToString() + " has been blacklisted. <:kekw:1069714675081687200> ", null, false, false);
         }
 
         [SlashCommand("view-paychex", "Views your current paychex amount")]
         public async Task GetCurrentPaychexAmount()
         {
             await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
-
-            if (sUserNickname.Contains("!sl"))
-            {
-                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
-            }
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
 
             if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
             {
@@ -347,7 +377,7 @@ namespace CommandModule
                     .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
                     .AddField("Last weeks Paychex total:", $"${paychexRunningTotal[0]:n0}")
                     .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
-                    .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal:n0}")
+                    .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}")
                     .AddField("Regear Status:", $"{regearStatus}");
 
                     await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
@@ -455,12 +485,12 @@ namespace CommandModule
             {
                 bRegearAllowed = true;
             }
-            else if ((guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")) && mentor == null)
+            else if (guildUser.Roles.Any(x => x.Id == 970083088241672245) && mentor == null)
             {
                 await RespondAsync($"Hey bud. You need to submit your regear with your mentor tagged. They are the optional choice at the end of the command. ", null, false, true);
                 bRegearAllowed = false;
             }
-            else if (mentor != null && !mentor.Roles.Any(x => x.Id == 1049889855619989515) && (guildUser.Roles.Any(x => x.Id == 970083088241672245) || guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible")))
+            else if (mentor != null && RegearModule.ISUserMentor(mentor)  && guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible"))
             {
                 await RespondAsync($"Cleary you need a mentor you idiot. Make sure you select an ACTUAL mentor", null, false, true);
                 bRegearAllowed = false;
@@ -475,7 +505,7 @@ namespace CommandModule
                     PlayerName = PlayerEventData.Victim.Name
                 });
 
-                if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname))
+                if (!await dataBaseService.PlayerReachRegearCap(sUserNickname, iRegearLimit) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                 {
                     if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
                     {
@@ -525,8 +555,10 @@ namespace CommandModule
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
+            string? sUserNickname = (guildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.Nickname) : guildUser.Username;
+            string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name == "Mentor").FirstOrDefault().Value.ToString() : null;
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "Gold Tier Regear - Eligible") || regearPoster == guildUser.Id)
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower() || regearPoster == guildUser.Id)
             {
                 dataBaseService = new DataBaseService();
 
@@ -573,10 +605,9 @@ namespace CommandModule
             string? sUserNickname = (guildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.Nickname) : guildUser.Username;
             string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name == "Mentor").FirstOrDefault().Value.ToString() : null;
 
-            PlayerDataLookUps eventData = new PlayerDataLookUps();
-
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor != null && ((guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible") && sSelectedMentor.ToLower() == sUserNickname.ToLower())))
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower())
             {
+                PlayerDataLookUps eventData = new PlayerDataLookUps();
                 PlayerEventData = await eventData.GetAlbionEventInfo(iKillId);
                 await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, iRefundAmount, sCallername, sEventType, MoneyTypes.ReGear);
                 await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
@@ -664,41 +695,25 @@ namespace CommandModule
             var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
             var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
 
-            dataBaseService = new DataBaseService();
-
-            await dataBaseService.AddPlayerInfo(new Player
-            {
-                PlayerId = PlayerEventData.Id,
-                PlayerName = PlayerEventData.Name
-            });
-
-
             await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
 
-            //if (!await dataBaseService.CheckPlayerIsDid5RegearBefore(sUserNickname) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
-            //{
-                await DeferAsync();
-                var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
+            await DeferAsync(true);
 
-                if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
-                {
-                    await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak, enumEventType);
-                    await Context.User.SendMessageAsync($"Your OC Break ID:{regearModule.RegearQueueID} has been submitted successfully.");
+            var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
 
-                    await FollowupAsync("Regear Submission Complete", null, false, true);
-                    await DeleteOriginalResponseAsync();
-                }
-                else
-                {
-                    await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Name}. Ask the Regear team if there's an issue.", null, false, true);
-                    await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Name}", null));
-                }
-            //}
-            //else
-            //{
-            //    await RespondAsync($"Woah woah waoh there <@{Context.User.Id}>.....I'm cutting you off. You already submitted 5 regears today. Time to use the eco money you don't have. You can't claim more than 5 regears in a day", null, false, true);
-            //}
+            if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+            {
+                await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak, enumEventType);
+                await Context.User.SendMessageAsync($"Your OC Break ID:{regearModule.RegearQueueID} has been submitted successfully.");
 
+                await FollowupAsync("Regear Submission Complete", null, false, true);
+                await DeleteOriginalResponseAsync();
+            }
+            else
+            {
+                await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Name}. Ask the Regear team if there's an issue.", null, false, true);
+                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Name}", null));
+            }
         }
 
         [ComponentInteraction("oc-approve")]

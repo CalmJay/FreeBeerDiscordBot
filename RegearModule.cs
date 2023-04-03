@@ -19,15 +19,20 @@ namespace DiscordBot.RegearModule
     {
         private DataBaseService dataBaseService;
 
-        private int goldTierRegearCap = 1700000;
-        private int silverTierRegearCap = 1300000;
-        private int bronzeTierRegearCap = 1000000;
-        private int shitTierRegearCap = 600000;
-        private int mountCap = 125000;
-        private int iTankMinimumIP = 1400;
-        private int iDPSMinimumIP = 1450;
-        private int iHealerMinmumIP = 1350;
-        private int iSupportMinimumIP = 1350;
+        private int goldTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegearPriceCap"));
+        private int silverTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegearPriceCap"));
+        private int bronzeTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegearPriceCap"));
+        private int shitTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DefaultTierSubmissionCap"));
+        private int mountCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("MountPriceCap"));
+        private int iTankMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMinimumIP"));
+        private int iDPSMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMinimumIP"));
+        private int iHealerMinmumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMinmumIP"));
+        private int iSupportMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMinimumIP"));
+
+        private static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
+        private static ulong HealerMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMentorID"));
+        private static ulong DPSMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMentorID"));
+        private static ulong SupportMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMentorID"));
 
         public double TotalRegearSilverAmount { get; set; }
         public ulong RegearQueueID { get; set; }
@@ -435,7 +440,7 @@ namespace DiscordBot.RegearModule
             var regearIconType = "";
             var guildUser = (SocketGuildUser)command.User;
             string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
-
+            string sMarketLocation = System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket");
             List<Item> items = new List<Item>();
             double returnValue = 0;
 
@@ -456,18 +461,18 @@ namespace DiscordBot.RegearModule
                 MarketDataFetching marketDataFetching = new MarketDataFetching();
 
                 //Check for Current Price
-                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(itemDes + "?quality=3");
+                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(itemDes + $"?quality=3&{sMarketLocation}");
 
                 if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
                 {
                     //Check for Daily Average
-                    List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(itemDes + "?quality=3");
+                    List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(itemDes + $"?quality=3&{sMarketLocation}");
 
                     if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
                     {
 
                         //Check for 24 Day Average
-                        List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(itemDes + "?quality=3");
+                        List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(itemDes + $"?quality=3&{sMarketLocation}");
                         if (marketDataMonthly == null || marketDataMonthly.Where(x => x.data != null).Count() == 0)
                         {
                             underRegearItem.Add(new Equipment
@@ -825,6 +830,31 @@ namespace DiscordBot.RegearModule
                 return true;
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible"))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static bool ISUserMentor(SocketGuildUser a_SocketGuildUser)
+        {
+
+            if (a_SocketGuildUser.Roles.Any(r => r.Id == TankMentorID))
+            {
+                return true;
+            }
+            else if (a_SocketGuildUser.Roles.Any(r => r.Id == HealerMentorID))
+            {
+                return true;
+            }
+            else if (a_SocketGuildUser.Roles.Any(r => r.Id == DPSMentorID))
+            {
+                return true;
+            }
+            else if (a_SocketGuildUser.Roles.Any(r => r.Id == SupportMentorID))
             {
                 return true;
             }
