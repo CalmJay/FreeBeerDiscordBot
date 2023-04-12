@@ -18,10 +18,12 @@ using SharpLink;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace CommandModule
 {
@@ -50,6 +52,8 @@ namespace CommandModule
             PlayerDataLookUps albionData = new PlayerDataLookUps();
 
             playerInfo = await albionData.GetPlayerInfo(Context, a_sPlayerName);
+
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Get Player Info", $"User: {Context.User.Username} has used command, Command: Get-Player-Info", null));
 
             try
             {
@@ -153,6 +157,8 @@ namespace CommandModule
             PlayerDataLookUps albionData = new PlayerDataLookUps();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
 
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command, Command: Unregister", null));
+
             playerInfo = await albionData.GetPlayerInfo(Context, InGameName);
 
             if(playerInfo != null || DiscordUser != null)
@@ -235,6 +241,8 @@ namespace CommandModule
             string? sPlayerData = null;
             var sPlayerAlbionId = new PlayerDataLookUps().GetPlayerInfo(Context, null);
             string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).Nickname != null) ? (Context.Interaction.User as SocketGuildUser).Nickname : Context.Interaction.User.Username;
+
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Recent-Deaths ", $"User: {Context.User.Username} has used command, Command: Recent-Deaths", null));
 
             int iDeathDisplayCounter = 1;
             int iVisibleDeathsShown = Int32.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("showDeathsQuantity")) - 1;  //can add up to 10 deaths. Adjust in config
@@ -515,7 +523,7 @@ namespace CommandModule
 
                             if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                             {
-                                await DeferAsync();
+                                await DeferAsync(true);
 
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, EventType, moneyType, mentor);
                                 await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
@@ -617,9 +625,15 @@ namespace CommandModule
                 if (regearPoster.Any(x => x.RoleIds.Any(x => x == 1052241667329118349)) || Context.Guild.GetUser(uRegearPosterID).Roles.Any(r => r.Name == "Free Regear - Eligible"))
                 {
                     await Context.Guild.GetUser(uRegearPosterID).RemoveRoleAsync(1052241667329118349);
+                    await Context.Guild.GetUser(uRegearPosterID).SendMessageAsync($"Your free regear https://albiononline.com/en/killboard/kill/{iKillId} has been approved! ${iRefundAmount.ToString("N0")} has been added to your paychex. " +
+                        $"Please seek a mentor to obtain regear roles to continue getting regears.");
+                }
+                else
+                {
+                    await Context.Guild.GetUser(uRegearPosterID).SendMessageAsync($"Your regear https://albiononline.com/en/killboard/kill/{iKillId} has been approved! ${iRefundAmount.ToString("N0")} has been added to your paychex");
                 }
 
-                await Context.Guild.GetUser(uRegearPosterID).SendMessageAsync($"<@{Context.Guild.GetUser(uRegearPosterID).Id}> your regear https://albiononline.com/en/killboard/kill/{iKillId} has been approved! ${iRefundAmount.ToString("N0")} has been added to your paychex");
+               
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Approved", $"User: {Context.User.Username}, Approved the regear {iKillId} for {sVictimName} ", null));
             }
@@ -679,40 +693,26 @@ namespace CommandModule
             RegearModule regearModule = new RegearModule();
             var guildUser = (SocketGuildUser)Context.User;
 
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
-            string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
-
-            if (sUserNickname.Contains("!sl"))
-            {
-                sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
-            }
-
-            if (sCallerNickname.Contains("!sl"))
-            {
-                sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
-            }
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+            string? sCallerNickname = (callerName.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(callerName.Nickname) : callerName.Username;
 
             var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
             var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
 
-            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
-
-            await DeferAsync(true);
-
-            var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "OCBreak");
-
+            await _logger.Log(new LogMessage(LogSeverity.Info, "OC break Submit", $"User: {Context.User.Username}, Command: oc-regear", null));
+        
             if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
+                //await DeferAsync();
                 await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak, enumEventType);
                 await Context.User.SendMessageAsync($"Your OC Break ID:{regearModule.RegearQueueID} has been submitted successfully.");
 
-                await FollowupAsync("Regear Submission Complete", null, false, true);
-                await DeleteOriginalResponseAsync();
+                //await FollowupAsync("Regear Submission Complete", null, false, false);
+                //await DeleteOriginalResponseAsync();
             }
             else
             {
-                await FollowupAsync($"<@{Context.User.Id}>. You can't submit regears on the behalf of {PlayerEventData.Name}. Ask the Regear team if there's an issue.", null, false, true);
-                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Tried submitting regear for {PlayerEventData.Name}", null));
+                await RespondAsync($"There was an error processing your OC break. Try again or contact Regears Officer", null, false, true);
             }
         }
 
@@ -840,8 +840,59 @@ namespace CommandModule
         }
 
 
-        [SlashCommand("split-loot", "Images should already be uploaded to channel.")]
-        public async Task SplitLoot()
+
+        [SlashCommand("split-loot", "Perform a loot split.")]
+        public async Task SplitLoot(LootSplitType LootSplitType, int SilverTotal)
+        {
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+            double dGuildSplitPercentage = 0.20;
+
+            var approveButton = new ButtonBuilder()
+            {
+                Label = "Approve",
+                CustomId = "split-lootapprove",
+                Style = ButtonStyle.Success
+            };
+            var denyButton = new ButtonBuilder()
+            {
+                Label = "Deny",
+                CustomId = "split-lootdeny",
+                Style = ButtonStyle.Danger
+            };
+
+            var component = new ComponentBuilder();
+            component.WithButton(approveButton);
+            component.WithButton(denyButton);
+
+
+            var embed = new EmbedBuilder()
+                .WithTitle($"Loot Split Submission from {sUserNickname}")
+                .AddField("Total Members in loot splti: ", "Numbers here", true)
+                .AddField("Split Type:", LootSplitType)
+                .AddField("Total Silver amount:", SilverTotal)
+                .AddField("Guild Split Fee:", 0)
+                .AddField("Payout per player:", 0);
+
+
+            //await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
+            await RespondAsync(null, null, false, false,null, null, component.Build(), embed: embed.Build());
+
+        }
+
+        [ComponentInteraction("split-lootapprove")]
+        public async Task SplitLootApproved()
+        {
+
+        }
+
+        [ComponentInteraction("split-lootdeny")]
+        public async Task SplitLootDenied()
+        {
+
+        }
+
+        [SlashCommand("split-loot-ml", "Images should already be uploaded to channel.")]
+        public async Task SplitLootML()
         {
             await DeferAsync();
 

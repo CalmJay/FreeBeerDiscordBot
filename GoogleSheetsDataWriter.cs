@@ -717,8 +717,8 @@ namespace GoogleSheetsData
         public static string GetRegearStatus(string a_MemberName)
         {
             var serviceValues = GetSheetsService().Spreadsheets.Values;
-
-            var rowValues = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D").Execute().Values;
+            var rowValues = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D310").Execute().Values;
+            string returnValue = "Not enrolled or regears expired.";
 
             foreach (var users in rowValues)
             {
@@ -727,22 +727,21 @@ namespace GoogleSheetsData
                     switch (users[1].ToString().ToLower())
                     {
                         case "bronze":
-                            return users[1].ToString() + " expires on " + users[2].ToString();
+                            returnValue = users[1].ToString() + " expires on " + users[2].ToString();
+                            break;
                         case "silver":
-                            return users[1].ToString() + ": No expiration";
+                            returnValue = users[1].ToString() + ": No expiration";
+                            break;
                         case "gold":
-                            return users[1].ToString() + ": No expiration";
+                            returnValue = users[1].ToString() + ": No expiration";
+                            break;
 
                         default:
                             return "Not enrolled or regears expired.";
                     }
                 }
-                else
-                {
-                    return "Not enrolled or regears expired.";
-                }
             }
-            return "ERROR FINDING REGEAR INFO";
+            return returnValue;
         }
     }
     public static class HelperMethods

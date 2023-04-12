@@ -873,7 +873,7 @@ namespace PlayerData
                             returnValue = playerSearchData.players.FirstOrDefault();
                         }
 
-                        Console.WriteLine("Guild Nickname Matches Albion Username");
+                        //Console.WriteLine("Guild Nickname Matches Albion Username");
 
                         new PlayerLookupInfo()
                         {

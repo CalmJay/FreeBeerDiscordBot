@@ -1,11 +1,16 @@
-﻿using Discord;
+﻿using Aspose.Words.Fields;
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using GoogleSheetsData;
 using PlayerData;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using CommandModule;
+using System.Linq;
 
 namespace InteractionHandlerService
 {
@@ -33,6 +38,8 @@ namespace InteractionHandlerService
             // Process the InteractionCreated payloads to execute Interactions commands
             _client.InteractionCreated += HandleInteraction;
             _client.ThreadCreated += ThreadCreationExecuted;
+            _client.UserJoined += UserJoinedGuildExecuted;
+            _client.UserLeft += UserLeftGuildExecuted;
 
             // Process the command execution results 
             _commands.SlashCommandExecuted += SlashCommandExecuted;
@@ -61,11 +68,46 @@ namespace InteractionHandlerService
             return Task.CompletedTask;
         }
 
+        private async Task UserJoinedGuildExecuted(SocketGuildUser SocketGuildUser)
+        {
+            var lobbyChannel = _client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("LobbyChannelID"))) as IMessageChannel;
+
+            Random rnd = new Random();
+
+            List<string> insultList = new List<string>
+            {
+                $"<@{SocketGuildUser.Id}> Welcome to Free Beer ya shmuck.",
+                $"Sorry <@{SocketGuildUser.Id}>, if your here for the free beer we're fresh out.",
+                $"Hi <@{SocketGuildUser.Id}>! If your looking to spy on us, please submit an app in <#880611767393345548>",
+                $"<@{SocketGuildUser.Id}> Welcome to Free Beer!"
+            };
+
+            int r = rnd.Next(insultList.Count);
+            await lobbyChannel.SendMessageAsync((string)insultList[r]);
+        }
+
+        private async Task UserLeftGuildExecuted(SocketGuild SocketGuild, SocketUser SocketUser)
+        {
+            
+            
+            var lobbyChannel = _client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("LobbyChannelID"))) as IMessageChannel;
+
+            SocketGuildUser user = (SocketGuildUser)SocketUser;
+
+            if(!SocketUser.IsBot && user.Roles.Any(x => x.Id == 9823749544))
+            {
+                //await CommandModule.CommandModule.Unregister(user.Username.ToString(), "Left guild or someone kicked because they were annoyed", user);
+            }
+           
+            //<@{Context.User.Id}>
+
+            await lobbyChannel.SendMessageAsync($"<@{SocketUser.Id}> has left the server");
+        }
+
+
 
         private async Task ThreadCreationExecuted(SocketThreadChannel arg)
         {
-            
-
             if (arg.ParentChannel.Id == HQMiniMarketChannelID && ChannelThreadId != arg.Owner.Thread.Id)
             {
                 string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;

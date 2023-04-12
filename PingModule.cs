@@ -190,7 +190,7 @@ namespace DNet_V3_Tutorial
         [SlashCommand("ping", "Receive a reply!")]
         public async Task Ping(string message)
         {
-            await DeferAsync(true);
+            await DeferAsync();
             var channels = Context.Guild.Channels;
             var chnl = Context.Client.GetChannel(1036552362380251157) as IMessageChannel;
 

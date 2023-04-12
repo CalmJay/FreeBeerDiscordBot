@@ -25,7 +25,7 @@ namespace DiscordBot.Services
         {
             return await freeBeerdbContext.Player.AnyAsync(x => x.PlayerName == playerName);
         }
-        public bool PlayerReachRegearCap(string playerName, int a_iRegearLimitCap)
+        public Task<Boolean> PlayerReachRegearCap(string playerName, int a_iRegearLimitCap)
         {
             List<PlayerLoot> playerLoots = new List<PlayerLoot>();
             var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
@@ -39,15 +39,15 @@ namespace DiscordBot.Services
 
             if (playerLoots == null)
             {
-                return false;
+                return Task.FromResult(false);
             }
             else if (playerLoots.Count > a_iRegearLimitCap)
             {
-                return true;
+                return Task.FromResult(true);
             }
             else
             {
-                return false;
+                return Task.FromResult(false);
             }
         }
         public async Task<Boolean> CheckKillIdIsRegeared(string killId)
