@@ -214,6 +214,7 @@ namespace DiscordBot.RegearModule
                                         .WithImageUrl($"attachment://image.jpg");
 
                     await command.Channel.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
+                    //await command.User.SendMessageAsync("Test",false, null, null, null, null, embeds: test);
                 }
             }
             catch (Exception ex)

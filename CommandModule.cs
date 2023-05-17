@@ -12,6 +12,7 @@ using FreeBeerBot;
 using GoogleSheetsData;
 using MarketData;
 using Microsoft.Data.SqlClient;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerData;
 using SharpLink;
@@ -88,7 +89,7 @@ namespace CommandModule
 
             var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
             var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
-            var freeRegearRole = guildUserName.Guild.GetRole(1052241667329118349);//new member role id
+            var freeRegearRole = guildUserName.Guild.GetRole(1052241667329118349);//free regear role id
 
             var user = guildUserName.Guild.GetUser(guildUserName.Id);
 
@@ -136,8 +137,9 @@ namespace CommandModule
                     $"drink",
                     $"hobby",
                     $"car",
-                    "movie",
-                    "video game (Albion doesn't count. It's a shit game)"
+                    $"movie",
+                    $"video game (Albion doesn't count. It's a shit game)",
+                    $"TV show"
                 };
                 Random rnd = new Random();
                 int r = rnd.Next(questionList.Count);
@@ -147,7 +149,7 @@ namespace CommandModule
             }
             else
             {
-                await ReplyAsync($"The discord name doen't match the ingame name. {playerInfo.Name}");
+                await RespondAsync($"The users discord name doen't match the ingame name. Please try again", null, false, true);
             }
            
         }
@@ -485,7 +487,7 @@ namespace CommandModule
 
             if (DateTime.Parse(PlayerEventData.TimeStamp) <= DateTime.Now.AddHours(-72) && !guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
-                await RespondAsync($"Requirement failed. Your time to submit this regear is past 24 hours. Regear denied. ", null, false, true);
+                await RespondAsync($"Requirement failed. Your time to submit this regear is past 72 hours. Regear denied. ", null, false, true);
                 bRegearAllowed = false;
             }
 
@@ -523,12 +525,12 @@ namespace CommandModule
 
                             if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
                             {
-                                await DeferAsync(true);
+                                await DeferAsync();
 
                                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, EventType, moneyType, mentor);
                                 await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
 
-                                await FollowupAsync("Regear Submission Complete", null, false, true);
+                                await FollowupAsync("Regear Submission Complete");
                                 await DeleteOriginalResponseAsync();
                             }
                             else
@@ -697,18 +699,18 @@ namespace CommandModule
             string? sCallerNickname = (callerName.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(callerName.Nickname) : callerName.Username;
 
             var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
-            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname).FirstOrDefault();
+            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname.ToLower()).FirstOrDefault();
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "OC break Submit", $"User: {Context.User.Username}, Command: oc-regear", null));
         
             if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
-                //await DeferAsync();
+                await DeferAsync();
                 await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak, enumEventType);
                 await Context.User.SendMessageAsync($"Your OC Break ID:{regearModule.RegearQueueID} has been submitted successfully.");
 
-                //await FollowupAsync("Regear Submission Complete", null, false, false);
-                //await DeleteOriginalResponseAsync();
+                await FollowupAsync("Regear Submission Complete", null, false, false);
+                await DeleteOriginalResponseAsync();
             }
             else
             {
@@ -847,6 +849,8 @@ namespace CommandModule
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
             double dGuildSplitPercentage = 0.20;
 
+            LootSplitModule lootSplitMod = new LootSplitModule();
+
             var approveButton = new ButtonBuilder()
             {
                 Label = "Approve",
@@ -872,7 +876,6 @@ namespace CommandModule
                 .AddField("Total Silver amount:", SilverTotal)
                 .AddField("Guild Split Fee:", 0)
                 .AddField("Payout per player:", 0);
-
 
             //await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
             await RespondAsync(null, null, false, false,null, null, component.Build(), embed: embed.Build());

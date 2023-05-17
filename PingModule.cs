@@ -44,25 +44,25 @@ namespace DNet_V3_Tutorial
         }
 
 
-        // Simple slash command to bring up a message with a button to press
-        [SlashCommand("button", "message with button")]
-        public async Task BotConfiguationMenu()
-        {
-            var components = new ComponentBuilder();
-            var button = new ButtonBuilder()
-            {
-                Label = "Button",
-                CustomId = "button1",
-                Style = ButtonStyle.Primary
-            };
+        //// Simple slash command to bring up a message with a button to press
+        //[SlashCommand("button", "message with button")]
+        //public async Task BotConfiguationMenu()
+        //{
+        //    var components = new ComponentBuilder();
+        //    var button = new ButtonBuilder()
+        //    {
+        //        Label = "Button",
+        //        CustomId = "button1",
+        //        Style = ButtonStyle.Primary
+        //    };
 
-            // Messages take component lists. Either buttons or select menus. The button can not be directly added to the message. It must be added to the ComponentBuilder.
-            // The ComponentBuilder is then given to the message components property.
-            components.WithButton(button);
+        //    // Messages take component lists. Either buttons or select menus. The button can not be directly added to the message. It must be added to the ComponentBuilder.
+        //    // The ComponentBuilder is then given to the message components property.
+        //    components.WithButton(button);
 
-            await RespondAsync("This message has a button!", components: components.Build());
+        //    await RespondAsync("This message has a button!", components: components.Build());
             
-        }
+        //}
 
         // This is the handler for the button created above. It is triggered by nmatching the customID of the button.
         [ComponentInteraction("button1")]

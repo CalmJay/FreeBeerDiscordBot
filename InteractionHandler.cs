@@ -79,6 +79,7 @@ namespace InteractionHandlerService
                 $"<@{SocketGuildUser.Id}> Welcome to Free Beer ya shmuck.",
                 $"Sorry <@{SocketGuildUser.Id}>, if your here for the free beer we're fresh out.",
                 $"Hi <@{SocketGuildUser.Id}>! If your looking to spy on us, please submit an app in <#880611767393345548>",
+                $"Dominoes pizza, you spank it, we bank it.",
                 $"<@{SocketGuildUser.Id}> Welcome to Free Beer!"
             };
 
@@ -101,7 +102,7 @@ namespace InteractionHandlerService
            
             //<@{Context.User.Id}>
 
-            await lobbyChannel.SendMessageAsync($"<@{SocketUser.Id}> has left the server");
+            await lobbyChannel.SendMessageAsync($"<@{SocketUser.Id}> / {SocketUser.Username} has left the server");
         }
 
 

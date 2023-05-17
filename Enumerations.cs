@@ -2,6 +2,7 @@
 {
     public enum EventTypeEnum
     {
+        Bandit,
         Castle,
         Chest,
         Ganking,

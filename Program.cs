@@ -94,21 +94,20 @@ namespace FreeBeerBot
                     await lavalinkManager.StartAsync();
                 }
 
-                if (IsDebug())
-                {
-                    //var guild = _client.GetGuild(GuildID);
+                //if (IsDebug())
+                //{
+                //    var guild = _client.GetGuild(GuildID);
 
-                    ////await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
-                    //await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
+                //    //await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+                //    await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
 
-                    //await commands.RegisterCommandsToGuildAsync(GuildID);
-
-                }
-                else
-                {
-                    //If not debug, register commands globally
-                    //await commands.RegisterCommandsGloballyAsync(true);
-                }
+                //    await commands.RegisterCommandsToGuildAsync(GuildID);
+                //}
+                //else
+                //{
+                //    //If not debug, register commands globally
+                //    await commands.RegisterCommandsGloballyAsync(true);
+                //}
             };
 
             //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);
