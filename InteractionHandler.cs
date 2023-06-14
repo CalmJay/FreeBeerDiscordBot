@@ -19,9 +19,10 @@ namespace InteractionHandlerService
         private readonly DiscordSocketClient _client;
         private readonly InteractionService _commands;
         private readonly IServiceProvider _services;
-        private ulong HQMiniMarketChannelID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HQMiniMarketChannelID"));
+        private ulong HQMiniMarketChannelID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HQMiniMarketChannelID")); 
+        private ulong LootSplitChannelID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("LootSplitChannelID"));
 
-        private ulong ChannelThreadId { get; set; }
+		private ulong ChannelThreadId { get; set; }
         // Using constructor injection
         public InteractionHandler(DiscordSocketClient client, InteractionService commands, IServiceProvider services)
         {
@@ -80,7 +81,8 @@ namespace InteractionHandlerService
                 $"Sorry <@{SocketGuildUser.Id}>, if your here for the free beer we're fresh out.",
                 $"Hi <@{SocketGuildUser.Id}>! If your looking to spy on us, please submit an app in <#880611767393345548>",
                 $"Dominoes pizza, you spank it, we bank it.",
-                $"<@{SocketGuildUser.Id}> Welcome to Free Beer!"
+                $"<@{SocketGuildUser.Id}> Welcome to Free Beer!",
+
             };
 
             int r = rnd.Next(insultList.Count);
@@ -109,18 +111,24 @@ namespace InteractionHandlerService
 
         private async Task ThreadCreationExecuted(SocketThreadChannel arg)
         {
-            if (arg.ParentChannel.Id == HQMiniMarketChannelID && ChannelThreadId != arg.Owner.Thread.Id)
-            {
-                string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
-                if (sUserNickname.Contains("!sl"))
-                {
-                    sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
-                }
+			string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
 
+			if (sUserNickname.Contains("!sl"))
+			{
+				sUserNickname = new PlayerDataLookUps().CleanUpShotCallerName(sUserNickname);
+			}
+
+			if (arg.ParentChannel.Id == HQMiniMarketChannelID && ChannelThreadId != arg.Owner.Thread.Id)
+            {
                 ChannelThreadId = arg.Owner.Thread.Id;
                 string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
                 await arg.SendMessageAsync($"{sUserNickname} Mini market credits balance: {miniMarketCreditsTotal}");
             }
+            else if (arg.ParentChannel.Id == LootSplitChannelID && ChannelThreadId != arg.Owner.Thread.Id)
+			{
+				ChannelThreadId = arg.Owner.Thread.Id;
+				await arg.SendMessageAsync($"Don't forget to post info first before you run /Split-Loot");
+			}
         }
 
         private async Task HandleInteraction(SocketInteraction arg)

@@ -188,11 +188,11 @@ namespace DNet_V3_Tutorial
         }
 
         [SlashCommand("ping", "Receive a reply!")]
-        public async Task Ping(string message)
+        public async Task Ping(string message, SocketTextChannel channelName)
         {
-            await DeferAsync();
-            var channels = Context.Guild.Channels;
-            var chnl = Context.Client.GetChannel(1036552362380251157) as IMessageChannel;
+            //await DeferAsync();
+			//var channels = Context.Guild.Channels;
+            var chnl = Context.Client.GetChannel(channelName.Id) as IMessageChannel;
 
 
             // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
@@ -200,9 +200,10 @@ namespace DNet_V3_Tutorial
             // Respond to the user
             //await Context.Channel.SendMessageAsync();
             //await RespondAsync(message);
-            await FollowupAsync(message);
-            //await chnl.SendMessageAsync(message);
-        }
+
+            await chnl.SendMessageAsync(message);
+			await RespondAsync($"Message has been sent too {channelName.Name}",null,false,true);
+		}
 
         [SlashCommand("insult", "Receive a insult!")]
         public async Task Getinsult()

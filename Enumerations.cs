@@ -95,6 +95,8 @@
     {
         Guild,
         Personal,
+        OffSeason,
+        Other
     }
 
     public enum PricingOptions
@@ -119,5 +121,11 @@
         Silver,
         Bronze,
         None
+    }
+
+    public enum  Options
+    {
+        Add,
+        Remove
     }
 }

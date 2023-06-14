@@ -160,7 +160,7 @@ namespace GoogleSheetsData
 
         }
 
-        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType)
+        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject? a_playerData, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType)
         {
             string? sUserNickname = ((a_command.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((a_command.User as SocketGuildUser).Nickname) : a_command.User.Username;
             var serviceValues = GetSheetsService().Spreadsheets.Values;
@@ -184,7 +184,7 @@ namespace GoogleSheetsData
                     rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };
                     break;
                 case MoneyTypes.LootSplit:
-                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + "PlayerName", DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
                     break;
                 case MoneyTypes.OCBreak:
                     rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "OC Break", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
@@ -223,8 +223,9 @@ namespace GoogleSheetsData
 
             var payOutsNumberOfRow = serviceValues.Get(RegearSheetID, "Payouts!B2:B").Execute().Values.Count;
             var dataValidationNumberOfRow = serviceValues.Get(RegearSheetID, "Data Validation!B2:B").Execute().Values.Count;
+            var MiniMarketCredits = serviceValues.Get(RegearSheetID, "Mini-Market Credits!B2:B").Execute().Values.Count;
 
-            var col1 = payOutsNumberOfRow + 2;
+			var col1 = payOutsNumberOfRow + 2;
             var col2 = dataValidationNumberOfRow + 2;
 
             try
@@ -238,7 +239,12 @@ namespace GoogleSheetsData
                 var dataValidationUpdate = serviceValues.Update(dataValidationRowValues, RegearSheetID, $"Data Validation!B{col2}:C2{col2}");
                 dataValidationUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                 await dataValidationUpdate.ExecuteAsync();
-            }
+
+				var MiniMarketRowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sUserNickname } } };
+				var MiniMaarketUpdate = serviceValues.Update(MiniMarketRowValues, RegearSheetID, $"B{col1}");
+				MiniMaarketUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+				await MiniMaarketUpdate.ExecuteAsync();
+			}
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
@@ -627,45 +633,61 @@ namespace GoogleSheetsData
                 UserName = a_MemberName;
             }
 
-            await ClearUserFromSheet(GuildSpreadsheetId, $"Guild Roster!B2:B", "Guild Roster",  UserName);
-            await ClearUserFromSheet(RegearSheetID, $"Payouts!B2:B", "Payouts", UserName);
-            await ClearUserFromSheet(RegearSheetID, $"Mini-Market Credits!B2:B", "Mini-Market Credits", UserName);
-
-
-            //var SheetUserList = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:B").Execute().Values;
-            //var PayoutsList = serviceValues.Get(RegearSheetID, $"Payouts!B2:B").Execute().Values; ;
-            //var MiniMartetCreditsList = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!B2:B").Execute().Values;
-
-
+            await ClearUserFromSheet(GuildSpreadsheetId, $"Copy of Guild Roster!B2:B", "Guild Roster",  UserName, 205431334);
+            await ClearUserFromSheet(RegearSheetID, $"Copy of Payouts!B2:B", "Payouts", UserName, 1156891297);
+            await ClearUserFromSheet(RegearSheetID, $"Copy of Mini-Market Credits!B2:B", "Mini-Market Credits", UserName, 1417127311);
         }
-        private static async Task ClearUserFromSheet(string a_sSpreadSheetID, string a_sRange, string a_sSpreadSheetName, string a_sUsername)
+        private static async Task ClearUserFromSheet(string a_sSpreadSheetID, string a_sRange, string a_sSpreadSheetName, string a_sUsername, int a_SheetID)
         {
-            var serviceValues = GetSheetsService().Spreadsheets.Values;
-            int i = 2;
+            var serviceValues = GetSheetsService().Spreadsheets;
+            int i = 1;
 
             ClearValuesRequest requestBody = new ClearValuesRequest();
-            SpreadsheetsResource.ValuesResource.ClearRequest request = null;
-            var SheetUserList = serviceValues.Get(a_sSpreadSheetID, a_sRange).Execute().Values;
+            //SpreadsheetsResource.ValuesResource.ClearRequest request = null;
+            var SheetUserList = serviceValues.Values.Get(a_sSpreadSheetID, a_sRange).Execute().Values;
+            SortRangeRequest sortRageRequest = new SortRangeRequest();
 
             try
             {
                 foreach (var socketuser in SheetUserList)
                 {
-                    if ( socketuser.Count > 0 && socketuser[0].ToString().ToLower() == a_sUsername.ToLower())
+                    if (socketuser.Count > 0 && socketuser[0].ToString().ToLower() == a_sUsername.ToLower())
                     {
                         var col1 = i;
                         var col2 = i;
-                        //$"Payouts!R3C2:R350C
-                        if(a_sSpreadSheetName == "Guild Roster")
+
+						var request = new Request
+						{
+							DeleteDimension = new DeleteDimensionRequest
+							{
+								Range = new DimensionRange
+								{
+									SheetId = a_SheetID,
+									Dimension = "ROWS",
+									StartIndex = col1,
+									EndIndex = col1+1
+								}
+							}
+						};
+
+
+						if (a_sSpreadSheetName == "Guild Roster")
                         {
-                            request = serviceValues.Clear(requestBody, a_sSpreadSheetID, $"{a_sSpreadSheetName}!R{i}C1:R{i}C12");
-                            await request.ExecuteAsync();
-                        }
-                        else
+							//request = serviceValues.Clear(requestBody, a_sSpreadSheetID, $"{a_sSpreadSheetName}!R{i}C1:R{i}C12");
+							//await request.ExecuteAsync();
+
+                            //Deletes row from sheet
+							var deleteRequest = new BatchUpdateSpreadsheetRequest { Requests = new List<Request> { request } };
+							var responseSecondWay = await serviceValues.BatchUpdate(deleteRequest, a_sSpreadSheetID).ExecuteAsync();
+						}
+						else
                         {
-                            request = serviceValues.Clear(requestBody, a_sSpreadSheetID, $"{a_sSpreadSheetName}!R{i}C1:R{i}C2");
-                            await request.ExecuteAsync();
-                        }
+							//request = serviceValues.Clear(requestBody, a_sSpreadSheetID, $"{a_sSpreadSheetName}!R{i}C1:R{i}C2");
+							//await request.ExecuteAsync();
+
+							var deleteRequest = new BatchUpdateSpreadsheetRequest { Requests = new List<Request> { request } };
+							var responseSecondWay = await serviceValues.BatchUpdate(deleteRequest, a_sSpreadSheetID).ExecuteAsync();
+						}
                         break;
                     }
                     i++;
@@ -676,7 +698,7 @@ namespace GoogleSheetsData
             {
                 Console.WriteLine(ex.ToString());
             }
-        }
+		}
         public static async Task UpdateRegearRole(List<SocketGuildUser> a_SocketGuildUser, DateTime a_dExpirationDate, RegearTiers a_eRegearTier)
         {
             var serviceValues = GetSheetsService().Spreadsheets.Values;

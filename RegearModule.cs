@@ -9,6 +9,7 @@ using MarketData;
 using PlayerData;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -865,7 +866,32 @@ namespace DiscordBot.RegearModule
             }
         }
 
-        public class Equipment
+        public async Task ReasonForDenial(SocketInteractionContext Context)
+        {
+			var mb = new ModalBuilder()
+				.WithTitle("Reason for Deny")
+				.WithCustomId("deny_member");
+			    mb.AddTextInput("Reason for denial", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc. (case sensitive)", required: false, value: null);
+
+			try
+			{
+				//send modal
+				await Context.Interaction.RespondWithModalAsync(mb.Build());
+
+				Context.Client.ModalSubmitted += async modal =>
+				{
+					List<SocketMessageComponentData> components = modal.Data.Components.ToList();
+
+				};
+			}
+			catch (Exception ex)
+			{
+				throw;
+			}
+		}
+
+
+		public class Equipment
         {
             private string image;
             private string itemPrice;

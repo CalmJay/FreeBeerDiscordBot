@@ -25,6 +25,9 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using Tesseract;
+using Microsoft.VisualBasic;
+using System.ComponentModel;
 
 namespace CommandModule
 {
@@ -46,7 +49,7 @@ namespace CommandModule
             _logger = logger;
         }
 
-        [SlashCommand("get-player-info", "Search for Player Info")]
+		[SlashCommand("get-player-info", "Search for Player Info")]
         public async Task GetBasicPlayerInfo(string a_sPlayerName)
         {
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
@@ -159,7 +162,7 @@ namespace CommandModule
             PlayerDataLookUps albionData = new PlayerDataLookUps();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
 
-            await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command, Command: Unregister", null));
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command Unregister", null));
 
             playerInfo = await albionData.GetPlayerInfo(Context, InGameName);
 
@@ -169,8 +172,15 @@ namespace CommandModule
 
                 if (DiscordUser != null)
                 {
-                    await DiscordUser.RemoveRolesAsync(DiscordUser.Roles);
-                    await DiscordUser.Guild.GetUser(DiscordUser.Id).SendMessageAsync($"You've been removed from Free Beer for the following reason: {ReasonForKick}" );
+					await DiscordUser.Guild.GetUser(DiscordUser.Id).SendMessageAsync($"You've been removed from Free Beer for the following reason: {ReasonForKick}");
+
+                    foreach(var roles in DiscordUser.Roles)
+                    {
+                        if(roles.Name != "@everyone")
+                        {
+							await DiscordUser.RemoveRoleAsync(roles.Id);
+						}					
+					}         
                 }
 
                 //TODO: REMOVE PLAYER FROM DATABASE HERE
@@ -373,15 +383,22 @@ namespace CommandModule
         {
             await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
+			
+            var component = new ComponentBuilder();
+			var paychexbutton = new ButtonBuilder()
+			{
+				Style = ButtonStyle.Secondary
+			};
 
-            if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
+			if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
             {
                 await DeferAsync(true);
                 List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
                 string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
                 string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
+				
 
-                if (paychexRunningTotal.Count > 0)
+				if (paychexRunningTotal.Count > 0)
                 {
                     var embed = new EmbedBuilder()
                     .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
@@ -390,7 +407,16 @@ namespace CommandModule
                     .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}")
                     .AddField("Regear Status:", $"{regearStatus}");
 
-                    await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
+					for (int i = 0; i < paychexRunningTotal.Count; i++)
+                    {
+						paychexbutton.Label = $"Transfer Paychex {paychexRunningTotal[i].Split("")}";
+						paychexbutton.CustomId = $"Paychex{paychexRunningTotal[i]}";
+						component.WithButton(paychexbutton);
+					}
+
+
+					await FollowupAsync(null, null, false, true, null, null, component.Build(), embed.Build());
+					//await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
                 }
                 else
                 {
@@ -844,213 +870,153 @@ namespace CommandModule
 
 
         [SlashCommand("split-loot", "Perform a loot split.")]
-        public async Task SplitLoot(LootSplitType LootSplitType, int SilverTotal)
-        {
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
-            double dGuildSplitPercentage = 0.20;
-
-            LootSplitModule lootSplitMod = new LootSplitModule();
-
-            var approveButton = new ButtonBuilder()
-            {
-                Label = "Approve",
-                CustomId = "split-lootapprove",
-                Style = ButtonStyle.Success
-            };
-            var denyButton = new ButtonBuilder()
-            {
-                Label = "Deny",
-                CustomId = "split-lootdeny",
-                Style = ButtonStyle.Danger
-            };
-
-            var component = new ComponentBuilder();
-            component.WithButton(approveButton);
-            component.WithButton(denyButton);
-
-
-            var embed = new EmbedBuilder()
-                .WithTitle($"Loot Split Submission from {sUserNickname}")
-                .AddField("Total Members in loot splti: ", "Numbers here", true)
-                .AddField("Split Type:", LootSplitType)
-                .AddField("Total Silver amount:", SilverTotal)
-                .AddField("Guild Split Fee:", 0)
-                .AddField("Payout per player:", 0);
-
-            //await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
-            await RespondAsync(null, null, false, false,null, null, component.Build(), embed: embed.Build());
-
-        }
-
-        [ComponentInteraction("split-lootapprove")]
-        public async Task SplitLootApproved()
-        {
-
-        }
-
-        [ComponentInteraction("split-lootdeny")]
-        public async Task SplitLootDenied()
-        {
-
-        }
-
-        [SlashCommand("split-loot-ml", "Images should already be uploaded to channel.")]
-        public async Task SplitLootML()
+        public async Task SplitLoot(LootSplitType LootSplitType, SocketGuildUser CallerName, EventTypeEnum EventType, int? NonDamagedLootTotal = null, int? DamagedLootTotal = null, int? SilverBagsTotal = null )
         {
             await DeferAsync();
+            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+			string? sCallerNickname = (CallerName.Nickname != null) ? CallerName.Nickname : CallerName.Username;
+           
+            //Gets users active in thread
+            var socketThreadChannel = (SocketThreadChannel)Context.Channel;
+            var usersActiveInThread = await socketThreadChannel.GetUsersAsync();
+            var UsersList = usersActiveInThread.ToList();
+            List<string> cleanedUpNames = new List<string>();
+			LootSplitModule lootSplitMod = new LootSplitModule();
 
-            //var interaction = Context.Interaction as IComponentInteraction;
-            LootSplitModule lootSplitMod = new LootSplitModule();
-
-            //scrape images and save via lootSplitModule
-            await lootSplitMod.ScrapeImages(Context);
-
-            //scrape members and write to json
-            await lootSplitMod.CreateMemberList(Context);
-
-            //create member dict for ids to be used later
-            await lootSplitMod.CreateMemberDict(Context);
-
-            //strings for python.exe path and the tessaract python script (with the downloaded image as argument)
-            string cmd = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\venv\\Scripts\\Python.exe";
-            string pythArgs = lootSplitMod.freeBeerDirectory + "\\PythonScript\\AO-Py-Script\\main.py " + lootSplitMod.freeBeerDirectory + "\\Temp\\image1.png";
-
-            for (int n = 2; n < lootSplitMod.imageCount; n++)
+			foreach (var user in UsersList) 
             {
-                pythArgs += " " + lootSplitMod.freeBeerDirectory + "\\Temp\\image" + n.ToString() + ".png";
+                if(!user.IsBot)
+                {
+					cleanedUpNames.Add(new PlayerDataLookUps().CleanUpShotCallerName(user.DisplayName));
+				}	
+			}
+            if(NonDamagedLootTotal != null ||  DamagedLootTotal != null )
+            {
+				await lootSplitMod.LootSplitInitialPrompt(Context, cleanedUpNames, sCallerNickname, LootSplitType, EventType, NonDamagedLootTotal, DamagedLootTotal, SilverBagsTotal);
+			}
+            else
+            {
+                await RespondAsync("You must add a loot amount if you want", ephemeral: true);
             }
-
-            //call py tesseract and grab output
-            await lootSplitMod.CallPyTesseract(Context, cmd, pythArgs);
-
-            //create initial embed
-            await lootSplitMod.CreateFirstEmbed(Context);
-
-            //check if members look good, proceed to modal
-            await lootSplitMod.SendAddMemButtons(Context);
-
-            lootSplitModule = lootSplitMod;
+            await FollowupAsync("Loot Split submitted");
         }
-        [ComponentInteraction("add-members-modal")]
-        async Task AddMembersModal()
-        {
-            LootSplitModule lootSplitMod = lootSplitModule;
 
-            //build modal and send with add members option
-            Boolean addIsTrue = true;
+        [ComponentInteraction("add-member")]
+        async Task AddMembersToLootSplit()
+        {;
+			LootSplitModule lootSplitMod = new LootSplitModule();
+			await lootSplitMod.AddRemoveNamesFromList(Context, Options.Add);
+		}
 
-            await lootSplitMod.BuildModalHandler(Context, addIsTrue, lootSplitMod.scrapedList, lootSplitMod.imageMembers);
+        [ComponentInteraction("remove-member")]
+		async Task RemoveMembersFromSplit()
+		{
+			LootSplitModule lootSplitMod = new LootSplitModule();
+			await lootSplitMod.AddRemoveNamesFromList(Context, Options.Remove);
+		}
 
-        }
-        [ComponentInteraction("no-add-modal")]
-        async Task NoAddMembersModal()
-        {
-            LootSplitModule lootSplitMod = lootSplitModule;
-
-            //build modal and send with add members option
-            Boolean addIsTrue = false;
-
-            await lootSplitModule.BuildModalHandler(Context, addIsTrue, lootSplitMod.scrapedList, lootSplitMod.imageMembers);
-
-            await lootSplitMod.PostLootSplit(Context);
-        }
-        [ComponentInteraction("approve split")]
+		[ComponentInteraction("approve-split")]
         async Task ApproveSplit()
         {
-            LootSplitModule lootSplitMod = lootSplitModule;
+			LootSplitModule lootSplitMod = new LootSplitModule();
             RegearModule regearModule = new RegearModule();
 
             var guildUser = (SocketGuildUser)Context.User;
+            
             var interaction = Context.Interaction as IComponentInteraction;
 
-            //check perms to push buttons
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
+            var partyLeader = interaction.Message.Embeds.FirstOrDefault().Fields[10].Value;
+			var eventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value;
+			List<string> membersSplit = interaction.Message.Embeds.FirstOrDefault().Fields[9].Value.Replace(" ", "").Split(',').ToList();
+
+			//check perms to push buttons
+			if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
             {
-                await RespondAsync("Approved. Now handling some spreadsheet bs, baby hold me just a little bit longer...");
+                await RespondAsync("Processing. Please wait till you get the confirmation before closing thread...");
 
-                DataBaseService dataBaseService = new DataBaseService();
+				var PayoutPerPlayer = interaction.Message.Embeds.FirstOrDefault().Fields[4].Value.Replace(",", "");
 
-                string reasonLootSplit = "Loot split";
-                string tempStr = "null";
-                var moneyTypes = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "LootSplit");
-                var moneyType = dataBaseService.GetMoneyTypeByName(moneyTypes);
-                string constr = "Server = .; Database = FreeBeerdbTest; Trusted_Connection = True";
-                string partyLead = lootSplitMod.submitter;
-                int refundAmount = Convert.ToInt32(lootSplitMod.lootAmountPer);
-
-                foreach (string playerName in lootSplitMod.imageMembers)
+                try
                 {
-                    //conditional to add members to .Player table if not in there already
-                    if (dataBaseService.GetPlayerInfoByName(playerName) == null)
-                    {
-                        using SqlConnection connection = new SqlConnection(constr);
-                        {
-                            using SqlCommand command = connection.CreateCommand();
 
-                            {
-                                //need to add player to Player table to work with foreign keys
-                                command.Parameters.AddWithValue("@playerName", playerName);
-                                command.Parameters.AddWithValue("@pid", lootSplitMod.scrapedDict[playerName].ToString());
-                                command.CommandText = "INSERT INTO [FreeBeerdbTest].[dbo].[Player] (PlayerName, PlayerId) VALUES (@playerName, @pid)";
-                                connection.Open();
-                                command.ExecuteNonQuery();
-                                connection.Close();
-                                command.Parameters.Clear();
-                            }
-                        }
+
+                    foreach (string playerName in membersSplit)
+                    {
+                        //conditional to add members to .Player table if not in there already
+                        //if (dataBaseService.GetPlayerInfoByName(playerName) == null)
+                        //{
+                        //    using SqlConnection connection = new SqlConnection(constr);
+                        //    {
+                        //        using SqlCommand command = connection.CreateCommand();
+
+                        //        {
+                        //            //need to add player to Player table to work with foreign keys
+                        //            command.Parameters.AddWithValue("@playerName", playerName);
+                        //            command.Parameters.AddWithValue("@pid", lootSplitMod.scrapedDict[playerName].ToString());
+                        //            command.CommandText = "INSERT INTO [FreeBeerdbTest].[dbo].[Player] (PlayerName, PlayerId) VALUES (@playerName, @pid)";
+                        //            connection.Open();
+                        //            command.ExecuteNonQuery();
+                        //            connection.Close();
+                        //            command.Parameters.Clear();
+                        //        }
+                        //    }
+                        //}
+
+                        //int playerID = dataBaseService.GetPlayerInfoByName(playerName).Id;
+                        //await dataBaseService.AddPlayerReGear(new PlayerLoot
+                        //{
+                        //    TypeId = moneyType.Id,
+                        //    CreateDate = DateTime.Now,
+                        //    Loot = refundAmount,
+                        //    PlayerId = playerID,
+                        //    Message = tempStr,
+                        //    PartyLeader = partyLead,
+                        //    KillId = tempStr,
+                        //    Reason = reasonLootSplit,
+                        //    QueueId = tempStr
+                        //});
+                        //Sheets write for each playerName - Needs Review
+                        PlayerDataHandler.Rootobject playerInfo = new PlayerDataHandler.Rootobject();
+                        PlayerDataHandler.Victim victimInfo = new PlayerDataHandler.Victim();
+                        victimInfo.Name = playerName;
+                        playerInfo.Victim = victimInfo;
+
+
+                        await GoogleSheetsDataWriter.WriteToRegearSheet(Context, playerInfo, Convert.ToInt32(PayoutPerPlayer), partyLeader, eventType, MoneyTypes.LootSplit);
                     }
-                    int playerID = dataBaseService.GetPlayerInfoByName(playerName).Id;
-                    await dataBaseService.AddPlayerReGear(new PlayerLoot
-                    {
-                        TypeId = moneyType.Id,
-                        CreateDate = DateTime.Now,
-                        Loot = refundAmount,
-                        PlayerId = playerID,
-                        Message = tempStr,
-                        PartyLeader = partyLead,
-                        KillId = tempStr,
-                        Reason = reasonLootSplit,
-                        QueueId = tempStr
-                    });
-                    //Sheets write for each playerName - Needs Review
-                    //PlayerLookupInfo playerInfo = new PlayerLookupInfo();
-                    //PlayerDataLookUps albionData = new PlayerDataLookUps();
-                    //playerInfo = await albionData.GetPlayerInfo(Context, playerName);
-                    //await GoogleSheetsDataWriter.WriteToRegearSheet(Context, null, refundAmount, partyLead, moneyTypes);
+                    await FollowupAsync(($"This loot split has finished processing! {interaction.Message.Embeds.FirstOrDefault().Fields[4].Value} has been added to everyone's paychex.oot This thread can be deleted."));
 
+					//await DeleteOriginalResponseAsync();
+
+				}
+                catch
+                {
+                    await FollowupAsync("Oops I fucked up. Send me the IT guy");
                 }
-                await Context.User.SendMessageAsync(($"<@{Context.Guild.GetUser(lootSplitMod.scrapedDict[partyLead]).Id}> your loot split has been approved! " +
-                    $"${refundAmount.ToString("N0")} has been added to your paychex"));
-                await _logger.Log(new LogMessage(LogSeverity.Info, "Loot Split Approved", $"User: {Context.User.Username}, Approved the regear for {partyLead} ", null));
+				await _logger.Log(new LogMessage(LogSeverity.Info, "Loot Split Approved", $"User: {Context.User.Username}, Approved Loot split ", null));
 
-                SocketGuildChannel socketChannel = Context.Guild.GetChannel(Context.Channel.Id);
-                await socketChannel.DeleteAsync();
+                //SocketGuildChannel socketChannel = Context.Guild.GetChannel(Context.Channel.Id);
+                //await socketChannel.DeleteAsync();
             }
             else
             {
-                await RespondAsync("Don't push buttons without perms you mongo.");
+                await RespondAsync("You are stupid.", null,false,true);
             }
         }
-        [ComponentInteraction("deny split")]
+        [ComponentInteraction("deny-split")]
         async Task DenySplit()
         {
             var guildUser = (SocketGuildUser)Context.User;
-            //check perms for button pushing
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
+			var interaction = Context.Interaction as IComponentInteraction;
+			//check perms for button pushing
+			if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
             {
-                await RespondAsync("Loot split denied. Humblest apologies - but don't blame me, blame the regear team.");
-                //create and fill list with n urls from channel
-                var msgsList = Context.Channel.GetMessagesAsync().ToListAsync().Result.ToList();
-
-                List<string> msgsUrls = new List<string>();
-                foreach (var msg in msgsList.FirstOrDefault())
-                {
-                    await Context.Channel.DeleteMessageAsync(msg);
-                }
-            }
-            else
+				await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+				await RespondAsync("Loot split denied. Please reach out to a Regear team member as to why");
+			}
+			else
             {
-                await RespondAsync("Don't push buttons without perms you mongo.");
+                await RespondAsync("Don't push buttons without perms you mongo.", null, false, true);
             }
 
         }
