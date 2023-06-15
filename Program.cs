@@ -1,16 +1,17 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using DiscordBot.Services;
+using DiscordbotLogging.Log;
+using InteractionHandlerService;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using PlayerData;
+using Microsoft.Extensions.Hosting;
+using SharpLink;
 using System;
 using System.Threading.Tasks;
 using static AlbionOnlineDataParser.AlbionOnlineDataParser;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using InteractionHandlerService;
-using DiscordbotLogging.Log;
-using DiscordBot.Services;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace FreeBeerBot
 {
@@ -18,8 +19,10 @@ namespace FreeBeerBot
     {
         public static DiscordSocketClient _client;
         private DataBaseService dataBaseService;
+        public static LavalinkManager lavalinkManager;
         ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
-
+        private bool EnableMusicCommands = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("enableMusic"));
+        private bool RegisterCommandsAtReboot = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("registerCommands"));
         // Program entry point
         public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -39,7 +42,7 @@ namespace FreeBeerBot
             // Add the DiscordSocketClient, along with specifying the GatewayIntents and user caching
             .AddSingleton(x => new DiscordSocketClient(new DiscordSocketConfig
             {
-                GatewayIntents = GatewayIntents.AllUnprivileged, //Toggle intents inside the Discord Developer portal to add more security.
+                GatewayIntents = GatewayIntents.All, //Toggle intents inside the Discord Developer portal to add more security.
                 AlwaysDownloadUsers = true,
                 UseInteractionSnowflakeDate = false
             }))
@@ -50,7 +53,7 @@ namespace FreeBeerBot
             // Required to subscribe to the various client events used in conjunction with Interactions
             .AddSingleton<InteractionHandler>())
             .Build();
-
+            
             InitializeAlbionAPIClient();
             InitializeAlbionDataProjectCurrentPrices();
             InitializeAlbion24HourDataMarketPricesHistory();
@@ -78,30 +81,38 @@ namespace FreeBeerBot
             // Subscribe to slash command log events
             commands.Log += _ => provider.GetRequiredService<ConsoleLogger>().Log(_);
             //_client.ThreadCreated += AuditThreadCreated;
+
+            if(EnableMusicCommands == true)
+            {
+                lavalinkManager = new LavalinkManager(_client, new LavalinkManagerConfig());
+            }
+            
             _client.Ready += async () =>
             {
+                if(lavalinkManager != null)
+                {
+                    await lavalinkManager.StartAsync();
+                }
                 //if (IsDebug())
                 //{
                 //    var guild = _client.GetGuild(GuildID);
 
-                //    await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
+                //    //await _client.Rest.DeleteAllGlobalCommandsAsync(); //USE TO DELETE ALL GLOBAL COMMANDS
                 //    await guild.DeleteApplicationCommandsAsync(); //USE TO DELETE ALL GUILD COMMANDS
-                //    //guild.ModifyAsync()
-                //    // Id of the test guild can be provided from the Configuration object
-                //    await commands.RegisterCommandsToGuildAsync(GuildID);
 
+                //    await commands.RegisterCommandsToGuildAsync(GuildID);
                 //}
                 //else
                 //{
                 //    //If not debug, register commands globally
                 //    await commands.RegisterCommandsGloballyAsync(true);
                 //}
+                
             };
 
             //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);
             await _client.LoginAsync(TokenType.Bot, System.Configuration.ConfigurationManager.AppSettings.Get("discordBotToken"));
             await _client.StartAsync();
-
             await Task.Delay(-1);
         }
 

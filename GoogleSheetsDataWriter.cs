@@ -1,16 +1,14 @@
-﻿using Discord;
+﻿using Aspose.Words;
+using Discord;
 using Discord.Interactions;
-using Discord.Net;
 using Discord.WebSocket;
 using DiscordBot.Enums;
-using DiscordBot.Models;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
-using Microsoft.VisualBasic;
-using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using PlayerData;
 using System;
 using System.Collections.Generic;
@@ -19,8 +17,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using static PlayerData.PlayerDataHandler;
 
 namespace GoogleSheetsData
 {
@@ -164,7 +160,7 @@ namespace GoogleSheetsData
 
         }
 
-        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject a_playerData, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType)
+        public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject? a_playerData, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType)
         {
             string? sUserNickname = ((a_command.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((a_command.User as SocketGuildUser).Nickname) : a_command.User.Username;
             var serviceValues = GetSheetsService().Spreadsheets.Values;
@@ -188,7 +184,7 @@ namespace GoogleSheetsData
                     rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };
                     break;
                 case MoneyTypes.LootSplit:
-                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + "PlayerName", DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
                     break;
                 case MoneyTypes.OCBreak:
                     rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "OC Break", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
@@ -214,7 +210,7 @@ namespace GoogleSheetsData
             WriteRange = $"Guild Roster!A{col1 + 1}:E{col2 + 1}";
 
 
-            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", DateTime.Now.ToString("M/d/yyyy"), "No notes" } } };
+            var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { DateTime.Now.ToString("M/d/yyyy"), a_SocketGuildUser, "N/A", "N/A", "No notes" } } };
             var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
             update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
             await update.ExecuteAsync();
@@ -227,8 +223,9 @@ namespace GoogleSheetsData
 
             var payOutsNumberOfRow = serviceValues.Get(RegearSheetID, "Payouts!B2:B").Execute().Values.Count;
             var dataValidationNumberOfRow = serviceValues.Get(RegearSheetID, "Data Validation!B2:B").Execute().Values.Count;
+            var MiniMarketCredits = serviceValues.Get(RegearSheetID, "Mini-Market Credits!B2:B").Execute().Values.Count;
 
-            var col1 = payOutsNumberOfRow + 2;
+			var col1 = payOutsNumberOfRow + 2;
             var col2 = dataValidationNumberOfRow + 2;
 
             try
@@ -242,10 +239,15 @@ namespace GoogleSheetsData
                 var dataValidationUpdate = serviceValues.Update(dataValidationRowValues, RegearSheetID, $"Data Validation!B{col2}:C2{col2}");
                 dataValidationUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                 await dataValidationUpdate.ExecuteAsync();
-            }
-            catch (Exception ex) 
-            { 
-                Console.WriteLine(ex.ToString()); 
+
+				var MiniMarketRowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sUserNickname } } };
+				var MiniMaarketUpdate = serviceValues.Update(MiniMarketRowValues, RegearSheetID, $"B{col1}");
+				MiniMaarketUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+				await MiniMaarketUpdate.ExecuteAsync();
+			}
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
             }
         }
 
@@ -276,9 +278,9 @@ namespace GoogleSheetsData
 
             DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
             DateTime lastbiweeklySunday = HelperMethods.StartOfWeek(lastSunday.AddDays(-7), DayOfWeek.Sunday);
-       
+
             string biweeklyLastSundayDate = $"{lastbiweeklySunday.ToShortMonthName()}-{lastbiweeklySunday.Day}";
-            string currentWeekPaychexDate = $"{DateTime.Now.ToShortMonthName()}-{lastSunday.Day}";
+            string currentWeekPaychexDate = $"{lastSunday.ToShortMonthName()}-{lastSunday.Day}";
 
             List<string> paychexData = new List<string>();
             List<object> DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
@@ -292,14 +294,14 @@ namespace GoogleSheetsData
             {
                 if (users[0].ToString().ToLower() == a_sUserName.ToLower())
                 {
-                    foreach(var dates in rowValues[0])
+                    foreach (var dates in rowValues[0])
                     {
                         if (dates.ToString() == biweeklyLastSundayDate)
                         {
                             paychexData.Add(users[i].ToString() + $" {biweeklyLastSundayDate}");
                         }
 
-                        if(dates.ToString() == currentWeekPaychexDate)
+                        if (dates.ToString() == currentWeekPaychexDate)
                         {
                             paychexData.Add(users[i].ToString() + $" {currentWeekPaychexDate}");
                         }
@@ -332,7 +334,7 @@ namespace GoogleSheetsData
                     i++;
                 }
             }
-            else if(paychexData.Count > 0)
+            else if (paychexData.Count > 0)
             {
                 paychexData[0] += " (NOT RENDERED)";
             }
@@ -346,14 +348,14 @@ namespace GoogleSheetsData
 
             ReadRange = $"Mini-Market Credits!A2:A305";
 
-            var rowValues = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!R2C1:R305C2").Execute().Values;
+            var rowValues = serviceValues.Get(RegearSheetID, $"Mini-Market Credits!R2C2:R305C3").Execute().Values;
 
             int i = 0;
             foreach (var users in rowValues)
             {
                 if (users[0].ToString().ToLower() == a_sUserName.ToLower())
                 {
-                    return  users.Last().ToString();
+                    return users.Last().ToString();
                 }
 
                 i++;
@@ -364,7 +366,7 @@ namespace GoogleSheetsData
 
         public static async Task RenderPaychex(SocketInteractionContext a_socketInteraction)
         {
-            
+
             var serviceValues = GetSheetsService().Spreadsheets;
 
             SocketGuildUser socketGuildUser = (SocketGuildUser)a_socketInteraction.User;
@@ -387,13 +389,13 @@ namespace GoogleSheetsData
             });
 
             var req = serviceValues.BatchUpdate(batchUpdateSpreadsheetRequest, RegearSheetID);  //public SheetsService Service; property of parent class
-            
+
             if (!CheckIfSheetExists(paychexRenderedName))
             {
                 BatchUpdateSpreadsheetResponse response = req.Execute();
 
                 ////COPY DATA FROM Payouts TO Newly Rendered Paychex sheet
-                
+
                 //List<object> DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
                 //IList<IList<object>> rowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R3C2:R350C{DaterowValues.Count}").Execute().Values;
 
@@ -481,19 +483,14 @@ namespace GoogleSheetsData
             IList<IList<object>> paychexClaimedColumn = null;
             string combinedDate = $"{shortmonth}-{lastSunday.Day}";
 
-
-
             List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
             var cleanupedTotal = paychexRunningTotal[0].Substring(0, paychexRunningTotal[0].IndexOf(" "));
             int a = Int32.Parse(cleanupedTotal.Replace(",", ""));
-            //if(a > 10000000)
-            //{ 
+
             if (paychexRunningTotal[0].Contains("(NOT CLAIMED"))
             {
                 var numberOfRow = serviceValues.Values.Get(RegearSheetID, "MiniMart Ledger!B2:B").Execute().Values.Count;
                 var col1 = numberOfRow + 2;
-
-
 
                 try
                 {
@@ -516,11 +513,8 @@ namespace GoogleSheetsData
                             dataValidationUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                             await dataValidationUpdate.ExecuteAsync();
                         }
-
                         i++;
                     }
-
-
                 }
                 catch (Exception ex)
                 {
@@ -540,7 +534,7 @@ namespace GoogleSheetsData
             {
                 await a_SocketGuildUser.SendMessageAsync("The Paychex are not rendered yet or there was an issue transferring your paychex to mini mart credits. Seek out an Officer to investigate.");
             }
-        //}
+            
         }
 
         public static async Task MiniMartTransaction(SocketGuildUser a_Manager, SocketGuildUser a_User, int a_iAmount, MiniMarketType a_eTransactionType)
@@ -597,9 +591,9 @@ namespace GoogleSheetsData
 
         }
 
-        public static  bool CheckIfSheetExists(string a_sSheetName)
+        public static bool CheckIfSheetExists(string a_sSheetName)
         {
-            
+
             var serviceValues = GetSheetsService().Spreadsheets;
             var ssRequest = serviceValues.Get(RegearSheetID);
             Spreadsheet ss = ssRequest.Execute();
@@ -617,10 +611,153 @@ namespace GoogleSheetsData
 
             return false;
         }
+        public static async Task UnResgisterUserFromDataSources(string a_MemberName, SocketGuildUser? a_SocketUser)
+        {
+            
+            
+            string? UserName = null;
+            if (a_SocketUser != null)
+            {
+                UserName =(a_SocketUser != null && a_SocketUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketUser.Nickname) : a_SocketUser.Username;
+            }
+            else
+            {
+                UserName = a_MemberName;
+            }
+
+            await ClearUserFromSheet(GuildSpreadsheetId, $"Copy of Guild Roster!B2:B", "Guild Roster",  UserName, 205431334);
+            await ClearUserFromSheet(RegearSheetID, $"Copy of Payouts!B2:B", "Payouts", UserName, 1156891297);
+            await ClearUserFromSheet(RegearSheetID, $"Copy of Mini-Market Credits!B2:B", "Mini-Market Credits", UserName, 1417127311);
+        }
+        private static async Task ClearUserFromSheet(string a_sSpreadSheetID, string a_sRange, string a_sSpreadSheetName, string a_sUsername, int a_SheetID)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets;
+            int i = 1;
+
+            ClearValuesRequest requestBody = new ClearValuesRequest();
+            //SpreadsheetsResource.ValuesResource.ClearRequest request = null;
+            var SheetUserList = serviceValues.Values.Get(a_sSpreadSheetID, a_sRange).Execute().Values;
+            SortRangeRequest sortRageRequest = new SortRangeRequest();
+
+            try
+            {
+                foreach (var socketuser in SheetUserList)
+                {
+                    if (socketuser.Count > 0 && socketuser[0].ToString().ToLower() == a_sUsername.ToLower())
+                    {
+                        var col1 = i;
+                        var col2 = i;
+
+						var request = new Request
+						{
+							DeleteDimension = new DeleteDimensionRequest
+							{
+								Range = new DimensionRange
+								{
+									SheetId = a_SheetID,
+									Dimension = "ROWS",
+									StartIndex = col1,
+									EndIndex = col1+1
+								}
+							}
+						};
 
 
+						if (a_sSpreadSheetName == "Guild Roster")
+                        {
+							//request = serviceValues.Clear(requestBody, a_sSpreadSheetID, $"{a_sSpreadSheetName}!R{i}C1:R{i}C12");
+							//await request.ExecuteAsync();
+
+                            //Deletes row from sheet
+							var deleteRequest = new BatchUpdateSpreadsheetRequest { Requests = new List<Request> { request } };
+							var responseSecondWay = await serviceValues.BatchUpdate(deleteRequest, a_sSpreadSheetID).ExecuteAsync();
+						}
+						else
+                        {
+							//request = serviceValues.Clear(requestBody, a_sSpreadSheetID, $"{a_sSpreadSheetName}!R{i}C1:R{i}C2");
+							//await request.ExecuteAsync();
+
+							var deleteRequest = new BatchUpdateSpreadsheetRequest { Requests = new List<Request> { request } };
+							var responseSecondWay = await serviceValues.BatchUpdate(deleteRequest, a_sSpreadSheetID).ExecuteAsync();
+						}
+                        break;
+                    }
+                    i++;
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+		}
+        public static async Task UpdateRegearRole(List<SocketGuildUser> a_SocketGuildUser, DateTime a_dExpirationDate, RegearTiers a_eRegearTier)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+            string? sSocketUserNameCleaned = "";
+
+            var SheetUserList = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D").Execute().Values;
+
+            int i = 2;
+            int x = 2;
+            try
+            {
+                foreach (var sheetUser in SheetUserList)
+                {
+                    foreach (var socketuser in a_SocketGuildUser)
+                    {
+                        sSocketUserNameCleaned = (socketuser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(socketuser.Nickname) : socketuser.Username;
+                        if (sheetUser[0].ToString().ToLower() == sSocketUserNameCleaned.ToLower())
+                        {
+                            var col1 = i;
+                            var col2 = i;
+                            WriteRange = $"Guild Roster!B{col1}:D{col2}";
+                            ValueRange rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { sSocketUserNameCleaned, a_eRegearTier.ToString(), a_dExpirationDate.ToString("M/d/yyyy") } } };
+                            var update = serviceValues.Update(rowValues, GuildSpreadsheetId, WriteRange);
+                            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                            await update.ExecuteAsync();
+                            break;
+                        }
+                        x++;
+                    }
+                    i++;
+                }
+            }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine(ex.ToString());
+            }
+        }
+        public static string GetRegearStatus(string a_MemberName)
+        {
+            var serviceValues = GetSheetsService().Spreadsheets.Values;
+            var rowValues = serviceValues.Get(GuildSpreadsheetId, $"Guild Roster!B2:D310").Execute().Values;
+            string returnValue = "Not enrolled or regears expired.";
+
+            foreach (var users in rowValues)
+            {
+                if (users[0].ToString().ToLower() == a_MemberName.ToLower() && users.Count != 1)
+                {
+                    switch (users[1].ToString().ToLower())
+                    {
+                        case "bronze":
+                            returnValue = users[1].ToString() + " expires on " + users[2].ToString();
+                            break;
+                        case "silver":
+                            returnValue = users[1].ToString() + ": No expiration";
+                            break;
+                        case "gold":
+                            returnValue = users[1].ToString() + ": No expiration";
+                            break;
+
+                        default:
+                            return "Not enrolled or regears expired.";
+                    }
+                }
+            }
+            return returnValue;
+        }
     }
-
     public static class HelperMethods
     {
         public static DateTime StartOfWeek(this DateTime dt, DayOfWeek startOfWeek)

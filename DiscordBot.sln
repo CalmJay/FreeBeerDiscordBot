@@ -5,6 +5,8 @@ VisualStudioVersion = 17.1.32328.378
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscordBot", "DiscordBot.csproj", "{880F885D-3C2B-4CEB-BFCA-A22C455A370F}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpLink", "..\..\Users\ragej\Downloads\SharpLink-master\SharpLink-master\SharpLink\SharpLink.csproj", "{1BFE0360-A378-44EA-9D3D-1E1F6B13B2F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{880F885D-3C2B-4CEB-BFCA-A22C455A370F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{880F885D-3C2B-4CEB-BFCA-A22C455A370F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{880F885D-3C2B-4CEB-BFCA-A22C455A370F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1BFE0360-A378-44EA-9D3D-1E1F6B13B2F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1BFE0360-A378-44EA-9D3D-1E1F6B13B2F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1BFE0360-A378-44EA-9D3D-1E1F6B13B2F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1BFE0360-A378-44EA-9D3D-1E1F6B13B2F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,12 +1,11 @@
-﻿using DiscordBot.Models;
+﻿using DiscordBot.Enums;
+using DiscordBot.Models;
+using Google.Apis.Sheets.v4.Data;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using DiscordBot.Enums;
-using Discord;
-using Microsoft.EntityFrameworkCore;
 
 namespace DiscordBot.Services
 {
@@ -26,10 +25,10 @@ namespace DiscordBot.Services
         {
             return await freeBeerdbContext.Player.AnyAsync(x => x.PlayerName == playerName);
         }
-        public async Task<Boolean> CheckPlayerIsDid5RegearBefore(string playerName)
+        public Task<Boolean> PlayerReachRegearCap(string playerName, int a_iRegearLimitCap)
         {
             List<PlayerLoot> playerLoots = new List<PlayerLoot>();
-            var playerLoot =  freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
+            var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
             foreach (var item in playerLoot)
             {
                 if (item.CreateDate.Value.ToString("yyyy-MM-dd").Equals(DateTime.UtcNow.ToString("yyyy-MM-dd")))
@@ -37,17 +36,18 @@ namespace DiscordBot.Services
                     playerLoots.Add(item);
                 }
             }
+
             if (playerLoots == null)
             {
-                return false;
+                return Task.FromResult(false);
             }
-            else if(playerLoots.Count > 5)
+            else if (playerLoots.Count > a_iRegearLimitCap)
             {
-                return true;
+                return Task.FromResult(true);
             }
             else
             {
-                return false;
+                return Task.FromResult(false);
             }
         }
         public async Task<Boolean> CheckKillIdIsRegeared(string killId)
@@ -67,13 +67,13 @@ namespace DiscordBot.Services
                 freeBeerdbContext.PlayerLoot.Remove(playerLoot);
                 freeBeerdbContext.SaveChanges();
             }
-            
+
         }
 
         public void DeletePlayerLootByQueueId(string queueID)
         {
             var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.QueueId == queueID).FirstOrDefault();
-            if(playerLoot != null)
+            if (playerLoot != null)
             {
                 freeBeerdbContext.PlayerLoot.Remove(playerLoot);
                 freeBeerdbContext.SaveChanges();
@@ -82,7 +82,7 @@ namespace DiscordBot.Services
             {
                 Console.WriteLine($"Issue writing OC Break to database. Null Reference. QeueueID={queueID}");
             }
-            
+
         }
         public MoneyType GetMoneyTypeByName(MoneyTypes moneyType)
         {

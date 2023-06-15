@@ -1,292 +1,326 @@
-﻿using System;
-using System.Threading.Tasks;
-using Discord;
-using DiscordBot.Services;
+﻿using Discord;
 using Discord.Interactions;
-using System.Threading.Channels;
-using System.ComponentModel;
-using System.IO;
+using Discord.WebSocket;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
-using Newtonsoft.Json;
-using System.Diagnostics;
-using Discord.WebSocket;
+using System.Threading.Tasks;
+using Tesseract;
+using IronOcr;
+using DiscordBot.Enums;
+using Aspose.Imaging.ProgressManagement;
+using DiscordbotLogging.Log;
+using Microsoft.VisualBasic;
+using Discord.Rest;
+using System.ComponentModel;
 
 namespace DiscordBot.LootSplitModule
 {
-    public class LootSplitModule
-    {
-        public ulong roleIdNewRecruit = 847350505977675796;
-        public ulong roleIdMember = 739948841847095387;
-        public ulong roleIdOfficer = 335894631810334720;
-        public ulong roleIdVeteran = 739950349405782046;
-        public Dictionary<string, ulong> scrapedDict { get; set; }
-        public List<string> scrapedList { get; set; }
-        public int imageCount { get; set; }
-        public string freeBeerDirectory { get; set; }
-        public List<string> imageMembers { get; set; }
-        public string submitter { get; set; }
-        public string addedMembers { get; set; }
-        public decimal lootAmountPer { get; set; }
-        public Dictionary<string, ulong> CreateMemberDict()
+    public class LootSplitModule //: InteractionModuleBase<SocketInteractionContext>
+	{
+      public ulong roleIdNewRecruit = 847350505977675796;
+      public ulong roleIdMember = 739948841847095387;
+      public ulong roleIdOfficer = 335894631810334720;
+      public ulong roleIdVeteran = 739950349405782046;
+      public Dictionary<string, ulong> scrapedDict { get; set; }
+      public List<string> scrapedList { get; set; }
+      public int imageCount { get; set; }
+      public string freeBeerDirectory { get; set; }
+      public List<string> imageMembers { get; set; }
+      public string submitter { get; set; }
+      public string addedMembers { get; set; }
+      public decimal lootAmountPer { get; set; }
+      public int GuildSplitFee { get; set; }
+
+      private int NonDamagedLootTotal { get; set; }
+      private int DamagedLootTotal { get; set; }
+      private int LootAmountPerMembernonDamged { get; set; }
+      private int LootAmountPerMemberDamaged { get; set; }
+      private int TotalLootSplitPerMember { get; set; }
+      private int GrandTotalLootSplit { get; set; }
+	  private int SilverBagsTotal { get; set; }
+	  private bool MemberAddedOrRemoved { get; set; }
+	  private EmbedBuilder Embed { get; set; }
+	  private ComponentBuilder Componets { get; set; }
+
+		public Dictionary<string, ulong> CreateMemberDict()
+      {
+          return scrapedDict;
+      }
+      public async Task CreateMemberList(SocketInteractionContext context)
+      {
+          //scrape members and write to Json
+          List<string> memberList = new List<string>();
+
+          //grab iterable and make list
+
+          var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+          foreach (var member in iterable.FirstOrDefault())
+          {
+              if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
+                  || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
+              {
+                  //if no nickname, add the username
+                  if (member.Nickname is null)
+                  { memberList.Add(member.Username); }
+                  //if squad leader, remove the dumbass prefix
+                  else if (member.Nickname.StartsWith("!slnew"))
+                  { memberList.Add(member.Nickname.Remove(0, 7)); }
+                  //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
+                  else if (member.Nickname.StartsWith("!!sl"))
+                  { memberList.Add(member.Nickname.Remove(0, 5)); }
+                  else if (member.Nickname.StartsWith("!sl"))
+                  { memberList.Add(member.Nickname.Remove(0, 4)); }
+                  else
+                  { memberList.Add(member.Nickname); }
+              }
+          }
+
+          scrapedList = memberList;
+
+          //serialize and write
+          string jsonstring = JsonConvert.SerializeObject(memberList);
+          using (StreamWriter writer = System.IO.File.CreateText(".\\Files\\members.json"))
+          {
+              await writer.WriteAsync(jsonstring);
+          }
+      }
+      public async Task CreateMemberDict(SocketInteractionContext context)
+      {
+          Dictionary<string, ulong> dict = new Dictionary<string, ulong>();
+
+          //grab iterable and make dict
+
+          var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+          foreach (var member in iterable.FirstOrDefault())
+          {
+              if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
+                  || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
+              {
+                  if (member.Nickname != null)
+                  {
+                      if (member.Nickname.StartsWith("!!"))
+                      {
+                          string temp = member.Nickname.Remove(0, 5);
+                          dict.Add(temp, member.Id);
+                      }
+                      else
+                      {
+                          dict.Add(member.Nickname, member.Id);
+                      }
+                  }
+                  else if (member.Nickname == null)
+                  {
+                      dict.Add(member.Username, member.Id);
+                  }
+                  else
+                  {
+                      continue;
+                  }
+              }
+              scrapedDict = dict;
+          }
+      }
+
+        
+
+		public async Task ConfirmationEmbed(SocketInteractionContext Context, List<string> a_MemberNames, LootSplitType a_LootSplitType, string a_callerName, EventTypeEnum a_eventType)
         {
-            return scrapedDict;
-        }
-        public async Task ScrapeImages(SocketInteractionContext context)
-        {
-            //find curr dir and change to the freebeerdiscordbot directory
-            string currdir = Directory.GetCurrentDirectory();
-            string parent = Directory.GetParent(currdir).FullName;
-            string parentTwo = Directory.GetParent(parent).FullName;
-            string freeBeerDir = Directory.GetParent(parentTwo).FullName;
+			var channel = Context.Client.GetChannel(Context.Channel.Id) as IMessageChannel;
+            //int playerPayout = CalculateSplit(a_SilverTotal, a_MemberNames.Count, a_LootSplitType);
 
-            //create the temp dir if not existing
-            string tempDir = @freeBeerDir + "\\Temp";
-            if (!Directory.Exists(tempDir))
+			//begin embed builder
+			var embed = new EmbedBuilder();
+            embed.WithTitle($"Loot Split submission");
+            embed.WithColor(Discord.Color.Orange);
+            embed.AddField("Raw Silver Grand Total", (NonDamagedLootTotal + DamagedLootTotal + SilverBagsTotal).ToString("N0"), true);
+            embed.AddField("Raw Non-Damaged Loot Total", NonDamagedLootTotal.ToString("N0"),true);
+            embed.AddField("Raw Damaged Loot Total", DamagedLootTotal.ToString("N0"), true);
+			embed.AddField("Silver Bags Total", SilverBagsTotal.ToString("N0"), true);
+			embed.AddField("Payout per player (Calculated)", TotalLootSplitPerMember.ToString("N0"), true);
+
+            if (a_LootSplitType == LootSplitType.Guild)
             {
-                Directory.CreateDirectory(tempDir);
+                embed.AddField("Guild Split Fee:", GuildSplitFee.ToString("N0"));
             }
-
-            freeBeerDirectory = freeBeerDir;
-
-            //scrape thread for image uploads
-            var msgsIterable = context.Channel.GetMessagesAsync().ToListAsync().Result.ToList();
-            
-            //create and fill list with n urls from channel
-            List<string> msgsUrls = new List<string>();
-
-            ////NEED FIX TO GET ALL ATTACHMENTS FROM EACH MESSAGE INSTEAD OF JUST 1
-            foreach (var msg in msgsIterable.FirstOrDefault())
+            else
             {
-                
-                if (msg.Attachments.FirstOrDefault() != null)
-                {
-                    msgsUrls.Add(msg.Attachments.FirstOrDefault().Url);
-                }
-            }
-            int m = 1;
-            foreach (string url in msgsUrls)
-            {
-                //download the image(s) url that was uploaded to the channel
-                using var httpClient = new HttpClient();
-                using var s = httpClient.GetStreamAsync(url);
-                using var fs = new FileStream(freeBeerDir + "\\Temp\\image" + m.ToString() + ".png", FileMode.OpenOrCreate);
-                s.Result.CopyTo(fs);
-                m++;
-            }
-            imageCount = m;
-        }
-        public async Task CreateMemberList(SocketInteractionContext context)
-        {
-            //scrape members and write to Json
-            List<string> memberList = new List<string>();
+				embed.AddField("Guild Split Fee:", 0);
+			}
 
-            //grab iterable and make list
-
-            var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
-            foreach (var member in iterable.FirstOrDefault())
-            {
-                if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
-                    || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
-                {
-                    //if no nickname, add the username
-                    if (member.Nickname is null)
-                    { memberList.Add(member.Username); }
-                    //if squad leader, remove the dumbass prefix
-                    else if (member.Nickname.StartsWith("!slnew"))
-                    { memberList.Add(member.Nickname.Remove(0, 7)); }
-                    //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
-                    else if (member.Nickname.StartsWith("!!sl"))
-                    { memberList.Add(member.Nickname.Remove(0, 5)); }
-                    else if (member.Nickname.StartsWith("!sl"))
-                    { memberList.Add(member.Nickname.Remove(0, 4)); }
-                    else
-                    { memberList.Add(member.Nickname); }
-                }
-            }
-
-            scrapedList = memberList;
-
-            //serialize and write
-            string jsonstring = JsonConvert.SerializeObject(memberList);
-            using (StreamWriter writer = System.IO.File.CreateText(freeBeerDirectory + "\\Temp\\members.json"))
-            {
-                await writer.WriteAsync(jsonstring);
-            }
-        }
-        public async Task CreateMemberDict(SocketInteractionContext context)
-        {
-            Dictionary<string, ulong> dict = new Dictionary<string, ulong>();
-
-            //grab iterable and make dict
-
-            var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
-            foreach (var member in iterable.FirstOrDefault())
-            {
-                if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
-                    || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
-                {
-                    if (member.Nickname != null)
-                    {
-                        if (member.Nickname.StartsWith("!!"))
-                        {
-                            string temp = member.Nickname.Remove(0, 5);
-                            dict.Add(temp, member.Id);
-                        }
-                        else
-                        {
-                            dict.Add(member.Nickname, member.Id);
-                        }
-                    }
-                    else if (member.Nickname == null)
-                    {
-                        dict.Add(member.Username, member.Id);
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
-                scrapedDict = dict;
-            }
-        }
-        public async Task CallPyTesseract(SocketInteractionContext context, string pyPath, string pyArgs)
-        {
-            ProcessStartInfo start = new ProcessStartInfo();
-            start.FileName = pyPath;//cmd is full path to python.exe
-            start.Arguments = pyArgs;//pyth is path to .py file and any cmd line args
-            start.UseShellExecute = false;
-            start.RedirectStandardOutput = true;
-            using (Process process = Process.Start(start))
-            {
-                //read the python output and write it to json
-                using (StreamReader reader = process.StandardOutput)
-                {
-                    string result = reader.ReadToEnd();
-                    //serialize string to write to json
-                    string jsonstringTwo = JsonConvert.SerializeObject(result);
-                    using (StreamWriter writerTwo = System.IO.File.CreateText(freeBeerDirectory + "\\Temp\\members.json"))
-                    {
-                        await writerTwo.WriteAsync(jsonstringTwo);
-                    }
-
-                    //split single string into Icollection? List
-                    List<string> results = result.Split(',').ToList();
-
-                    //clean list to strings with double quotes only - DONT USE FOREACH ON ICOLLECTION IT WILL BREAK THE LOOP
-                    for (int i = 0; i < results.Count; i++)
-                    {
-                        //cleanup strings after list separation, there are extra quotations and brackets that are added during
-                        //conversion to json-py-console-consoleread; this handles all of it
-                        if (i != results.Count - 1)
-                        {
-                            results[i] = results[i].Remove(0, 2);
-                            results[i] = results[i].Remove(results[i].Length - 1);
-                        }
-                        else
-                        {
-                            results[i] = results[i].Remove(0, 2);
-                            results[i] = results[i].Remove(results[i].Length - 2);
-                        }
-                    }
-
-                    var guildUser = (SocketGuildUser)context.User;
-                    //add user that opened socket - likely the large frame at top of image not captured
-                    if (guildUser.Nickname != null)
-                    {
-                        if (!results.Contains(guildUser.Nickname))
-                        {
-                            results.Add(guildUser.Nickname);
-                            submitter = guildUser.Nickname;
-                        }
-                        else
-                        {
-                            submitter = guildUser.Nickname;
-                        }
-                    }
-                    else 
-                    {
-                        if (!results.Contains(guildUser.Username))
-                        {
-                            results.Add(guildUser.Username);
-                            submitter = guildUser.Username;
-                        }
-                        else
-                        {
-                            submitter = guildUser.Username;
-                        }
-                    }
-                    imageMembers = results;
-                }
-
-            }
-        }
-        public async Task CreateFirstEmbed(SocketInteractionContext context)
-        {
-            //begin embed builder
-            var embed = new EmbedBuilder()
-            .WithColor(Discord.Color.Orange)
-            .AddField("Member Count", imageMembers.Count)
-            .AddField(x =>
+			if (a_LootSplitType == LootSplitType.OffSeason)
+			{
+				embed.AddField("Member Count in split", $"{a_MemberNames.Count} + 1 @Guild Split");
+			}
+			else
+			{
+				embed.AddField("Member Count in split", a_MemberNames.Count);
+			}
+			embed.AddField("Event Type:", a_eventType.ToString(), true);
+			embed.AddField("Split Type:", a_LootSplitType.ToString(), true);
+			
+			embed.AddField(x =>
             {
                 //loop results and add members
-                x.Name = "Members recorded";
-                for (int i = 0; i < (imageMembers.Count - 1); i++)
+                x.Name = "Members Included In Split";
+                for (int i = 0; i < (a_MemberNames.Count - 1); i++)
                 {
-                    x.Value += imageMembers[i] + ", ";
+                    x.Value += a_MemberNames[i] + ", ";
                 }
-                x.Value += imageMembers[imageMembers.Count - 1];
+                x.Value += a_MemberNames[a_MemberNames.Count - 1];
                 x.IsInline = false;
             });
-            //send the embedded report
-            await context.Channel.SendMessageAsync("", false, embed.Build());
-        }
-        public async Task SendAddMemButtons(SocketInteractionContext context)
-        {
-            var channel = context.Client.GetChannel(context.Channel.Id) as IMessageChannel;
-            var approveSplit = new ButtonBuilder()
-            {
-                Label = "Yes",
-                CustomId = "add-members-modal",
-                Style = ButtonStyle.Success
+            embed.AddField("Party Leader:", a_callerName);
+
+			var approveSplit = new ButtonBuilder()
+		    {
+			    Label = "Approve",
+			    CustomId = "approve-split",
+			    Style = ButtonStyle.Success
             };
             var denySplit = new ButtonBuilder()
             {
-                Label = "No",
-                CustomId = "no-add-modal",
+                Label = "Deny",
+                CustomId = "deny-split",
                 Style = ButtonStyle.Danger
             };
-            var comp = new ComponentBuilder();
-            comp.WithButton(approveSplit);
-            comp.WithButton(denySplit);
+            var addMember = new ButtonBuilder()
+            {
+                Label = "Add member",
+                CustomId = "add-member",
+                Style = ButtonStyle.Secondary
+            };
+			var removeMember = new ButtonBuilder()
+			{
+				Label = "Remove member",
+				CustomId = "remove-member",
+				Style = ButtonStyle.Secondary
+			};
+			var comp = new ComponentBuilder();
+		    comp.WithButton(approveSplit);
+		    comp.WithButton(denySplit);
+			comp.WithButton(addMember);
+			comp.WithButton(removeMember);
+
+            Embed = embed;
+            Componets = comp;
 
             try
             {
-                await channel.SendMessageAsync("Add members not captured above, or not present in party image?", isTTS: false,
-                    embed: null, options: null, allowedMentions: null, messageReference: null,
-                    components: comp.Build(), stickers: null, embeds: null, flags: MessageFlags.None);
+                if (!MemberAddedOrRemoved)
+                {
+                    await channel.SendMessageAsync(null, isTTS: false, embed.Build(), options: null, allowedMentions: null, messageReference: null, components: comp.Build(), stickers: null, embeds: null, flags: MessageFlags.None);
+
+                    //Reseting bool
+                    MemberAddedOrRemoved = false;
+                }
+                else
+                {
+                    await Context.Interaction.ModifyOriginalResponseAsync((x) =>
+                    {
+                        x.Embed = Embed.Build();
+                        x.Components = Componets.Build();
+                    });
+                    await Context.Interaction.FollowupAsync("Members updated");
+                }
+
             }
             catch (Exception ex)
             {
                 throw;
             }
         }
+
+        public int CalculateSplit(int a_iLootSplitTotal, int a_iSplitMemberCount, LootSplitType a_LootSplitType)
+        {
+            switch(a_LootSplitType)
+            {
+                case LootSplitType.Personal:
+				case LootSplitType.Other:
+					return a_iLootSplitTotal/ a_iSplitMemberCount;
+
+                case LootSplitType.Guild:
+                    GuildSplitFee = (int)Math.Round(a_iLootSplitTotal * .20);
+
+					var lootAmountPerMember = (int)Math.Round((a_iLootSplitTotal * .8) / a_iSplitMemberCount);
+
+                    return lootAmountPerMember;
+
+                case LootSplitType.OffSeason:
+                    GuildSplitFee = a_iLootSplitTotal / (a_iSplitMemberCount + 1);
+
+					return a_iLootSplitTotal / (a_iSplitMemberCount + 1 );
+			}
+                
+            return 0;
+        }
+		public async Task LootSplitInitialPrompt(SocketInteractionContext a_Context, List<string> a_MembersList, string a_sCallerName, LootSplitType a_eLootSplitType, EventTypeEnum a_eEventType, int? a_iNonDamagedLootTotal, int? a_iDamagedLootTotal, int? SilverBagsTotalstring)
+		{
+            
+			try
+		    {
+				NonDamagedLootTotal = (int)((a_iNonDamagedLootTotal != null) ? a_iNonDamagedLootTotal : 0);
+				LootAmountPerMembernonDamged = (int)Math.Round(NonDamagedLootTotal * .8);
+
+				DamagedLootTotal = (int)(a_iDamagedLootTotal != null ? a_iDamagedLootTotal : 0);
+			    LootAmountPerMemberDamaged = (int)Math.Round(DamagedLootTotal * .75);
+
+                SilverBagsTotal = (int)((SilverBagsTotalstring != null) ? SilverBagsTotalstring : 0); ;
+                //RawGrandTotal = a_iNonDamagedLootTotal +a_iDamagedLootTotal +SilverBagsTotalstring)
+				switch (a_eLootSplitType)
+				{
+					case LootSplitType.Personal:
+					case LootSplitType.Other:
+                        int LootTotals = 0;
+						if (a_iNonDamagedLootTotal != null)
+                        {
+							LootTotals += (int)a_iNonDamagedLootTotal;
+
+						}
+                        if(a_iDamagedLootTotal != null)
+                        {
+							LootTotals += (int)a_iDamagedLootTotal;
+
+						}
+						GuildSplitFee = 0;
+						TotalLootSplitPerMember = LootTotals + SilverBagsTotal/ a_MembersList.Count;
+						break;
+
+					case LootSplitType.Guild:
+						GuildSplitFee = (int)Math.Round(NonDamagedLootTotal * .20) + (int)Math.Round(DamagedLootTotal * .25);
+						TotalLootSplitPerMember = (LootAmountPerMembernonDamged + LootAmountPerMemberDamaged) / a_MembersList.Count;
+                        break;
+                    case LootSplitType.OffSeason:
+						TotalLootSplitPerMember = (LootAmountPerMembernonDamged + LootAmountPerMemberDamaged + SilverBagsTotal) / (a_MembersList.Count + 1);
+                        GuildSplitFee = 0;
+
+						break;
+				}
+				await ConfirmationEmbed(a_Context, a_MembersList, a_eLootSplitType, a_sCallerName, a_eEventType);
+
+
+		    }
+		    catch (Exception ex)
+		    {
+			    throw;
+		    }
+
+		}
+
+
         public async Task BuildModalHandler(SocketInteractionContext context, Boolean bobbyBoole, List<string> membersList, List<string> imagesMembers)
         {
 
             //add silver bags text input
             var mb = new ModalBuilder()
-            .WithTitle("Additional Split Information")
+            .WithTitle("Add member to split")
             .WithCustomId("split_info");
-            if (bobbyBoole == true)
-            {
-                mb.AddTextInput("Please enter additional members not captured", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc." +
-            " (case sensitive)", required: true, value: null);
-            };
-            mb.AddTextInput("Please enter total loot amount",
-            "loot_total", placeholder: "e.g. 42069 (no units or commas)", required: true)
-            .AddTextInput("Please enter chest location", "chest_loc", placeholder: "e.g. 25, 26, 27, etc.", required: false);
+            mb.AddTextInput("Please enter additional members not captured", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc. (case sensitive)", required: true, value: null);
 
             try
             {
@@ -297,15 +331,13 @@ namespace DiscordBot.LootSplitModule
                 context.Client.ModalSubmitted += async modal =>
                 {
                     List<SocketMessageComponentData> components = modal.Data.Components.ToList();
-                    //may need to put membersStr in some kind of conditional if they select "no" for add other members
-                    string membersStr = components.First(x => x.CustomId == "add_members").Value;
+                    
                     string lootTotal = components.FirstOrDefault(x => x.CustomId == "loot_total").Value;
-                    string chestLoc = components.FirstOrDefault(x => x.CustomId == "chest_loc").Value;
 
                     await modal.DeferAsync();
 
-                    //split single string into member list
-                    List<string> membersSplit = membersStr.Split(',').ToList();
+					string membersStr = components.First(x => x.CustomId == "add_members").Value;
+					List<string> membersSplit = membersStr.Split(',').ToList();
 
                     //clean list of strings with space at the end
                     for (int i = 1; i < membersSplit.Count; i++)
@@ -368,8 +400,8 @@ namespace DiscordBot.LootSplitModule
                             x.IsInline = false;
                         })
                         .AddField("Loot Split Total", lootTotalInt)
-                        .AddField("Loot Split Per", lootAmountPerMember)
-                        .AddField("Chest Location(s)", chestLoc);
+                        .AddField("Loot Split Per", lootAmountPerMember);
+                        //.AddField("Chest Location(s)", chestLoc);
 
                         //send the embedded report
                         await context.Channel.SendMessageAsync("--Loot Split Report--", false, embed.Build());
@@ -377,8 +409,7 @@ namespace DiscordBot.LootSplitModule
                         await PostLootSplit(context);
 
                         await context.Channel.SendMessageAsync("***please post relevant chest loot images below " +
-                            "for evaluation. Once regear team verifies/denies I’ll send you a message with the outcome. " +
-                            "So long and thanks for all the fish.***");
+                            "for evaluation. Once regear team verifies/denies I’ll send you a message with the outcome.*** ");
                     }
                     catch (Exception ex)
                     {
@@ -414,13 +445,114 @@ namespace DiscordBot.LootSplitModule
 
             try
             {
-                    await channel.SendMessageAsync(" ", isTTS: false, embed: null, options: null, allowedMentions: null, messageReference: null,
-                    components: comp.Build(), stickers: null, embeds: null, flags: MessageFlags.None);
+                await channel.SendMessageAsync(" ", isTTS: false, embed: null, options: null, allowedMentions: null, messageReference: null,
+                components: comp.Build(), stickers: null, embeds: null, flags: MessageFlags.None);
             }
             catch (Exception ex)
             {
                 throw;
             }
         }
+
+        public async Task AddRemoveNamesFromList(SocketInteractionContext Context, Options OptionsEnum) 
+        {
+			var interaction = Context.Interaction as IComponentInteraction;
+			var socketThreadChannel = (SocketThreadChannel)Context.Channel;
+			var usersActiveInThread = await socketThreadChannel.GetUsersAsync();
+			List<string> membersList = interaction.Message.Embeds.FirstOrDefault().Fields[9].Value.Replace(" ", "").Split(',').ToList();
+			
+			List<string> missingMembersList = null;
+			var threadOwner = socketThreadChannel.Owner.DisplayName;
+
+			//Embed Values
+			int RawNonDamgedLootTotal = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.Replace(",", ""));
+			int RawDamagedLootTotal = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[2].Value.Replace(",", ""));
+			int iSilverbagsTotal = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[3].Value.Replace(",", ""));
+			string sPartyLeader = interaction.Message.Embeds.FirstOrDefault().Fields[10].Value;
+			Enum.TryParse(interaction.Message.Embeds.FirstOrDefault().Fields[7].Value, out EventTypeEnum EventTypeEnum);
+			Enum.TryParse(interaction.Message.Embeds.FirstOrDefault().Fields[8].Value, out LootSplitType LootSplitTypeEnum);
+
+			MemberAddedOrRemoved = true;
+
+			var guildUser = (SocketGuildUser)Context.User;
+
+			if (guildUser.Roles.Any(r => r.Name == "AO - Officers" || r.Name == "admin") || socketThreadChannel.Owner.DisplayName == Context.User.Username || Context.Interaction.User.Username == sPartyLeader)
+			{
+                
+				var mb = new ModalBuilder()
+				.WithTitle("Add/remove member")
+				.WithCustomId("missing_members");
+				mb.AddTextInput("Add or remove members for the split", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc. (case sensitive)", required: false, value: null);
+
+				try
+				{
+					//send modal
+					await Context.Interaction.RespondWithModalAsync(mb.Build());
+
+					Context.Client.ModalSubmitted += async modal =>
+					{
+						List<SocketMessageComponentData> components = modal.Data.Components.ToList();
+						string sMissingMembers = components.FirstOrDefault().Value;
+
+					    //await modal.DeferAsync();
+                        
+						if (sMissingMembers != "")
+						{
+							missingMembersList = components.FirstOrDefault().Value.Split(',').ToList();
+
+							for (int i = 1; i < missingMembersList.Count; i++)
+							{
+								//cleanup strings after list separation
+								if (i > 0)
+								{
+									missingMembersList[i] = missingMembersList[i].Remove(0, 1);
+								}
+							}
+
+							switch (OptionsEnum)
+                            {
+                                case Options.Add:
+									foreach (string member in missingMembersList)
+									{
+										if (!membersList.Contains(member))
+										{
+											membersList.Add(member);
+										}
+										//else
+										//{
+										//	await Context.Channel.SendMessageAsync("***User " + member + " not found.***");
+										//}
+									}
+									break;
+
+                                case Options.Remove:
+									foreach (string member in missingMembersList)
+									{
+										if (membersList.Contains(member))
+										{
+											membersList.Remove(member);
+										}
+										//else
+										//{
+										//	await Context.Channel.SendMessageAsync("***User " + member + " not found.***");
+										//}
+									}
+									break;
+                            }
+							await LootSplitInitialPrompt(Context, membersList, sPartyLeader, LootSplitTypeEnum, EventTypeEnum, RawNonDamgedLootTotal, RawDamagedLootTotal, iSilverbagsTotal);
+							await modal.DeferAsync();
+						}
+					};
+				}
+				catch (Exception ex)
+				{
+					throw;
+				}	
+			}
+			else
+			{
+				await Context.Interaction.RespondAsync(":middle_finger: Only works for thread owner or party leader", null, false, true);
+			}
+		}
     }
 }
