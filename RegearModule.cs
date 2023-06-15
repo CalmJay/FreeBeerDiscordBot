@@ -1,6 +1,7 @@
 ﻿using CoreHtmlToImage;
 using Discord;
 using Discord.Interactions;
+using Discord.Rest;
 using Discord.WebSocket;
 using DiscordBot.Enums;
 using DiscordBot.Models;
@@ -13,11 +14,12 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using static PlayerData.PlayerDataHandler;
 
 namespace DiscordBot.RegearModule
 {
     public class RegearModule
-    {
+	{
         private DataBaseService dataBaseService;
 
         private int goldTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegearPriceCap"));
@@ -39,8 +41,7 @@ namespace DiscordBot.RegearModule
         public ulong RegearQueueID { get; set; }
         private string regearRoleIcon { get; set; }
 
-
-        public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
+		public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
         {
             var chnl = command.Client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"))) as IMessageChannel;
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, a_EventData);
@@ -865,32 +866,7 @@ namespace DiscordBot.RegearModule
                 return false;
             }
         }
-
-        public async Task ReasonForDenial(SocketInteractionContext Context)
-        {
-			var mb = new ModalBuilder()
-				.WithTitle("Reason for Deny")
-				.WithCustomId("deny_member");
-			    mb.AddTextInput("Reason for denial", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc. (case sensitive)", required: false, value: null);
-
-			try
-			{
-				//send modal
-				await Context.Interaction.RespondWithModalAsync(mb.Build());
-
-				Context.Client.ModalSubmitted += async modal =>
-				{
-					List<SocketMessageComponentData> components = modal.Data.Components.ToList();
-
-				};
-			}
-			catch (Exception ex)
-			{
-				throw;
-			}
-		}
-
-
+		
 		public class Equipment
         {
             private string image;

@@ -483,19 +483,14 @@ namespace GoogleSheetsData
             IList<IList<object>> paychexClaimedColumn = null;
             string combinedDate = $"{shortmonth}-{lastSunday.Day}";
 
-
-
             List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
             var cleanupedTotal = paychexRunningTotal[0].Substring(0, paychexRunningTotal[0].IndexOf(" "));
             int a = Int32.Parse(cleanupedTotal.Replace(",", ""));
-            //if(a > 10000000)
-            //{ 
+
             if (paychexRunningTotal[0].Contains("(NOT CLAIMED"))
             {
                 var numberOfRow = serviceValues.Values.Get(RegearSheetID, "MiniMart Ledger!B2:B").Execute().Values.Count;
                 var col1 = numberOfRow + 2;
-
-
 
                 try
                 {
@@ -518,11 +513,8 @@ namespace GoogleSheetsData
                             dataValidationUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                             await dataValidationUpdate.ExecuteAsync();
                         }
-
                         i++;
                     }
-
-
                 }
                 catch (Exception ex)
                 {
@@ -542,7 +534,7 @@ namespace GoogleSheetsData
             {
                 await a_SocketGuildUser.SendMessageAsync("The Paychex are not rendered yet or there was an issue transferring your paychex to mini mart credits. Seek out an Officer to investigate.");
             }
-            //}
+            
         }
 
         public static async Task MiniMartTransaction(SocketGuildUser a_Manager, SocketGuildUser a_User, int a_iAmount, MiniMarketType a_eTransactionType)

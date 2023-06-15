@@ -28,6 +28,10 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Tesseract;
 using Microsoft.VisualBasic;
 using System.ComponentModel;
+using static PlayerData.PlayerDataHandler;
+using Azure.Identity;
+using static IronOcr.OcrResult;
+using SixLabors.ImageSharp.Drawing;
 
 namespace CommandModule
 {
@@ -41,10 +45,9 @@ namespace CommandModule
         private static LootSplitModule lootSplitModule;
         private int iRegearLimit = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("RegearSubmissionCap"));
         private bool bAutomatedRegearProcessing = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("AutomaticRegearProcessing"));
-
         public IEnumerable<IMessage> msgs { get; set; }
 
-        public CommandModule(ConsoleLogger logger)
+		public CommandModule(ConsoleLogger logger)
         {
             _logger = logger;
         }
@@ -89,20 +92,25 @@ namespace CommandModule
             dataBaseService = new DataBaseService();
 
             string? sUserNickname = (guildUserName.Nickname == null) ? guildUserName.Username : guildUserName.Nickname;
+			string? UserDisplayName = (guildUserName.DisplayName == null) ? guildUserName.Username : guildUserName.DisplayName;
 
-            var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
+			var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
             var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
             var freeRegearRole = guildUserName.Guild.GetRole(1052241667329118349);//free regear role id
 
             var user = guildUserName.Guild.GetUser(guildUserName.Id);
 
-            if (ingameName != null || sUserNickname != ingameName)
+            if (ingameName != null )
             {
 
-                if (sUserNickname != ingameName)
+                if (sUserNickname.ToLower() != ingameName.ToLower() || UserDisplayName.ToLower() != ingameName.ToLower())
                 {
-                    sUserNickname = ingameName;
-                    await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
+                    try
+                    {
+						await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
+					}
+                    catch (Exception ex) { }
+                    
                 }
             }
 
@@ -126,12 +134,9 @@ namespace CommandModule
 
                 var embed = new EmbedBuilder()
                .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
-               .WithDescription("We're glad to have you. Please checkout the following below.")
-               .AddField($"Don't get kicked", "<#995798935631302667>")
-               .AddField($"General info / location of the guild stuff", "<#880598854947454996>")
-               .AddField($"Regear program", "<#970081185176891412>")
-               .AddField($"ZVZ builds", "<#906375085449945131>")
-               .AddField($"Before you do ANYTHING else", "Your existence in the guild relies you on reading these");
+               .WithDescription("We're glad to have you. Please read/watch the following below.")
+               .AddField($"Onboarding Video", "https://www.youtube.com/watch?v=dmUomrP-6RA")
+               .AddField($"Rule book", "https://docs.google.com/document/d/1Vmw-D62zHBpQf8PvR8WLKAqBVncNW4yTC-_dBNLSHNI/");
 
                 List<string> questionList = new List<string>
                 {
@@ -141,8 +146,10 @@ namespace CommandModule
                     $"hobby",
                     $"car",
                     $"movie",
-                    $"video game (Albion doesn't count. It's a shit game)",
-                    $"TV show"
+                    $"video game (Albion doesn't count)",
+                    $"book",
+					$"board game",
+					$"TV show"
                 };
                 Random rnd = new Random();
                 int r = rnd.Next(questionList.Count);
@@ -396,7 +403,7 @@ namespace CommandModule
                 List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
                 string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
                 string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
-				
+                string PaychexDate = "";
 
 				if (paychexRunningTotal.Count > 0)
                 {
@@ -409,8 +416,36 @@ namespace CommandModule
 
 					for (int i = 0; i < paychexRunningTotal.Count; i++)
                     {
-						paychexbutton.Label = $"Transfer Paychex {paychexRunningTotal[i].Split("")}";
-						paychexbutton.CustomId = $"Paychex{paychexRunningTotal[i]}";
+						if (paychexRunningTotal[i].Length > 0)
+						{
+							int iter = paychexRunningTotal[i].IndexOf(" ") + 1;
+							PaychexDate = paychexRunningTotal[i].Substring(iter);
+						}
+
+                        if (paychexRunningTotal[i].Contains("NOT CLAIMED"))
+                        {
+							paychexbutton.Style = ButtonStyle.Success;
+							paychexbutton.IsDisabled = false;
+							paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
+							paychexbutton.CustomId = $"Paychex{paychexRunningTotal[i].Split("(")[0]}";
+						}
+                        else if (paychexRunningTotal[i].Contains("(CLAIMED)"))
+                        {
+							paychexbutton.Style = ButtonStyle.Danger;
+							paychexbutton.IsDisabled = true;
+							paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
+							paychexbutton.CustomId = $"Paychex{paychexRunningTotal[i].Split("(")[0]}";
+						}
+                        else
+                        {
+							paychexbutton.Label = $"Pending {PaychexDate}";
+							paychexbutton.CustomId = $"Paychex{paychexRunningTotal[i]}";
+							paychexbutton.Style = ButtonStyle.Secondary;
+							paychexbutton.IsDisabled = true;
+						}
+
+						
+                       
 						component.WithButton(paychexbutton);
 					}
 
@@ -586,8 +621,8 @@ namespace CommandModule
         public async Task Denied()
         {
             var guildUser = (SocketGuildUser)Context.User;
-
-            var interaction = Context.Interaction as IComponentInteraction;
+			RegearModule regearModule = new RegearModule();
+			var interaction = Context.Interaction as IComponentInteraction;
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
@@ -609,9 +644,25 @@ namespace CommandModule
 
                 try
                 {
-                    await Context.Guild.GetUser(regearPoster).SendMessageAsync($"Regear {killId} was denied. https://albiononline.com/en/killboard/kill/{killId}");
-                }
-                catch (Exception ex)
+					var mb = new ModalBuilder()
+				    .WithTitle("Regear Denied")
+				    .WithCustomId("deny_menu");
+					mb.AddTextInput("Why is this regear being denied?", "deny_reason", TextInputStyle.Paragraph ,placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
+
+					await Context.Interaction.RespondWithModalAsync(mb.Build());
+					Context.Client.ModalSubmitted += async modal =>
+					{
+						await modal.DeferAsync();
+                         
+						string Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
+
+						await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied regear #{killId}. https://albiononline.com/en/killboard/kill/{killId} Reason: {Reason}");
+                        
+					};
+					await Context.Interaction.DeleteOriginalResponseAsync();
+
+				}
+				catch (Exception ex)
                 {
                     Console.WriteLine("Could find user guild ID. Guild collection too large");
                 }
@@ -619,7 +670,7 @@ namespace CommandModule
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
 
-                await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+                
             }
             else
             {
@@ -627,7 +678,7 @@ namespace CommandModule
             }
         }
 
-        [ComponentInteraction("approve")]
+		[ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
             SocketGuildUser guildUser = (SocketGuildUser)Context.User;
@@ -725,7 +776,7 @@ namespace CommandModule
             string? sCallerNickname = (callerName.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(callerName.Nickname) : callerName.Username;
 
             var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
-            var PlayerEventData = playerInfo.players.Where(x => x.Name == sUserNickname.ToLower()).FirstOrDefault();
+            var PlayerEventData = playerInfo.players.Where(x => x.Name.ToLower() == sUserNickname.ToLower()).FirstOrDefault();
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "OC break Submit", $"User: {Context.User.Username}, Command: oc-regear", null));
         
@@ -812,17 +863,32 @@ namespace CommandModule
                     dataBaseService.DeletePlayerLootByQueueId(iQueueID.ToString());
                     var guildUsertest = Context.Guild.GetUser(regearPoster);
 
-                    await Context.Guild.GetUser(regearPoster).SendMessageAsync($"OC Regear {iQueueID} was denied.");
+					var mb = new ModalBuilder()
+					.WithTitle("OC Break Denied")
+					.WithCustomId("deny_menu");
+					mb.AddTextInput("Why is this OC Break being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
 
-                }
+					await Context.Interaction.RespondWithModalAsync(mb.Build());
+					Context.Client.ModalSubmitted += async modal =>
+					{
+						await modal.DeferAsync();
+
+						string Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
+
+						await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied OC break {iQueueID}. Reason: {Reason}");
+
+					};
+					await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+				}
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
 
+
                 await _logger.Log(new LogMessage(LogSeverity.Info, "OC Regear Denied", $"User: {Context.User.Username}, Denied regear {iQueueID} for {victimName} ", null));
 
-                await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+                
             }
             else
             {
@@ -830,10 +896,11 @@ namespace CommandModule
             }
         }
 
-        [SlashCommand("play-song", "Play a song test")]
-        public async Task PlaySong(string SongName)
+		[SlashCommand("play-song", "Play a song test")]
+        public async Task PlaySong(string searchQuery)
         {
-
+			//TODO: Switch to VICTORIA for music https://github.com/Yucked/Victoria/wiki/%F0%9F%A7%AC-Samples
+			await DeferAsync();
             IVoiceChannel voiceChannel = ((IGuildUser)Context.User).VoiceChannel;
 
             LavalinkPlayer player = Program.lavalinkManager.GetPlayer(GuildID) ?? await Program.lavalinkManager.JoinAsync(voiceChannel);
@@ -841,20 +908,15 @@ namespace CommandModule
 
             var TodaysDate = DateTime.Today;
 
-            if (TodaysDate.Month == 4 && TodaysDate.Day == 1)
-            {
-                response = await Program.lavalinkManager.GetTracksAsync($"ytsearch:https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-            }
-            else
-            {
-                response = await Program.lavalinkManager.GetTracksAsync($"ytsearch:{SongName}");
-            }
-            
+            //response = await Program.lavalinkManager.GetTracksAsync($"ytsearch:{searchQuery}");
+            response = await Program.lavalinkManager.GetTracksAsync($"scsearch:{searchQuery}");
+            //response = await Program.lavalinkManager.GetTracksAsync($"ytmsearch:{SongName}");
+
             // Gets the first track from the response
             LavalinkTrack track = response.Tracks.First();
             await player.PlayAsync(track);
 
-            await RespondAsync($"Playing song: {player.CurrentTrack.Url}");
+            await FollowupAsync($"Playing song: {player.CurrentTrack.Url}");
         }
 
         [SlashCommand("stop-song", "stop a song ")]
@@ -864,12 +926,37 @@ namespace CommandModule
             var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id) ??
             await Program.lavalinkManager.JoinAsync((Context.User as IGuildUser)?.VoiceChannel);
             await player.StopAsync();
-            await ReplyAsync("Stopped playing. Your queue is still intact though. Use `clear` to Destroy Queue");
+            await RespondAsync("Stopped playing. Your queue is still intact though. Use `clear` to Destroy Queue", ephemeral: true);
         }
 
+		[SlashCommand("set-volume", "Volume between 1 - 100")]
+		public async Task SetVolumne(uint volume)
+		{
+            if(volume > 111)
+            {
+				await RespondAsync($"Volume doesn't go higher than 111", ephemeral: true);
+			}
+            else
+            {
+				var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id) ??
+				await Program.lavalinkManager.JoinAsync((Context.User as IGuildUser)?.VoiceChannel);
+				await player.SetVolumeAsync(volume);
+				await FollowupAsync($"Volume set to {volume}.", ephemeral: true);
+			}
+			
+		}
+		[SlashCommand("clear-songs", "Clear the songs queue")]
+		public async Task ClearQueue()
+		{
+
+            var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id);
+			await Program.lavalinkManager.StopAsync();
+            await player.DisconnectAsync();
+			await RespondAsync("Your queue has been cleared Queue", ephemeral: true);
+		}
 
 
-        [SlashCommand("split-loot", "Perform a loot split.")]
+		[SlashCommand("split-loot", "Perform a loot split.")]
         public async Task SplitLoot(LootSplitType LootSplitType, SocketGuildUser CallerName, EventTypeEnum EventType, int? NonDamagedLootTotal = null, int? DamagedLootTotal = null, int? SilverBagsTotal = null )
         {
             await DeferAsync();
@@ -986,7 +1073,7 @@ namespace CommandModule
                     }
                     await FollowupAsync(($"This loot split has finished processing! {interaction.Message.Embeds.FirstOrDefault().Fields[4].Value} has been added to everyone's paychex.oot This thread can be deleted."));
 
-					//await DeleteOriginalResponseAsync();
+					await DeleteOriginalResponseAsync();
 
 				}
                 catch
@@ -994,9 +1081,6 @@ namespace CommandModule
                     await FollowupAsync("Oops I fucked up. Send me the IT guy");
                 }
 				await _logger.Log(new LogMessage(LogSeverity.Info, "Loot Split Approved", $"User: {Context.User.Username}, Approved Loot split ", null));
-
-                //SocketGuildChannel socketChannel = Context.Guild.GetChannel(Context.Channel.Id);
-                //await socketChannel.DeleteAsync();
             }
             else
             {
@@ -1006,13 +1090,18 @@ namespace CommandModule
         [ComponentInteraction("deny-split")]
         async Task DenySplit()
         {
-            var guildUser = (SocketGuildUser)Context.User;
+			var socketThreadChannel = (SocketThreadChannel)Context.Channel;
+			var usersActiveInThread = await socketThreadChannel.GetUsersAsync();
+			var guildUser = (SocketGuildUser)Context.User;
 			var interaction = Context.Interaction as IComponentInteraction;
+			string sPartyLeader = interaction.Message.Embeds.FirstOrDefault().Fields[10].Value;
+
 			//check perms for button pushing
-			if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
+			if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin" || socketThreadChannel.Owner.DisplayName == Context.User.Username || Context.Interaction.User.Username == sPartyLeader))
             {
 				await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
-				await RespondAsync("Loot split denied. Please reach out to a Regear team member as to why");
+				await RespondAsync("Loot split denied/cancelled");
+				await DeleteOriginalResponseAsync();
 			}
 			else
             {

@@ -179,9 +179,15 @@ namespace DNet_V3_Tutorial
                 .AddField(@"\get-player-info {REQUIRED: Player name}", "RECRUITERS AND OFFICERS ONLY Search Albion API for player info")
                 .AddField(@"\register", "Add player to Database and regear system")
                 .AddField(@"\unregister-member {REQUIRED: Player name} {REASON} {OPTIONAL: DiscordName}", "RECRUITERS AND OFFICERS ONLY Remove player from Free Beer Database")
-                .AddField(@"\configure", "Adjust the bot settings");
-            // New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
-            await _logger.Log(new LogMessage(LogSeverity.Info, "PingModule : Help", $"User: {Context.User.Username}, Help: help", null));
+                .AddField(@"\configure", "Adjust the bot settings")
+                .AddField(@"\clear-songs", "Clears the song queue")
+                .AddField(@"\stop-song", "Stops the current song")
+                .AddField(@"\set-volumne", "Adjust the bot volume for music")
+			    .AddField(@"\split-loot", "Does a split fothe reported loot then udpates paychex")
+                .AddField(@"\give-regear", "Adjusts multipleuers regear status")
+                .AddField(@"\insult", "Get an insult from the bot");
+			// New LogMessage created to pass desired info to the console using the existing Discord.Net LogMessage parameters
+			await _logger.Log(new LogMessage(LogSeverity.Info, "PingModule : Help", $"User: {Context.User.Username}, Help: help", null));
 
             await RespondAsync($"Bot Commands.", null, false, true, null, null, null, embed.Build());
 
@@ -210,12 +216,11 @@ namespace DNet_V3_Tutorial
         {
             var chnl = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
             Random rnd = new Random();
+			string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
 
-
-            List<string> insultList = new List<string>
+			List<string> insultList = new List<string>
             {
                 $"Yeahhhhhhh bud. Voltel is better than you....",
-                $"Fuck you <@{Context.User.Id}> I made your Mom cum so hard that they made a Canadian heritage moment out of it and Don Mckellar played my dick",
                 $"<@{Context.User.Id}>....I guess you prove that even god makes mistakes sometimes.",
                 $"<@{Context.User.Id}> Last night I heard you went to a gathering CTA and MrAlbionOnline ganked you.",
                 $"<@{Context.User.Id}>....Your family tree must be a cactus because everybody on it is a prick.",
@@ -259,8 +264,19 @@ namespace DNet_V3_Tutorial
                 $"I was thinking about you today. It reminded me to take out the trash.",
                 $"You are the human equivalent of a participation award",
                 "You're about as useful as Anne Frank's drum kit",
-                
-                $"Directions"
+                "You know what... Your awesome. Have a good day.",
+                "I bet your eco is stealing the guild hammers",
+                "Vearyx tells me your only here because you look pretty.",
+                "OPENMIC",
+                "I don't know what's more trashy. You or JesusEkber's ganks",
+                "Let me guess... You like to play Death givers",
+                "I have no balls but yet mine are still bigger than yours",
+                "Yo, I need a bit of a break from free beer. I've been super frustrated for 80% of the fights these past couple months, and its making me not enjoy the game." +
+                " I understand we have lots of new players, and the guild wants to train them, but thats just not the environment I wanna be in rn. I need to get the tryhard out of me. " +
+                " I intend on coming back later (if you let me back in). Thanks for the past 10 months I spent here",
+				"You act like your colon. You're full of shit.",
+				$"PHATED",
+				$"Directions"
             };
             int r = rnd.Next(insultList.Count);
 
@@ -273,7 +289,15 @@ namespace DNet_V3_Tutorial
                     System.Threading.Thread.Sleep(3000);
                     await FollowupAsync($"Besides every other person I’ve ever met.");
                     break;
-                case "SuperBad":
+				case "PHATED":
+                    if(sUserNickname.ToLower() == "phatedfool")
+                    {
+						await RespondAsync($"<@{Context.User.Id}> Holy shit bro. You spent more time spamming me than you do in our ZvZs :rofl: ");
+					}
+					await RespondAsync($"Your like a Little Cesars pizza. Good enough.");
+
+					break;
+				case "SuperBad":
                     await RespondAsync($"Let me tell you a secret <@{Context.User.Id}>...");
                     System.Threading.Thread.Sleep(2000);
                     await FollowupAsync("YOU SUCK", null, false, true, null, null, null, null);
@@ -293,8 +317,7 @@ namespace DNet_V3_Tutorial
                     await RespondAsync("https://tenor.com/view/aqua-teen-hunger-force-carl-mooning-peek-a-boo-gif-17477491");
                     break;
                 case "Directions":
-                    await DeferAsync();
-                    string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+                    await DeferAsync();        
                     string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
 
                     var directionsButton = new ButtonBuilder()
@@ -303,16 +326,33 @@ namespace DNet_V3_Tutorial
                         CustomId = "directions",
                         Style = ButtonStyle.Danger
                     };
-
-
-                    var component = new ComponentBuilder();
+				
+					var component = new ComponentBuilder();
                     component.WithButton(directionsButton);
 
                     await FollowupAsync("I hear you can't follow directions. Lets put it to the test...", null, false, false, null, null, component.Build(), null);
                     
                     break;
-                //$"attachment://image.jpg"
-                default:
+				case "OPENMIC":
+                    await ReplyAsync($"<@{Context.User.Id}> You know what. The floor is open... I'll send an insult on your behalf");
+					var mb = new ModalBuilder()
+					.WithTitle("INSULT TIME")
+					.WithCustomId("insult_menu");
+					mb.AddTextInput("What hot trash would you like to say?", "reason", TextInputStyle.Paragraph, placeholder: "Enter some sort of trash talk here", required: false, value: null, maxLength: 500);
+
+					await Context.Interaction.RespondWithModalAsync(mb.Build());
+					Context.Client.ModalSubmitted += async modal =>
+					{
+						await modal.DeferAsync();
+
+						string Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : $"Nevermind. <@{Context.User.Id}> was too lazy to say shit.";
+
+						await FollowupAsync(Reason);
+
+					};
+					break;
+				//$"attachment://image.jpg"
+				default:
                     await RespondAsync((string)insultList[r]);
                     break;
             }
@@ -340,6 +380,12 @@ namespace DNet_V3_Tutorial
             await FollowupAsync($"Your mini-mart balance is now {GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname)}");
 
 
+        }
+
+        public int GetKillFame()
+        {
+
+            return 0;
         }
 
         public void WriteToCSV(List<string> UsersList)

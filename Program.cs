@@ -93,7 +93,6 @@ namespace FreeBeerBot
                 {
                     await lavalinkManager.StartAsync();
                 }
-
                 //if (IsDebug())
                 //{
                 //    var guild = _client.GetGuild(GuildID);
@@ -108,6 +107,7 @@ namespace FreeBeerBot
                 //    //If not debug, register commands globally
                 //    await commands.RegisterCommandsGloballyAsync(true);
                 //}
+                
             };
 
             //await _client.LoginAsync(Discord.TokenType.Bot, config["discordBotToken"]);

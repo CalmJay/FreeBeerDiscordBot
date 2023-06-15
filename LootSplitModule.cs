@@ -45,8 +45,10 @@ namespace DiscordBot.LootSplitModule
       private int GrandTotalLootSplit { get; set; }
 	  private int SilverBagsTotal { get; set; }
 	  private bool MemberAddedOrRemoved { get; set; }
+	  private EmbedBuilder Embed { get; set; }
+	  private ComponentBuilder Componets { get; set; }
 
-	  public Dictionary<string, ulong> CreateMemberDict()
+		public Dictionary<string, ulong> CreateMemberDict()
       {
           return scrapedDict;
       }
@@ -125,8 +127,7 @@ namespace DiscordBot.LootSplitModule
           }
       }
 
-        private EmbedBuilder Embed { get; set; }
-        private ComponentBuilder Componets { get; set; }
+        
 
 		public async Task ConfirmationEmbed(SocketInteractionContext Context, List<string> a_MemberNames, LootSplitType a_LootSplitType, string a_callerName, EventTypeEnum a_eventType)
         {
@@ -217,6 +218,15 @@ namespace DiscordBot.LootSplitModule
 
                     //Reseting bool
                     MemberAddedOrRemoved = false;
+                }
+                else
+                {
+                    await Context.Interaction.ModifyOriginalResponseAsync((x) =>
+                    {
+                        x.Embed = Embed.Build();
+                        x.Components = Componets.Build();
+                    });
+                    await Context.Interaction.FollowupAsync("Members updated");
                 }
 
             }
@@ -529,30 +539,15 @@ namespace DiscordBot.LootSplitModule
 									}
 									break;
                             }
-
-							
 							await LootSplitInitialPrompt(Context, membersList, sPartyLeader, LootSplitTypeEnum, EventTypeEnum, RawNonDamgedLootTotal, RawDamagedLootTotal, iSilverbagsTotal);
-							
-							var interaction = Context.Interaction as IComponentInteraction;
 							await modal.DeferAsync();
-							await interaction.ModifyOriginalResponseAsync((x) =>
-							{
-								x.Embed = Embed.Build();
-								x.Components = Componets.Build();
-							});
-
-							await modal.FollowupAsync("members updated");
-
-
 						}
-						
 					};
 				}
 				catch (Exception ex)
 				{
 					throw;
-				}
-				
+				}	
 			}
 			else
 			{
