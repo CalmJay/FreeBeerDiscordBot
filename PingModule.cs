@@ -216,7 +216,7 @@ namespace DNet_V3_Tutorial
         {
             var chnl = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
             Random rnd = new Random();
-			string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+			string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : Context.User.Username;
 
 			List<string> insultList = new List<string>
             {
@@ -364,13 +364,13 @@ namespace DNet_V3_Tutorial
         public async Task directionsButton()
         {
             await DeferAsync();
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+            string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : Context.User.Username;
             var miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
             //var convertedCredits = int.Parse(miniMarketCreditsTotal);
 
             int convertedCredits = int.Parse(miniMarketCreditsTotal.Replace(",", "").Replace("$", ""));
 
-            await ReplyAsync($"Donating 10% of your paychex to the Free Beer Learn how to read foundation.");
+            await ReplyAsync($"<@{Context.User.Id}>! Donating 10% of your paychex to the Free Beer Learn how to read foundation.");
 
             int freebeercut = Convert.ToInt32(Math.Floor(convertedCredits * .10));
 

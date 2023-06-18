@@ -839,7 +839,7 @@ namespace PlayerData
             PlayerLookupInfo returnValue = null;
             string? sPlayerData = null;
             string? sPlayerAlbionId = null; //either get from google sheet or search in albion API
-            string? sUserNickname = ((a_socketInteraction.User as SocketGuildUser).Nickname != null) ? (a_socketInteraction.User as SocketGuildUser).Nickname : a_socketInteraction.User.Username;
+            string? sUserNickname = ((a_socketInteraction.User as SocketGuildUser).DisplayName != null) ? (a_socketInteraction.User as SocketGuildUser).DisplayName : a_socketInteraction.User.Username;
 
             if (userNickname != null)
             {

@@ -162,7 +162,7 @@ namespace GoogleSheetsData
 
         public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject? a_playerData, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType)
         {
-            string? sUserNickname = ((a_command.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((a_command.User as SocketGuildUser).Nickname) : a_command.User.Username;
+            string? sUserNickname = ((a_command.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((a_command.User as SocketGuildUser).DisplayName) : a_command.User.Username;
             var serviceValues = GetSheetsService().Spreadsheets.Values;
 
             var numberOfRow = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
@@ -219,7 +219,7 @@ namespace GoogleSheetsData
         public static async Task RegisterUserToRegearSheets(SocketGuildUser a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
         {
             var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
-            string? sUserNickname = (a_SocketGuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.Nickname) : a_SocketGuildUser.Username;
+            string? sUserNickname = (a_SocketGuildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.DisplayName) : a_SocketGuildUser.Username;
 
             var payOutsNumberOfRow = serviceValues.Get(RegearSheetID, "Payouts!B2:B").Execute().Values.Count;
             var dataValidationNumberOfRow = serviceValues.Get(RegearSheetID, "Data Validation!B2:B").Execute().Values.Count;
@@ -319,7 +319,7 @@ namespace GoogleSheetsData
                 i = 0;
                 foreach (var users in paychexClaimedColumn)
                 {
-                    if (users[0].ToString().ToLower() == a_sUserName.ToLower())
+                    if (users.Count > 0 && users[0].ToString().ToLower() == a_sUserName.ToLower())
                     {
                         if (users[3].ToString() == "TRUE")
                         {
@@ -330,6 +330,11 @@ namespace GoogleSheetsData
                             paychexData[0] += " (NOT CLAIMED)";
                         }
                         break;
+                    }
+                    else if(users.Count == 0)
+                    {
+						paychexData[0] += " (NO PAYCHEX)";
+						break;
                     }
                     i++;
                 }
@@ -474,7 +479,7 @@ namespace GoogleSheetsData
 
         public static async Task TransferPaychexToMiniMartCredits(SocketGuildUser a_SocketGuildUser)
         {
-            string? sUserNickname = (a_SocketGuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.Nickname) : a_SocketGuildUser.Username;
+            string? sUserNickname = (a_SocketGuildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.DisplayName) : a_SocketGuildUser.Username;
 
             var serviceValues = GetSheetsService().Spreadsheets;
             DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
@@ -483,7 +488,7 @@ namespace GoogleSheetsData
             IList<IList<object>> paychexClaimedColumn = null;
             string combinedDate = $"{shortmonth}-{lastSunday.Day}";
 
-            List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
+            List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname); //BUG:  INDEX WAS OUT OF RANGE. MUST BE NON_NEGATIVE AND LESS THAN THE SIZE OF THE COLLECTION (parameter: index
             var cleanupedTotal = paychexRunningTotal[0].Substring(0, paychexRunningTotal[0].IndexOf(" "));
             int a = Int32.Parse(cleanupedTotal.Replace(",", ""));
 
@@ -539,8 +544,8 @@ namespace GoogleSheetsData
 
         public static async Task MiniMartTransaction(SocketGuildUser a_Manager, SocketGuildUser a_User, int a_iAmount, MiniMarketType a_eTransactionType)
         {
-            string? sManagerNickname = (a_Manager.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_Manager.Nickname) : a_Manager.Username;
-            string? sUserNickname = (a_User.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_User.Nickname) : a_User.Username;
+            string? sManagerNickname = (a_Manager.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_Manager.DisplayName) : a_Manager.Username;
+            string? sUserNickname = (a_User.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_User.DisplayName) : a_User.Username;
 
             double dMiniMartDiscount = .10;
 
@@ -618,7 +623,7 @@ namespace GoogleSheetsData
             string? UserName = null;
             if (a_SocketUser != null)
             {
-                UserName =(a_SocketUser != null && a_SocketUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketUser.Nickname) : a_SocketUser.Username;
+                UserName =(a_SocketUser != null && a_SocketUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketUser.DisplayName) : a_SocketUser.Username;
             }
             else
             {
@@ -706,7 +711,7 @@ namespace GoogleSheetsData
                 {
                     foreach (var socketuser in a_SocketGuildUser)
                     {
-                        sSocketUserNameCleaned = (socketuser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(socketuser.Nickname) : socketuser.Username;
+                        sSocketUserNameCleaned = (socketuser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(socketuser.DisplayName) : socketuser.Username;
                         if (sheetUser[0].ToString().ToLower() == sSocketUserNameCleaned.ToLower())
                         {
                             var col1 = i;

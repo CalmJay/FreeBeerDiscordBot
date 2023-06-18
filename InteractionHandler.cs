@@ -73,7 +73,7 @@ namespace InteractionHandlerService
         private async Task UserJoinedGuildExecuted(SocketGuildUser SocketGuildUser)
         {
             var lobbyChannel = _client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("LobbyChannelID"))) as IMessageChannel;
-			PlayerLookupInfo playerInfo = new PlayerLookupInfo();
+			PlayerLookupInfo? playerInfo = new PlayerLookupInfo();
 			PlayerDataLookUps albionData = new PlayerDataLookUps();
 
             SocketInteractionContext test = null;
@@ -143,17 +143,18 @@ namespace InteractionHandlerService
             {
                 //await CommandModule.CommandModule.Unregister(user.Username.ToString(), "Left guild or someone kicked because they were annoyed", user);
             }
-           
-            await lobbyChannel.SendMessageAsync($"<@{SocketUser.Id}> / {SocketUser.Username} has left the server");
+            
 			Random rnd = new Random();
 
 			List<string> GoodByeList = new List<string>
 			{
 			    $"<@{SocketUser.Id}> / {SocketUser.Username} has left the server",
-			    $"<@{SocketUser.Id}> has left. https://tenor.com/view/ok-bye-ok-bye-bye-ok-girl-bye-gif-18696870",
-			    $"<@{SocketUser.Id}> has left. https://tenor.com/view/peace-out-later-bye-gif-14086405",
-			    $"<@{SocketUser.Id}> has left. https://tenor.com/view/bye-slide-baby-later-peace-out-gif-19322436",
-		        $"<@{SocketUser.Id}> has left. https://tenor.com/view/chris-tucker-bye-bish-gif-13500768"
+			    $"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/ok-bye-ok-bye-bye-ok-girl-bye-gif-18696870",
+				$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/peace-out-later-bye-gif-14086405",
+				$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/bye-slide-baby-later-peace-out-gif-19322436",
+				$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/chris-tucker-bye-bish-gif-13500768",
+				$"<@{SocketUser.Id}> / {SocketUser.Username} has left the server",
+				$"<@{SocketUser.Id}> / {SocketUser.Username} has left the server"
 			};
 
 			int r = rnd.Next(GoodByeList.Count);
@@ -164,7 +165,7 @@ namespace InteractionHandlerService
 
         private async Task ThreadCreationExecuted(SocketThreadChannel arg)
         {
-			string? sUserNickname = (arg.Owner.Nickname != null) ? arg.Owner.Nickname : arg.Owner.Username;
+			string? sUserNickname = (arg.Owner.DisplayName != null) ? arg.Owner.DisplayName : arg.Owner.Username;
 
 			if (sUserNickname.Contains("!sl"))
 			{

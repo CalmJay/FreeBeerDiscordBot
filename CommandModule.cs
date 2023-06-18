@@ -32,6 +32,7 @@ using static PlayerData.PlayerDataHandler;
 using Azure.Identity;
 using static IronOcr.OcrResult;
 using SixLabors.ImageSharp.Drawing;
+using System.Collections;
 
 namespace CommandModule
 {
@@ -91,8 +92,7 @@ namespace CommandModule
             PlayerDataLookUps albionData = new PlayerDataLookUps();
             dataBaseService = new DataBaseService();
 
-            string? sUserNickname = (guildUserName.Nickname == null) ? guildUserName.Username : guildUserName.Nickname;
-			string? UserDisplayName = (guildUserName.DisplayName == null) ? guildUserName.Username : guildUserName.DisplayName;
+            string? sUserNickname = (guildUserName.DisplayName == null) ? guildUserName.Username : guildUserName.DisplayName;
 
 			var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
             var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
@@ -103,7 +103,7 @@ namespace CommandModule
             if (ingameName != null )
             {
 
-                if (sUserNickname.ToLower() != ingameName.ToLower() || UserDisplayName.ToLower() != ingameName.ToLower())
+                if (sUserNickname.ToLower() != ingameName.ToLower())
                 {
                     try
                     {
@@ -259,7 +259,7 @@ namespace CommandModule
             var testuser = Context.User.Id;
             string? sPlayerData = null;
             var sPlayerAlbionId = new PlayerDataLookUps().GetPlayerInfo(Context, null);
-            string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).Nickname != null) ? (Context.Interaction.User as SocketGuildUser).Nickname : Context.Interaction.User.Username;
+            string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).DisplayName != null) ? (Context.Interaction.User as SocketGuildUser).DisplayName : Context.Interaction.User.Username;
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Recent-Deaths ", $"User: {Context.User.Username} has used command, Command: Recent-Deaths", null));
 
@@ -389,13 +389,10 @@ namespace CommandModule
         public async Task GetCurrentPaychexAmount()
         {
             await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : (Context.User as SocketGuildUser).Username;
+            string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : (Context.User as SocketGuildUser).Username;
 			
             var component = new ComponentBuilder();
-			var paychexbutton = new ButtonBuilder()
-			{
-				Style = ButtonStyle.Secondary
-			};
+            var paychexbutton = new ButtonBuilder();
 
 			if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
             {
@@ -405,7 +402,7 @@ namespace CommandModule
                 string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
                 string PaychexDate = "";
 
-				if (paychexRunningTotal.Count > 0)
+                if (paychexRunningTotal.Count > 0)
                 {
                     var embed = new EmbedBuilder()
                     .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
@@ -414,45 +411,45 @@ namespace CommandModule
                     .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}")
                     .AddField("Regear Status:", $"{regearStatus}");
 
-					for (int i = 0; i < paychexRunningTotal.Count; i++)
+                    for (int i = 0; i < paychexRunningTotal.Count; i++)
                     {
-						if (paychexRunningTotal[i].Length > 0)
-						{
-							int iter = paychexRunningTotal[i].IndexOf(" ") + 1;
-							PaychexDate = paychexRunningTotal[i].Substring(iter);
-						}
+                        if (paychexRunningTotal[i].Length > 0)
+                        {
+                            int iter = paychexRunningTotal[i].IndexOf(" ") + 1;
+                            PaychexDate = paychexRunningTotal[i].Substring(iter);
+                        }
 
                         if (paychexRunningTotal[i].Contains("NOT CLAIMED"))
                         {
-							paychexbutton.Style = ButtonStyle.Success;
-							paychexbutton.IsDisabled = false;
-							paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
-							paychexbutton.CustomId = $"Paychex{paychexRunningTotal[i].Split("(")[0]}";
-						}
+                            paychexbutton.Style = ButtonStyle.Success;
+                            paychexbutton.IsDisabled = false;
+                            paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
+                            paychexbutton.CustomId = $"Paychex{i}{sUserNickname}";
+                        }
                         else if (paychexRunningTotal[i].Contains("(CLAIMED)"))
                         {
-							paychexbutton.Style = ButtonStyle.Danger;
-							paychexbutton.IsDisabled = true;
-							paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
-							paychexbutton.CustomId = $"Paychex{paychexRunningTotal[i].Split("(")[0]}";
-						}
+                            paychexbutton.Style = ButtonStyle.Danger;
+                            paychexbutton.IsDisabled = true;
+                            paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
+                            paychexbutton.CustomId = $"Paychex{i}";
+                        }
                         else
                         {
-							paychexbutton.Label = $"Pending {PaychexDate}";
-							paychexbutton.CustomId = $"Paychex{paychexRunningTotal[i]}";
-							paychexbutton.Style = ButtonStyle.Secondary;
-							paychexbutton.IsDisabled = true;
-						}
-
-						
-                       
-						component.WithButton(paychexbutton);
-					}
+                            paychexbutton.Label = $"Pending {PaychexDate}";
+                            paychexbutton.CustomId = $"Paychex{i}";
+                            paychexbutton.Style = ButtonStyle.Secondary;
+                            paychexbutton.IsDisabled = true;
+                        }
 
 
-					await FollowupAsync(null, null, false, true, null, null, component.Build(), embed.Build());
-					//await FollowupAsync(null, null, false, true, null, null, null, embed.Build());
-                }
+
+                        component.WithButton(paychexbutton);
+                    }
+
+
+                    await FollowupAsync(null, null, false, true, null, null, component.Build(), embed.Build());
+
+				}
                 else
                 {
                     await RespondAsync("Sorry you don't seem to be registed. Ask for a @AO - REGEARS officer to get you squared away.", null, false, true);
@@ -464,7 +461,35 @@ namespace CommandModule
             }
         }
 
-        [SlashCommand("render-paychex", "If you don't know what this means at this point don't use it")]
+		[ComponentInteraction("paychex-member")]
+		async Task TransferPaychexButton()
+		{
+			string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : (Context.User as SocketGuildUser).Username;
+			var interaction = Context.Interaction as IComponentInteraction;
+
+			await DeferAsync(true);
+			await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
+            string eventType = interaction.Message.Components.FirstOrDefault().ToString();
+            
+			var paychexbutton = new ButtonBuilder();
+			var component = new ComponentBuilder();
+
+			paychexbutton.Style = ButtonStyle.Danger;
+			paychexbutton.IsDisabled = true;
+			paychexbutton.Label = $"Claimed";
+			paychexbutton.CustomId = $"Paychex{eventType}{sUserNickname}";
+
+			await Context.Interaction.ModifyOriginalResponseAsync((x) =>
+			{
+				x.Components = component.Build();
+			});
+			await Context.Interaction.FollowupAsync("Members updated");
+
+			await FollowupAsync("Transfer Complete", null, false, true);
+
+		}
+
+		[SlashCommand("render-paychex", "If you don't know what this means at this point don't use it")]
         public async Task RenderPaychex()
         {
             await DeferAsync();
@@ -626,7 +651,7 @@ namespace CommandModule
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
-            string? sUserNickname = (guildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.Nickname) : guildUser.Username;
+            string? sUserNickname = (guildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.DisplayName) : guildUser.Username;
             string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name == "Mentor").FirstOrDefault().Value.ToString() : null;
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower() || regearPoster == guildUser.Id)
@@ -689,7 +714,7 @@ namespace CommandModule
             int iRefundAmount = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[4].Value);
             ulong uRegearPosterID = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
             string sEventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value.ToString();
-            string? sUserNickname = (guildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.Nickname) : guildUser.Username;
+            string? sUserNickname = (guildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.DisplayName) : guildUser.Username;
             string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name == "Mentor").FirstOrDefault().Value.ToString() : null;
 
             if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower())
@@ -772,8 +797,8 @@ namespace CommandModule
             RegearModule regearModule = new RegearModule();
             var guildUser = (SocketGuildUser)Context.User;
 
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
-            string? sCallerNickname = (callerName.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(callerName.Nickname) : callerName.Username;
+            string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : Context.User.Username;
+            string? sCallerNickname = (callerName.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(callerName.DisplayName) : callerName.Username;
 
             var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
             var PlayerEventData = playerInfo.players.Where(x => x.Name.ToLower() == sUserNickname.ToLower()).FirstOrDefault();
@@ -800,7 +825,7 @@ namespace CommandModule
         {
             await DeferAsync();
             var guildUser = (SocketGuildUser)Context.User;
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
+            string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : Context.User.Username;
             var interaction = Context.Interaction as IComponentInteraction;
 
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString();
@@ -960,8 +985,8 @@ namespace CommandModule
         public async Task SplitLoot(LootSplitType LootSplitType, SocketGuildUser CallerName, EventTypeEnum EventType, int? NonDamagedLootTotal = null, int? DamagedLootTotal = null, int? SilverBagsTotal = null )
         {
             await DeferAsync();
-            string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).Nickname) : Context.User.Username;
-			string? sCallerNickname = (CallerName.Nickname != null) ? CallerName.Nickname : CallerName.Username;
+            string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : Context.User.Username;
+			string? sCallerNickname = (CallerName.DisplayName != null) ? CallerName.DisplayName : CallerName.Username;
            
             //Gets users active in thread
             var socketThreadChannel = (SocketThreadChannel)Context.Channel;
@@ -986,13 +1011,15 @@ namespace CommandModule
                 await RespondAsync("You must add a loot amount if you want", ephemeral: true);
             }
             await FollowupAsync("Loot Split submitted");
-        }
+			await _logger.Log(new LogMessage(LogSeverity.Info, "Split-Loot Command", $"User: {Context.User.Username} initiated a split-loot", null));
+		}
 
         [ComponentInteraction("add-member")]
         async Task AddMembersToLootSplit()
         {;
 			LootSplitModule lootSplitMod = new LootSplitModule();
 			await lootSplitMod.AddRemoveNamesFromList(Context, Options.Add);
+			await _logger.Log(new LogMessage(LogSeverity.Info, "Add member", $"User: {Context.User.Username} added member from split", null));
 		}
 
         [ComponentInteraction("remove-member")]
@@ -1000,6 +1027,7 @@ namespace CommandModule
 		{
 			LootSplitModule lootSplitMod = new LootSplitModule();
 			await lootSplitMod.AddRemoveNamesFromList(Context, Options.Remove);
+			await _logger.Log(new LogMessage(LogSeverity.Info, "Remove member", $"User: {Context.User.Username} removed member from split", null));
 		}
 
 		[ComponentInteraction("approve-split")]
@@ -1107,7 +1135,7 @@ namespace CommandModule
             {
                 await RespondAsync("Don't push buttons without perms you mongo.", null, false, true);
             }
-
-        }
+			await _logger.Log(new LogMessage(LogSeverity.Info, "Split-Loot deny", $"User: {Context.User.Username} denied a split-loot", null));
+		}
     }
 }

@@ -66,18 +66,18 @@ namespace DiscordBot.LootSplitModule
                   || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
               {
                   //if no nickname, add the username
-                  if (member.Nickname is null)
+                  if (member.DisplayName is null)
                   { memberList.Add(member.Username); }
                   //if squad leader, remove the dumbass prefix
-                  else if (member.Nickname.StartsWith("!slnew"))
-                  { memberList.Add(member.Nickname.Remove(0, 7)); }
+                  else if (member.DisplayName.StartsWith("!slnew"))
+                  { memberList.Add(member.DisplayName.Remove(0, 7)); }
                   //if neither, just add the Nickname - NEED EVERYONE IN CHANNEL TO HAVE IGNs
-                  else if (member.Nickname.StartsWith("!!sl"))
-                  { memberList.Add(member.Nickname.Remove(0, 5)); }
-                  else if (member.Nickname.StartsWith("!sl"))
-                  { memberList.Add(member.Nickname.Remove(0, 4)); }
+                  else if (member.DisplayName.StartsWith("!!sl"))
+                  { memberList.Add(member.DisplayName.Remove(0, 5)); }
+                  else if (member.DisplayName.StartsWith("!sl"))
+                  { memberList.Add(member.DisplayName.Remove(0, 4)); }
                   else
-                  { memberList.Add(member.Nickname); }
+                  { memberList.Add(member.DisplayName); }
               }
           }
 
@@ -102,19 +102,19 @@ namespace DiscordBot.LootSplitModule
               if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
                   || member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
               {
-                  if (member.Nickname != null)
+                  if (member.DisplayName != null)
                   {
-                      if (member.Nickname.StartsWith("!!"))
+                      if (member.DisplayName.StartsWith("!!"))
                       {
-                          string temp = member.Nickname.Remove(0, 5);
+                          string temp = member.DisplayName.Remove(0, 5);
                           dict.Add(temp, member.Id);
                       }
                       else
                       {
-                          dict.Add(member.Nickname, member.Id);
+                          dict.Add(member.DisplayName, member.Id);
                       }
                   }
-                  else if (member.Nickname == null)
+                  else if (member.DisplayName == null)
                   {
                       dict.Add(member.Username, member.Id);
                   }
@@ -476,7 +476,7 @@ namespace DiscordBot.LootSplitModule
 
 			var guildUser = (SocketGuildUser)Context.User;
 
-			if (guildUser.Roles.Any(r => r.Name == "AO - Officers" || r.Name == "admin") || socketThreadChannel.Owner.DisplayName == Context.User.Username || Context.Interaction.User.Username == sPartyLeader)
+			if (guildUser.Roles.Any(r => r.Name == "AO - Officers" || r.Name == "admin" || r.Name == "AO - REGEARS") || socketThreadChannel.Owner.DisplayName == Context.User.Username || Context.Interaction.User.Username == sPartyLeader)//Add check to allow the ownder of the model submit
 			{
                 
 				var mb = new ModalBuilder()
@@ -493,8 +493,6 @@ namespace DiscordBot.LootSplitModule
 					{
 						List<SocketMessageComponentData> components = modal.Data.Components.ToList();
 						string sMissingMembers = components.FirstOrDefault().Value;
-
-					    //await modal.DeferAsync();
                         
 						if (sMissingMembers != "")
 						{
