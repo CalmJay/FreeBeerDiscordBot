@@ -33,6 +33,8 @@ using Azure.Identity;
 using static IronOcr.OcrResult;
 using SixLabors.ImageSharp.Drawing;
 using System.Collections;
+using System.Security.Cryptography.X509Certificates;
+using Aspose.Imaging.ProgressManagement;
 
 namespace CommandModule
 {
@@ -393,59 +395,59 @@ namespace CommandModule
 			
             var component = new ComponentBuilder();
             var paychexbutton = new ButtonBuilder();
-
+			await DeferAsync(true);
 			if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
             {
-                await DeferAsync(true);
                 List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
-                string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+				Dictionary<string, string> paychexTotals = GoogleSheetsDataWriter.GetPaychexTotals(sUserNickname);
+
+				string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
                 string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
                 string PaychexDate = "";
+				List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
 
-                if (paychexRunningTotal.Count > 0)
+				if (paychexRunningTotal.Count > 0)
                 {
-                    var embed = new EmbedBuilder()
-                    .WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ")
-                    .AddField("Last weeks Paychex total:", $"${paychexRunningTotal[0]:n0}")
-                    .AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}")
-                    .AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}")
-                    .AddField("Regear Status:", $"{regearStatus}");
+                    var embed = new EmbedBuilder();
 
-                    for (int i = 0; i < paychexRunningTotal.Count; i++)
+					embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
+					embed.AddField("Current week running total:", $"${paychexRunningTotal[0]:n0}");
+                    foreach(var entries in paychexTotals)
                     {
-                        if (paychexRunningTotal[i].Length > 0)
-                        {
-                            int iter = paychexRunningTotal[i].IndexOf(" ") + 1;
-                            PaychexDate = paychexRunningTotal[i].Substring(iter);
-                        }
+						embed.AddField(entries.Key, $"${entries.Value:n0}");
 
-                        if (paychexRunningTotal[i].Contains("NOT CLAIMED"))
-                        {
-                            paychexbutton.Style = ButtonStyle.Success;
-                            paychexbutton.IsDisabled = false;
-                            paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
-                            paychexbutton.CustomId = $"Paychex{i}{sUserNickname}";
-                        }
-                        else if (paychexRunningTotal[i].Contains("(CLAIMED)"))
-                        {
-                            paychexbutton.Style = ButtonStyle.Danger;
-                            paychexbutton.IsDisabled = true;
-                            paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
-                            paychexbutton.CustomId = $"Paychex{i}";
-                        }
-                        else
-                        {
-                            paychexbutton.Label = $"Pending {PaychexDate}";
-                            paychexbutton.CustomId = $"Paychex{i}";
-                            paychexbutton.Style = ButtonStyle.Secondary;
-                            paychexbutton.IsDisabled = true;
-                        }
+						if (entries.Key.Length > 0)
+						{
+							int iter = entries.Key.IndexOf(" ") + 1;
+							PaychexDate = entries.Key.Substring(0, iter);
+						}
 
+						if (entries.Key.Contains("NOT CLAIMED"))
+						{
+							paychexbutton.Style = ButtonStyle.Success;
+							paychexbutton.IsDisabled = false;
+							paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
+							paychexbutton.CustomId = $"paychex:{PaychexDate.Split("(")[0].Trim()}:{sUserNickname}";
+						}
+						else if (entries.Key.Contains("(CLAIMED)"))
+						{
+							paychexbutton.Style = ButtonStyle.Danger;
+							paychexbutton.IsDisabled = true;
+							paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
+							paychexbutton.CustomId = $"Paychex{entries.Key}";
+						}
+						else
+						{
+							paychexbutton.Label = $"Pending {PaychexDate}";
+							paychexbutton.CustomId = $"Paychex{entries.Key}";
+							paychexbutton.Style = ButtonStyle.Secondary;
+							paychexbutton.IsDisabled = true;
+						}
+						component.WithButton(paychexbutton);
+					}
 
-
-                        component.WithButton(paychexbutton);
-                    }
-
+					embed.AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}");
+					embed.AddField("Regear Status:", $"{regearStatus}");
 
                     await FollowupAsync(null, null, false, true, null, null, component.Build(), embed.Build());
 
@@ -460,33 +462,61 @@ namespace CommandModule
                 await FollowupAsync("Looks like your not fully registered to the guild. Please contact a recruiter or officer to fix the issue.", null, false, true);
             }
         }
-
-		[ComponentInteraction("paychex-member")]
-		async Task TransferPaychexButton()
+        
+		[ComponentInteraction("paychex*")]
+		public async Task TransferPaychexButton()
 		{
 			string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : (Context.User as SocketGuildUser).Username;
-			var interaction = Context.Interaction as IComponentInteraction;
+			IComponentInteraction ButtonInteraction = Context.Interaction as IComponentInteraction;
+			
+            await DeferAsync(true);
 
-			await DeferAsync(true);
-			await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
-            string eventType = interaction.Message.Components.FirstOrDefault().ToString();
-            
-			var paychexbutton = new ButtonBuilder();
-			var component = new ComponentBuilder();
+			int iter = ButtonInteraction.Data.CustomId.IndexOf(":") + 1;
+			string PaychexDate = ButtonInteraction.Data.CustomId.Split(":")[1];
+            var previousButtons = ComponentBuilder.FromComponents(ButtonInteraction.Message.Components);
 
-			paychexbutton.Style = ButtonStyle.Danger;
-			paychexbutton.IsDisabled = true;
-			paychexbutton.Label = $"Claimed";
-			paychexbutton.CustomId = $"Paychex{eventType}{sUserNickname}";
+			if (ButtonInteraction.Data.CustomId.ToLower().Contains("paychex"))
+            {
+				var paychexbutton = new ButtonBuilder();
+				var component = new ComponentBuilder();
 
-			await Context.Interaction.ModifyOriginalResponseAsync((x) =>
-			{
-				x.Components = component.Build();
-			});
-			await Context.Interaction.FollowupAsync("Members updated");
+				foreach (var button in previousButtons.ActionRows.FirstOrDefault().Components)
+				{
+                    if(button.CustomId == ButtonInteraction.Data.CustomId)
+                    {
+						paychexbutton.Style = ButtonStyle.Danger;
+						paychexbutton.IsDisabled = true;
+						paychexbutton.Label = $"Claimed {PaychexDate}";
+						paychexbutton.CustomId = $"Claimed-{PaychexDate}-{sUserNickname}";
 
-			await FollowupAsync("Transfer Complete", null, false, true);
+						component.WithButton(paychexbutton);
+					}
+                    else
+                    {
 
+                        if(component.ActionRows != null)
+                        {
+							component.ActionRows.FirstOrDefault().AddComponent(button);
+						}
+                        else
+                        {
+                            var newActionRows = new List<ActionRowBuilder>();
+                            newActionRows.Add(new ActionRowBuilder());
+							newActionRows.FirstOrDefault().AddComponent(button);
+                            component.ActionRows = newActionRows;
+						}
+					}
+				}
+
+				await Context.Interaction.ModifyOriginalResponseAsync((x) =>
+				{
+					x.Components = component.Build();
+				});
+
+				await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser, PaychexDate);
+
+				await FollowupAsync($"Transfer Complete!", null, false, true);
+			}
 		}
 
 		[SlashCommand("render-paychex", "If you don't know what this means at this point don't use it")]
@@ -497,16 +527,16 @@ namespace CommandModule
             await GoogleSheetsDataWriter.RenderPaychex(Context);
         }
 
-        [SlashCommand("transfer-paychex", "Convert your current paychex to Mini Mart credits")]
-        public async Task TransferPaychexToMiniMart()
-        {
-            await _logger.Log(new LogMessage(LogSeverity.Info, "Mini-Mart Submit", $"User: {Context.User.Username}, Command: mm-transaction", null));
+        //[SlashCommand("transfer-paychex", "Convert your current paychex to Mini Mart credits")]
+        //public async Task TransferPaychexToMiniMart()
+        //{
+        //    await _logger.Log(new LogMessage(LogSeverity.Info, "Mini-Mart Submit", $"User: {Context.User.Username}, Command: mm-transaction", null));
 
-            await DeferAsync(true);
-            await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
-            await FollowupAsync("Transfer Complete", null, false, true);
+        //    await DeferAsync(true);
+        //    //await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
+        //    await FollowupAsync("Transfer Complete", null, false, true);
 
-        }
+        //}
 
         [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
         public async Task MiniMartTransactions(SocketGuildUser GuildUser, int Amount, MiniMarketType TransactionType)
@@ -1053,8 +1083,6 @@ namespace CommandModule
 
                 try
                 {
-
-
                     foreach (string playerName in membersSplit)
                     {
                         //conditional to add members to .Player table if not in there already
@@ -1100,7 +1128,7 @@ namespace CommandModule
                         await GoogleSheetsDataWriter.WriteToRegearSheet(Context, playerInfo, Convert.ToInt32(PayoutPerPlayer), partyLeader, eventType, MoneyTypes.LootSplit);
                     }
                     await FollowupAsync(($"This loot split has finished processing! {interaction.Message.Embeds.FirstOrDefault().Fields[4].Value} has been added to everyone's paychex.oot This thread can be deleted."));
-
+					await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
 					await DeleteOriginalResponseAsync();
 
 				}

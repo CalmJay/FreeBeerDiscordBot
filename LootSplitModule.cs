@@ -21,7 +21,7 @@ using System.ComponentModel;
 
 namespace DiscordBot.LootSplitModule
 {
-    public class LootSplitModule //: InteractionModuleBase<SocketInteractionContext>
+    public class LootSplitModule
 	{
       public ulong roleIdNewRecruit = 847350505977675796;
       public ulong roleIdMember = 739948841847095387;

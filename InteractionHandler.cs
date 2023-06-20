@@ -12,6 +12,8 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using CommandModule;
 using System.Linq;
 using static System.Net.WebRequestMethods;
+using Aspose.Imaging.AsyncTask;
+using Aspose.Imaging.ProgressManagement;
 
 namespace InteractionHandlerService
 {
@@ -42,16 +44,18 @@ namespace InteractionHandlerService
             _client.ThreadCreated += ThreadCreationExecuted;
             _client.UserJoined += UserJoinedGuildExecuted;
             _client.UserLeft += UserLeftGuildExecuted;
+            //_client.ButtonExecuted += ButtonExecuted;
 
-            // Process the command execution results 
-            _commands.SlashCommandExecuted += SlashCommandExecuted;
+			// Process the command execution results 
+			_commands.SlashCommandExecuted += SlashCommandExecuted;
             _commands.ContextCommandExecuted += ContextCommandExecuted;
             _commands.ComponentCommandExecuted += ComponentCommandExecuted;
             _commands.ModalCommandExecuted += ModalCommandExecuted;
+            
 
         }
-
-        private Task ComponentCommandExecuted(ComponentCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
+	
+		private Task ComponentCommandExecuted(ComponentCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
         {
             return Task.CompletedTask;
         }
@@ -68,9 +72,14 @@ namespace InteractionHandlerService
         private Task ModalCommandExecuted(ModalCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
         {
             return Task.CompletedTask;
-        }
+		}
 
-        private async Task UserJoinedGuildExecuted(SocketGuildUser SocketGuildUser)
+		//private async Task<Task> ButtonExecuted(SocketMessageComponent MessageComponet)
+		//{
+		//	return Task.CompletedTask;
+		//}
+
+		private async Task UserJoinedGuildExecuted(SocketGuildUser SocketGuildUser)
         {
             var lobbyChannel = _client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("LobbyChannelID"))) as IMessageChannel;
 			PlayerLookupInfo? playerInfo = new PlayerLookupInfo();

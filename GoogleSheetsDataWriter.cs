@@ -1,6 +1,7 @@
 ﻿using Aspose.Words;
 using Discord;
 using Discord.Interactions;
+using Discord.Rest;
 using Discord.WebSocket;
 using DiscordBot.Enums;
 using Google.Apis.Auth.OAuth2;
@@ -286,68 +287,148 @@ namespace GoogleSheetsData
             List<object> DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
 
             IList<IList<object>> paychexClaimedColumn = null;
-            IList<IList<object>> rowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R3C2:R350C{DaterowValues.Count}").Execute().Values;
+            IList<IList<object>> PayoutsRowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R3C2:R350C{DaterowValues.Count}").Execute().Values;
 
             int i = 0;
 
-            foreach (var users in rowValues)
+			foreach (var users in PayoutsRowValues)
             {
+
                 if (users[0].ToString().ToLower() == a_sUserName.ToLower())
                 {
-                    foreach (var dates in rowValues[0])
+                    foreach (var dates in PayoutsRowValues[0])
                     {
-                        if (dates.ToString() == biweeklyLastSundayDate)
-                        {
-                            paychexData.Add(users[i].ToString() + $" {biweeklyLastSundayDate}");
-                        }
+                        //if (dates.ToString() == biweeklyLastSundayDate)
+                        //{
+                        //    paychexData.Add(users[i].ToString() + $" {biweeklyLastSundayDate}");
+                        //}
 
                         if (dates.ToString() == currentWeekPaychexDate)
                         {
                             paychexData.Add(users[i].ToString() + $" {currentWeekPaychexDate}");
                         }
                         i++;
-
                     }
                     break;
                 }
             }
 
-            if (CheckIfSheetExists($"{biweeklyLastSundayDate} Paychex"))
-            {
-                paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{biweeklyLastSundayDate} Paychex!R2C1:R350C4").Execute().Values;
+			//List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
 
-                i = 0;
-                foreach (var users in paychexClaimedColumn)
-                {
-                    if (users.Count > 0 && users[0].ToString().ToLower() == a_sUserName.ToLower())
-                    {
-                        if (users[3].ToString() == "TRUE")
-                        {
-                            paychexData[0] += " (CLAIMED)";
-                        }
-                        else if (users[3].ToString() == "FALSE")
-                        {
-                            paychexData[0] += " (NOT CLAIMED)";
-                        }
-                        break;
-                    }
-                    else if(users.Count == 0)
-                    {
-						paychexData[0] += " (NO PAYCHEX)";
-						break;
-                    }
-                    i++;
-                }
-            }
-            else if (paychexData.Count > 0)
-            {
-                paychexData[0] += " (NOT RENDERED)";
-            }
+   //         foreach(var sheet in paychexSheets)
+   //         {
+			//	paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{sheet}!R2C1:R350C4").Execute().Values;
+
+			//	i = 0;
+			//	foreach (var users in paychexClaimedColumn)
+			//	{
+			//		if (users.Count > 0 && users[0].ToString().ToLower() == a_sUserName.ToLower())
+			//		{
+			//			if (users[3].ToString() == "TRUE")
+			//			{
+			//				paychexData[0] += " (CLAIMED)";
+			//			}
+			//			else if (users[3].ToString() == "FALSE")
+			//			{
+			//				paychexData[0] += " (NOT CLAIMED)";
+			//			}
+			//			break;
+			//		}
+			//		else if (users.Count == 0)
+			//		{
+			//			paychexData[0] += " (NO PAYCHEX)";
+			//			break;
+			//		}
+			//		i++;
+			//	}
+			//}
+
+
+            //if (CheckIfSheetExists($"{biweeklyLastSundayDate} Paychex"))
+            //{
+            //    paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{biweeklyLastSundayDate} Paychex!R2C1:R350C4").Execute().Values;
+
+            //    i = 0;
+            //    foreach (var users in paychexClaimedColumn)
+            //    {
+            //        if (users.Count > 0 && users[0].ToString().ToLower() == a_sUserName.ToLower())
+            //        {
+            //            if (users[3].ToString() == "TRUE")
+            //            {
+            //                paychexData[0] += " (CLAIMED)";
+            //            }
+            //            else if (users[3].ToString() == "FALSE")
+            //            {
+            //                paychexData[0] += " (NOT CLAIMED)";
+            //            }
+            //            break;
+            //        }
+            //        else if (users.Count == 0)
+            //        {
+            //            paychexData[0] += " (NO PAYCHEX)";
+            //            break;
+            //        }
+            //        i++;
+            //    }
+            //}
+            //else if (paychexData.Count > 0)
+            //{
+            //    paychexData[0] += " (NOT RENDERED)";
+            //}
 
             return paychexData;
         }
 
-        public static string GetMiniMarketCredits(string a_sUserName)
+        public static Dictionary <string, string> GetPaychexTotals(string a_sUserName)
+        {
+			SpreadsheetsResource serviceValues = GetSheetsService().Spreadsheets;
+
+			DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+			DateTime lastbiweeklySunday = HelperMethods.StartOfWeek(lastSunday.AddDays(-7), DayOfWeek.Sunday);
+
+			string biweeklyLastSundayDate = $"{lastbiweeklySunday.ToShortMonthName()}-{lastbiweeklySunday.Day}";
+			string currentWeekPaychexDate = $"{lastSunday.ToShortMonthName()}-{lastSunday.Day}";
+
+			Dictionary<string, string> paychexData = new Dictionary<string, string>();
+			IList<IList<object>> paychexClaimedColumn = null;
+
+			int i = 0;
+
+
+			List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
+
+			foreach (var sheet in paychexSheets)
+			{
+				paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{sheet}!R2C1:R350C4").Execute().Values;
+
+				i = 0;
+				foreach (var users in paychexClaimedColumn)
+				{
+					if (users.Count > 0 && users[0].ToString().ToLower() == a_sUserName.ToLower())
+					{
+						if (users[3].ToString() == "TRUE")
+						{
+							paychexData.Add($"{sheet} (CLAIMED)", users[1].ToString());
+						}
+						else if (users[3].ToString() == "FALSE")
+						{
+							paychexData.Add($"{sheet} (NOT CLAIMED)", users[1].ToString());
+						}
+						break;
+					}
+					//else if (users.Count == 0)
+					//{
+					//	paychexData[0] += " (NO PAYCHEX)";
+					//	break;
+					//}
+					i++;
+				}
+			}
+			return paychexData;
+		}
+
+
+			public static string GetMiniMarketCredits(string a_sUserName)
         {
             var serviceValues = GetSheetsService().Spreadsheets.Values;
 
@@ -477,68 +558,80 @@ namespace GoogleSheetsData
             }
         }
 
-        public static async Task TransferPaychexToMiniMartCredits(SocketGuildUser a_SocketGuildUser)
+        public static async Task TransferPaychexToMiniMartCredits(SocketGuildUser a_SocketGuildUser, string a_sDateToTransfer)
         {
             string? sUserNickname = (a_SocketGuildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.DisplayName) : a_SocketGuildUser.Username;
-
+            
             var serviceValues = GetSheetsService().Spreadsheets;
             DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
             var shortmonth = DateTime.Now.ToShortMonthName();
+            string cleanupedTotal = "NA";
 
-            IList<IList<object>> paychexClaimedColumn = null;
+			IList<IList<object>> paychexClaimedColumn = null;
             string combinedDate = $"{shortmonth}-{lastSunday.Day}";
 
-            List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname); //BUG:  INDEX WAS OUT OF RANGE. MUST BE NON_NEGATIVE AND LESS THAN THE SIZE OF THE COLLECTION (parameter: index
-            var cleanupedTotal = paychexRunningTotal[0].Substring(0, paychexRunningTotal[0].IndexOf(" "));
-            int a = Int32.Parse(cleanupedTotal.Replace(",", ""));
+            Dictionary<string,string> paychexRunningTotal = GoogleSheetsDataWriter.GetPaychexTotals(sUserNickname);
 
-            if (paychexRunningTotal[0].Contains("(NOT CLAIMED"))
+            foreach(var paychex in paychexRunningTotal)
             {
-                var numberOfRow = serviceValues.Values.Get(RegearSheetID, "MiniMart Ledger!B2:B").Execute().Values.Count;
-                var col1 = numberOfRow + 2;
-
-                try
+                if (paychex.Key.Contains(a_sDateToTransfer))
                 {
-                    var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, cleanupedTotal, DateTime.Now.ToString("M/d/yyyy"), "Free Beer Bot", "Credits Transfer" } } };
-                    var rowUpdates = serviceValues.Values.Update(rowValues, RegearSheetID, $"MiniMart Ledger!B{col1}:F{col1}");
-                    rowUpdates.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
-                    await rowUpdates.ExecuteAsync();
+                    cleanupedTotal = paychex.Value;
+
+					if (paychex.Key.Contains("(NOT CLAIMED"))
+					{
+						var numberOfRow = serviceValues.Values.Get(RegearSheetID, "MiniMart Ledger!B2:B").Execute().Values.Count;
+						var col1 = numberOfRow + 2;
+
+						try
+						{
+							var rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, cleanupedTotal, DateTime.Now.ToString("M/d/yyyy"), "Free Beer Bot", "Credits Transfer" } } };
+							var rowUpdates = serviceValues.Values.Update(rowValues, RegearSheetID, $"MiniMart Ledger!B{col1}:F{col1}");
+							rowUpdates.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+							await rowUpdates.ExecuteAsync();
 
 
-                    var splitPaychexString = paychexRunningTotal[0].Split(" ");
-                    paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{splitPaychexString[1].ToString()} Paychex!R2C1:R350C4").Execute().Values;
+							//string splitPaychexString = paychexRunningTotal[0].Split(" ");
+							paychexClaimedColumn = serviceValues.Values.Get(RegearSheetID, $"{a_sDateToTransfer} Paychex!R2C1:R350C4").Execute().Values;
 
-                    int i = 0;
-                    foreach (var users in paychexClaimedColumn)
-                    {
-                        if (users[0].ToString().ToLower() == sUserNickname.ToLower())
-                        {
-                            var dataValidationRowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "Free Beer Bot", "TRUE" } } };
-                            var dataValidationUpdate = serviceValues.Values.Update(dataValidationRowValues, RegearSheetID, $"{splitPaychexString[1]} Paychex!C{i + 2}:D{i + 2}");
-                            dataValidationUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
-                            await dataValidationUpdate.ExecuteAsync();
-                        }
-                        i++;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
-                }
-                await a_SocketGuildUser.SendMessageAsync($"Your Paychex have successfully been transfered to mini-mart credits. Total: {cleanupedTotal}");
+							int i = 0;
+							foreach (var users in paychexClaimedColumn)
+							{
+								if (users[0].ToString().ToLower() == sUserNickname.ToLower())
+								{
+									var dataValidationRowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "Free Beer Bot", "TRUE" } } };
+									var dataValidationUpdate = serviceValues.Values.Update(dataValidationRowValues, RegearSheetID, $"{a_sDateToTransfer} Paychex!C{i + 2}:D{i + 2}");
+									dataValidationUpdate.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+									await dataValidationUpdate.ExecuteAsync();
+								}
+								i++;
+							}
+						}
+						catch (Exception ex)
+						{
+							Console.WriteLine(ex.ToString());
+						}
+						await a_SocketGuildUser.SendMessageAsync($"Your Paychex have successfully been transfered to mini-mart credits. Total: {cleanupedTotal}");
+					}
+					else if (paychex.Key.Contains("(CLAIMED)"))
+					{
+						await a_SocketGuildUser.SendMessageAsync("You already claimed or transferred your paychex");
+					}
+					else if (paychex.Key.Contains("(NOT RENDERED)"))
+					{
+						await a_SocketGuildUser.SendMessageAsync("The new paychex have not been rendered yet. Please be patient.");
+					}
+					else
+					{
+						await a_SocketGuildUser.SendMessageAsync("The Paychex are not rendered yet or there was an issue transferring your paychex to mini mart credits. Seek out an Officer to investigate.");
+					}
+				}
             }
-            else if (paychexRunningTotal[0].Contains("(CLAIMED)"))
-            {
-                await a_SocketGuildUser.SendMessageAsync("You already claimed or transferred your paychex");
-            }
-            else if (paychexRunningTotal[0].Contains("(NOT RENDERED)"))
-            {
-                await a_SocketGuildUser.SendMessageAsync("The new paychex have not been rendered yet. Please be patient.");
-            }
-            else
-            {
-                await a_SocketGuildUser.SendMessageAsync("The Paychex are not rendered yet or there was an issue transferring your paychex to mini mart credits. Seek out an Officer to investigate.");
-            }
+
+            //string cleanupedTotal = paychexRunningTotal[0].Substring(0, paychexRunningTotal[0].IndexOf(" "));
+            //int a = Int32.Parse(cleanupedTotal.Replace(",", ""));
+
+            
             
         }
 
@@ -616,7 +709,23 @@ namespace GoogleSheetsData
 
             return false;
         }
-        public static async Task UnResgisterUserFromDataSources(string a_MemberName, SocketGuildUser? a_SocketUser)
+		public static List<string> GetPaychexSheets()
+		{
+			var serviceValues = GetSheetsService().Spreadsheets;
+			var ssRequest = serviceValues.Get(RegearSheetID);
+			Spreadsheet ss = ssRequest.Execute();
+			List<string> sheetList = new List<string>();
+
+			foreach (Sheet sheet in ss.Sheets)
+			{
+				if (sheet.Properties.Title.Contains("Paychex") && sheet.Properties.Hidden == null)
+				{
+					sheetList.Add(sheet.Properties.Title);
+				}
+			}
+			return sheetList;
+		}
+		public static async Task UnResgisterUserFromDataSources(string a_MemberName, SocketGuildUser? a_SocketUser)
         {
             
             
