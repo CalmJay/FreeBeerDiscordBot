@@ -86,7 +86,7 @@ namespace InteractionHandlerService
 			PlayerDataLookUps albionData = new PlayerDataLookUps();
 
             SocketInteractionContext test = null;
-            playerInfo = await albionData.GetPlayerInfo(test, SocketGuildUser.Username); ;
+            playerInfo = await albionData.GetPlayerInfo(test, SocketGuildUser.DisplayName); ;
 
 
             if(playerInfo != null)
@@ -170,7 +170,7 @@ namespace InteractionHandlerService
 			await lobbyChannel.SendMessageAsync((string)GoodByeList[r]);
 		}
 
-
+        
 
         private async Task ThreadCreationExecuted(SocketThreadChannel arg)
         {
