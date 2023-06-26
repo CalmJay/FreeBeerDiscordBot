@@ -896,8 +896,10 @@ namespace PlayerData
                     else
                     {
                         //await a_socketInteraction.Channel.SendMessageAsync("Hey idiot. Does your discord nickname match your in-game name?");
-                        await a_socketInteraction.Channel.SendMessageAsync($"Player not found. Discord name doesnt match in-game name. Discord user: {a_socketInteraction.User.Username}");
-                        Console.WriteLine($"Player not found. Discord name doesnt match in-game name. Discord user: {a_socketInteraction.User.Username}");
+                        //await a_socketInteraction.Channel.SendMessageAsync($"Player not found. Discord name doesnt match in-game name. Discord user: {a_socketInteraction.User.Username}");
+                        await a_socketInteraction.Interaction.FollowupAsync($"Player not found in Albion API. Discord name may not match in-game name or possible misspell.", ephemeral: true);
+
+						Console.WriteLine($"Player not found. Discord name doesnt match in-game name. Discord user: {a_socketInteraction.User.Username}");
                         returnValue = null;
                     }
                 }

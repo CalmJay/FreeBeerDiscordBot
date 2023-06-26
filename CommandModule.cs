@@ -35,6 +35,7 @@ using SixLabors.ImageSharp.Drawing;
 using System.Collections;
 using System.Security.Cryptography.X509Certificates;
 using Aspose.Imaging.ProgressManagement;
+using System.Threading.Channels;
 
 namespace CommandModule
 {
@@ -170,19 +171,17 @@ namespace CommandModule
         {
             PlayerDataLookUps albionData = new PlayerDataLookUps();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
+            
+			await DeferAsync(true);
 
-            await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command Unregister", null));
-
-            playerInfo = await albionData.GetPlayerInfo(Context, InGameName);
-
+			playerInfo = await albionData.GetPlayerInfo(Context, InGameName);
+            
             if (playerInfo != null || DiscordUser != null)
             {
                 await GoogleSheetsDataWriter.UnResgisterUserFromDataSources(InGameName, DiscordUser);
 
                 if (DiscordUser != null)
                 {
-                    await DiscordUser.Guild.GetUser(DiscordUser.Id).SendMessageAsync($"You've been removed from Free Beer for the following reason: {ReasonForKick}");
-
                     foreach (var roles in DiscordUser.Roles)
                     {
                         if (roles.Name != "@everyone")
@@ -192,13 +191,13 @@ namespace CommandModule
                     }
                 }
 
-                //TODO: REMOVE PLAYER FROM DATABASE HERE
-
-                await RespondAsync("Member was unregistered", null, false, true);
+				//TODO: REMOVE PLAYER FROM DATABASE HERE
+				await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command Unregister", null));
+				await RespondAsync("Member was unregistered", ephemeral: true);
             }
             else
             {
-                await RespondAsync("Player not found", null, false, true);
+                await FollowupAsync("Member was not found while trying to unregister", null, false, true);
             }
 
 
@@ -405,50 +404,57 @@ namespace CommandModule
                 string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
                 string PaychexDate = "";
                 List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
+				var embed = new EmbedBuilder();
 
-                if (paychexRunningTotal.Count > 0)
+				embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
+
+				string biweeklyLastSundayDate = $"{HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
+				if (!paychexSheets.Any(s => s.Contains(biweeklyLastSundayDate)))
+				{
+					embed.AddField("Last weeks estimated paychex:", $"${paychexRunningTotal[0]:n0}");
+				}
+
+				embed.AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}");
+				embed.AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}");
+				embed.AddField("Regear Status:", $"{regearStatus}");
+
+				if (paychexRunningTotal.Count > 0)
                 {
-                    var embed = new EmbedBuilder();
+                    
 
-                    embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
-                    embed.AddField("Current week running total:", $"${paychexRunningTotal[0]:n0}");
-                    foreach (var entries in paychexTotals)
-                    {
-                        embed.AddField(entries.Key, $"${entries.Value:n0}");
+					foreach (var entries in paychexTotals)
+					{
+						embed.AddField(entries.Key, $"{entries.Value:n0}");
 
-                        if (entries.Key.Length > 0)
-                        {
-                            int iter = entries.Key.IndexOf(" ") + 1;
-                            PaychexDate = entries.Key.Substring(0, iter);
-                        }
+						if (entries.Key.Length > 0)
+						{
+							int iter = entries.Key.IndexOf(" ") + 1;
+							PaychexDate = entries.Key.Substring(0, iter);
+						}
 
-                        if (entries.Key.Contains("NOT CLAIMED"))
-                        {
-                            paychexbutton.Style = ButtonStyle.Success;
-                            paychexbutton.IsDisabled = false;
-                            paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
-                            paychexbutton.CustomId = $"paychex:{PaychexDate.Split("(")[0].Trim()}:{sUserNickname}";
-                        }
-                        else if (entries.Key.Contains("(CLAIMED)"))
-                        {
-                            paychexbutton.Style = ButtonStyle.Danger;
-                            paychexbutton.IsDisabled = true;
-                            paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
-                            paychexbutton.CustomId = $"Paychex{entries.Key}";
-                        }
-                        else
-                        {
-                            paychexbutton.Label = $"Pending {PaychexDate}";
-                            paychexbutton.CustomId = $"Paychex{entries.Key}";
-                            paychexbutton.Style = ButtonStyle.Secondary;
-                            paychexbutton.IsDisabled = true;
-                        }
-                        component.WithButton(paychexbutton);
-                    }
-
-                    embed.AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}");
-                    embed.AddField("Regear Status:", $"{regearStatus}");
-
+						if (entries.Key.Contains("NOT CLAIMED"))
+						{
+							paychexbutton.Style = ButtonStyle.Success;
+							paychexbutton.IsDisabled = false;
+							paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
+							paychexbutton.CustomId = $"paychex:{PaychexDate.Split("(")[0].Trim()}:{sUserNickname}";
+						}
+						else if (entries.Key.Contains("(CLAIMED)"))
+						{
+							paychexbutton.Style = ButtonStyle.Danger;
+							paychexbutton.IsDisabled = true;
+							paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
+							paychexbutton.CustomId = $"Paychex{entries.Key}";
+						}
+						else
+						{
+							paychexbutton.Label = $"Pending {PaychexDate}";
+							paychexbutton.CustomId = $"Paychex{entries.Key}";
+							paychexbutton.Style = ButtonStyle.Secondary;
+							paychexbutton.IsDisabled = true;
+						}
+						component.WithButton(paychexbutton);
+					}
                     await FollowupAsync(null, null, false, true, null, null, component.Build(), embed.Build());
 
                 }
@@ -527,16 +533,6 @@ namespace CommandModule
             await GoogleSheetsDataWriter.RenderPaychex(Context);
         }
 
-        //[SlashCommand("transfer-paychex", "Convert your current paychex to Mini Mart credits")]
-        //public async Task TransferPaychexToMiniMart()
-        //{
-        //    await _logger.Log(new LogMessage(LogSeverity.Info, "Mini-Mart Submit", $"User: {Context.User.Username}, Command: mm-transaction", null));
-
-        //    await DeferAsync(true);
-        //    //await GoogleSheetsDataWriter.TransferPaychexToMiniMartCredits(Context.User as SocketGuildUser);
-        //    await FollowupAsync("Transfer Complete", null, false, true);
-
-        //}
 
         [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
         public async Task MiniMartTransactions(SocketGuildUser GuildUser, int Amount, MiniMarketType TransactionType)
@@ -908,8 +904,9 @@ namespace CommandModule
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString();
             var iQueueID = interaction.Message.Embeds.FirstOrDefault().Fields[4].Value;
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
+            string Reason = "";
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || regearPoster == guildUser.Id)
+			if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || regearPoster == guildUser.Id)
             {
                 dataBaseService = new DataBaseService();
 
@@ -922,24 +919,25 @@ namespace CommandModule
                     .WithTitle("OC Break Denied")
                     .WithCustomId("deny_menu");
                     mb.AddTextInput("Why is this OC Break being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
-
-                    await Context.Interaction.RespondWithModalAsync(mb.Build());
+					await DeferAsync(true);
+					await Context.Interaction.RespondWithModalAsync(mb.Build());
                     Context.Client.ModalSubmitted += async modal =>
                     {
-                        await modal.DeferAsync();
+                        
+						 Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";  
+					};
 
-                        string Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
-
-                        await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied OC break {iQueueID}. Reason: {Reason}");
-
-                    };
-                    await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
+                    //await Context.Interaction.User.SendMessageAsync($"{guildUser.DisplayName} denied OC break {iQueueID}. Reason: {Reason}");
+					await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied OC break {iQueueID}. Reason: {Reason}");
+					await Context.Interaction.DeleteOriginalResponseAsync();
+                    
+                    //await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
-
+                //cannot respond of defer twice to the same interaction
 
                 await _logger.Log(new LogMessage(LogSeverity.Info, "OC Regear Denied", $"User: {Context.User.Username}, Denied regear {iQueueID} for {victimName} ", null));
 
@@ -1166,5 +1164,114 @@ namespace CommandModule
             }
             await _logger.Log(new LogMessage(LogSeverity.Info, "Split-Loot deny", $"User: {Context.User.Username} denied a split-loot", null));
         }
-    }
+
+        [SlashCommand("add-game-to-portal", "Create Button roles for the portal")]
+        public async Task AddGame(string Game_Name, SocketRole? Role = null)
+        {
+            SocketRole newRole = null;
+			if (Role == null)
+			{
+				await Context.Guild.CreateRoleAsync(Game_Name, null);
+
+                var roleIds = Context.Guild.Roles;
+
+                foreach(var roles in roleIds)
+                {
+                    if(roles.Name == Game_Name)
+                    {
+						newRole = Context.Guild.GetRole(roles.Id);
+					}
+                }
+                
+			}
+
+			var membercount = Context.Guild.GetRole((Role == null) ? newRole.Id : Role.Id).Members.Count();
+
+
+			var embed = new EmbedBuilder();
+            embed.WithTitle($"{Game_Name}");
+            embed.AddField("Role Name", (Role == null)? newRole : Role.Name, true);
+            embed.AddField("Current Members playing", membercount, true);
+            embed.AddField("Game ID:", (Role == null) ? newRole.Id : Role.Id, true);
+			var comp = new ComponentBuilder();
+            var approveSplit = new ButtonBuilder()
+            {
+                Label = "Get/Remove Role",
+                CustomId = $"getrole-{Game_Name}",
+                Style = ButtonStyle.Success
+            };
+            comp.WithButton(approveSplit);
+
+            
+
+            await RespondAsync(null, null, false, false, null, null, comp.Build(), embed.Build());
+
+
+
+        }
+
+        [ComponentInteraction("getrole*")]
+		public async Task GetRole()
+		{
+			var interaction = Context.Interaction as IComponentInteraction;
+			IComponentInteraction ButtonInteraction = Context.Interaction as IComponentInteraction;
+
+			string sGameName = ButtonInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
+			ulong roleID = Convert.ToUInt64(ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString());
+
+
+			
+
+			var user = Context.Guild.GetUser(Context.User.Id);
+
+
+            if(!user.Roles.Any(r => r.Name == sGameName))
+            {
+				await user.AddRoleAsync(roleID);
+                await Context.User.SendMessageAsync($"You have been granted the {sGameName} role");
+				await DeferAsync();
+			}
+            else
+            {
+				await user.RemoveRoleAsync(roleID);
+				await Context.User.SendMessageAsync($"{sGameName} role has been removed");
+				await DeferAsync();
+			}
+
+
+			var membercount = Context.Guild.GetRole(roleID).Members.Count();
+
+			EmbedBuilder previousEmbed = new EmbedBuilder();
+			var previousButtons = ComponentBuilder.FromComponents(ButtonInteraction.Message.Components);
+
+			previousEmbed.Title = ButtonInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
+			previousEmbed.AddField("Role Name", ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString(), true);
+			previousEmbed.AddField("Current Members", membercount, true);
+			previousEmbed.AddField("Game ID:", ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString(), true);
+
+			var fieldtest = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value;
+
+			foreach (var field in interaction.Message.Embeds.FirstOrDefault().Fields)
+            {
+                if(field.Value != null)
+                {
+                    Console.WriteLine("its here");
+                }
+            }
+
+			await Context.Interaction.ModifyOriginalResponseAsync((x) =>
+			{
+				x.Embed = previousEmbed.Build();
+				x.Components = previousButtons.Build();
+			});
+
+			//await (Context.Interaction as IComponentInteraction).UpdateAsync(x =>
+			//{
+			//	// Increase embed "yes" field value by one
+			//});
+
+
+
+		}
+	}
 }

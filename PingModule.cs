@@ -254,7 +254,7 @@ namespace DNet_V3_Tutorial
                 $"You should of bought a pair of Nutmollers boots.",
                 $"Whoever told you to be yourself gave you bad advice",
                 $"Paychex",
-                $"Thanks for your opinion, no1 cares",
+                $"Thanks for your opinion, no one cares",
                 $"Gif",
                 //$"SlotMachine",
                 $"You do realize we're just tolerating you, right?",
@@ -277,7 +277,7 @@ namespace DNet_V3_Tutorial
 				"You act like your colon. You're full of shit.",
 				$"PHATED",
 				$"Directions"
-            };
+			};
             int r = rnd.Next(insultList.Count);
 
             await _logger.Log(new LogMessage(LogSeverity.Info, "Insult Time!!!", $"User: {Context.User.Username}, Command: insult", null));

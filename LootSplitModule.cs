@@ -288,7 +288,7 @@ namespace DiscordBot.LootSplitModule
 
 						}
 						GuildSplitFee = 0;
-						TotalLootSplitPerMember = LootTotals + SilverBagsTotal/ a_MembersList.Count;
+						TotalLootSplitPerMember = (LootTotals + SilverBagsTotal) / a_MembersList.Count;
 						break;
 
 					case LootSplitType.Guild:
