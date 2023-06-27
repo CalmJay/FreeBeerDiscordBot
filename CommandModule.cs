@@ -193,7 +193,7 @@ namespace CommandModule
 
 				//TODO: REMOVE PLAYER FROM DATABASE HERE
 				await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command Unregister", null));
-				await RespondAsync("Member was unregistered", ephemeral: true);
+				await FollowupAsync($"{InGameName} was unregistered", ephemeral: true);
             }
             else
             {

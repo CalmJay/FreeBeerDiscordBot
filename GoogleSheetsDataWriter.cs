@@ -734,9 +734,9 @@ namespace GoogleSheetsData
                 UserName = a_MemberName;
             }
 
-            await ClearUserFromSheet(GuildSpreadsheetId, $"Copy of Guild Roster!B2:B", "Guild Roster",  UserName, 205431334);
-            await ClearUserFromSheet(RegearSheetID, $"Copy of Payouts!B2:B", "Payouts", UserName, 1156891297);
-            await ClearUserFromSheet(RegearSheetID, $"Copy of Mini-Market Credits!B2:B", "Mini-Market Credits", UserName, 1417127311);
+            await ClearUserFromSheet(GuildSpreadsheetId, $"Guild Roster!B2:B", "Guild Roster",  UserName, 1537937834);
+            await ClearUserFromSheet(RegearSheetID, $"Payouts!B2:B", "Payouts", UserName, 649059484);
+            await ClearUserFromSheet(RegearSheetID, $"Mini-Market Credits!B2:B", "Mini-Market Credits", UserName, 233056152);
         }
         private static async Task ClearUserFromSheet(string a_sSpreadSheetID, string a_sRange, string a_sSpreadSheetName, string a_sUsername, int a_SheetID)
         {
