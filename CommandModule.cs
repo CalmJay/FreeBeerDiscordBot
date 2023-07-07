@@ -11,31 +11,17 @@ using DiscordbotLogging.Log;
 using FreeBeerBot;
 using GoogleSheetsData;
 using MarketData;
-using Microsoft.Data.SqlClient;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerData;
 using SharpLink;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using Tesseract;
-using Microsoft.VisualBasic;
-using System.ComponentModel;
-using static PlayerData.PlayerDataHandler;
-using Azure.Identity;
-using static IronOcr.OcrResult;
-using SixLabors.ImageSharp.Drawing;
-using System.Collections;
-using System.Security.Cryptography.X509Certificates;
-using Aspose.Imaging.ProgressManagement;
-using System.Threading.Channels;
+
 
 namespace CommandModule
 {
@@ -576,7 +562,7 @@ namespace CommandModule
             RegearModule regearModule = new RegearModule();
 
             var guildUser = (SocketGuildUser)Context.User;
-            var interaction = Context.Interaction as IComponentInteraction;
+            IComponentInteraction interaction = Context.Interaction as IComponentInteraction;
 
             string? sUserNickname = ((Context.User as SocketGuildUser).Nickname != null) ? (Context.User as SocketGuildUser).Nickname : Context.User.Username;
             string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
@@ -676,11 +662,11 @@ namespace CommandModule
             var interaction = Context.Interaction as IComponentInteraction;
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
-            ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[6].Value);
-            string? sUserNickname = (guildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.DisplayName) : guildUser.Username;
+            ulong regearPoster = regearModule.GetRegearPosterID(victimName, Context);
+			string? sUserNickname = (guildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.DisplayName) : guildUser.Username;
             string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name == "Mentor").FirstOrDefault().Value.ToString() : null;
 
-            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower() || regearPoster == guildUser.Id)
+            if (RegearModule.HasRegearOverride(guildUser) || (sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower()) || victimName.ToLower() == guildUser.DisplayName.ToLower())
             {
                 dataBaseService = new DataBaseService();
 
@@ -693,43 +679,54 @@ namespace CommandModule
                     Console.WriteLine(ex.ToString() + " ERROR DELETING RECORD FROM DATABASE");
                 }
 
-                try
+                if (victimName.ToLower() != guildUser.DisplayName.ToLower() && RegearModule.HasRegearOverride(guildUser))
                 {
-                    var mb = new ModalBuilder()
-                    .WithTitle("Regear Denied")
-                    .WithCustomId("deny_menu");
-                    mb.AddTextInput("Why is this regear being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
-
-                    await Context.Interaction.RespondWithModalAsync(mb.Build());
-                    Context.Client.ModalSubmitted += async modal =>
+                    try
                     {
-                        await modal.DeferAsync();
-
-                        string Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
-
-                        await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied regear #{killId}. https://albiononline.com/en/killboard/kill/{killId} Reason: {Reason}");
-
-                    };
-                    await Context.Interaction.DeleteOriginalResponseAsync();
-
+                        var mb = new ModalBuilder()
+                        .WithTitle("Regear Denied")
+                        .WithCustomId("regear_deny_menu");
+                        mb.AddTextInput("Why is this regear being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
+                        string Reason = "Nothing";
+                        bool confirmModal = false;
+                        await Context.Interaction.RespondWithModalAsync(mb.Build());
+                        Context.Client.ModalSubmitted += async modal =>
+                        {
+                            if(!confirmModal)
+                            {
+								await modal.DeferAsync();
+								Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
+								//await Context.Interaction.DeleteOriginalResponseAsync();
+								await interaction.Message.DeleteAsync();
+								await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied regear #{killId}. https://albiononline.com/en/killboard/kill/{killId} Reason: {Reason}");
+								confirmModal = true;
+							}
+						};
+                        //await FollowupAsync($"Regear Denied: #{killId} for {victimName}", ephemeral: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Could find user guild ID. Guild collection too large");
-                }
+				else
+				{
+                    await interaction.Message.DeleteAsync();
+					await RespondAsync($"Regear #{killId} cancelled", ephemeral: true );
+				}
+
+				await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
+				//await Context.Interaction.DeleteOriginalResponseAsync();
 
 
-                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
-
-
-            }
+			}
             else
             {
                 await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
             }
         }
 
-        [ComponentInteraction("approve")]
+		[ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
             SocketGuildUser guildUser = (SocketGuildUser)Context.User;
@@ -1251,13 +1248,13 @@ namespace CommandModule
 
 			var fieldtest = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value;
 
-			foreach (var field in interaction.Message.Embeds.FirstOrDefault().Fields)
-            {
-                if(field.Value != null)
-                {
-                    Console.WriteLine("its here");
-                }
-            }
+			//foreach (var field in interaction.Message.Embeds.FirstOrDefault().Fields)
+   //         {
+   //             if(field.Value != null)
+   //             {
+   //                 Console.WriteLine("its here");
+   //             }
+   //         }
 
 			await Context.Interaction.ModifyOriginalResponseAsync((x) =>
 			{
@@ -1265,10 +1262,6 @@ namespace CommandModule
 				x.Components = previousButtons.Build();
 			});
 
-			//await (Context.Interaction as IComponentInteraction).UpdateAsync(x =>
-			//{
-			//	// Increase embed "yes" field value by one
-			//});
 
 
 

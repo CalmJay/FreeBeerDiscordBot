@@ -90,7 +90,7 @@ namespace DiscordBot.LootSplitModule
               await writer.WriteAsync(jsonstring);
           }
       }
-      public async Task CreateMemberDict(SocketInteractionContext context)
+      public Dictionary<string, ulong> CreateMemberDict(SocketInteractionContext context)
       {
           Dictionary<string, ulong> dict = new Dictionary<string, ulong>();
 
@@ -123,9 +123,12 @@ namespace DiscordBot.LootSplitModule
                       continue;
                   }
               }
-              scrapedDict = dict;
-          }
-      }
+				scrapedDict = dict;
+                
+
+		  }
+			return dict;
+		}
 
         
 

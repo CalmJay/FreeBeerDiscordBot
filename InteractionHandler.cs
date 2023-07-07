@@ -45,6 +45,7 @@ namespace InteractionHandlerService
             _client.UserJoined += UserJoinedGuildExecuted;
             _client.UserLeft += UserLeftGuildExecuted;
             //_client.ButtonExecuted += ButtonExecuted;
+            _client.ModalSubmitted += ModalSubmittedExecuted;
 
 			// Process the command execution results 
 			_commands.SlashCommandExecuted += SlashCommandExecuted;
@@ -78,51 +79,19 @@ namespace InteractionHandlerService
 		//{
 		//	return Task.CompletedTask;
 		//}
+        private async Task ModalSubmittedExecuted(SocketModal a_Modal)
+        {
+            var modeltest = a_Modal;
+		}
 
 		private async Task UserJoinedGuildExecuted(SocketGuildUser SocketGuildUser)
         {
             var lobbyChannel = _client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("LobbyChannelID"))) as IMessageChannel;
-			PlayerLookupInfo? playerInfo = new PlayerLookupInfo();
-			PlayerDataLookUps albionData = new PlayerDataLookUps();
 
-            SocketInteractionContext test = null;
-            try
-            {
-				playerInfo = await albionData.GetPlayerInfo(test, SocketGuildUser.DisplayName);
-				if (playerInfo != null)
-				{
-					switch (playerInfo.KillFame)
-					{
-						case > 50000000:
-							await lobbyChannel.SendMessageAsync("https://tenor.com/bpJX6.gif Free Beer is recruiting for you :kissing_heart:");
-							break;
+			Random rnd = new Random();
 
-						case > 10000000:
-							await lobbyChannel.SendMessageAsync($"Over 10 mil killfame <@{SocketGuildUser.Id}>. Your almost a banger!!! Welcome to Free Beer");
-							break;
-
-						case > 5000000:
-							await lobbyChannel.SendMessageAsync("");
-							break;
-						case > 1000000:
-							await lobbyChannel.SendMessageAsync("Hello and welcome to Free Beer. I'll break the ice with you first.... Application Denied!");
-							break;
-						case > 1:
-							await lobbyChannel.SendMessageAsync($"<@{SocketGuildUser.Id}> You look to be fresh off the boat. What's up?");
-							break;
-
-						case 0:
-							await lobbyChannel.SendMessageAsync("Hmmmmm. I think your a spy");
-							break;
-					}
-
-				}
-				else
-				{
-					Random rnd = new Random();
-
-					List<string> insultList = new List<string>
-				{
+			List<string> insultList = new List<string>
+			{
 				$"<@{SocketGuildUser.Id}> Welcome to Free Beer ya shmuck.",
 				$"Sorry <@{SocketGuildUser.Id}>, if your here for the free beer we're fresh out.",
 				$"Hi <@{SocketGuildUser.Id}>! If your looking to spy on us, please submit an app in <#880611767393345548>",
@@ -132,14 +101,11 @@ namespace InteractionHandlerService
 				$"<@{ SocketGuildUser.Id}>. What's up homie? ",
 				$"<@{SocketGuildUser.Id}>. Welcome. Do you ever feel like a plastic bag?",
 				$"<@{ SocketGuildUser.Id}>. https://tenor.com/bxDCP.gif"
-				};
+			};
 
-					int r = rnd.Next(insultList.Count);
-					await lobbyChannel.SendMessageAsync((string)insultList[r]);
-				}
+			int r = rnd.Next(insultList.Count);
+			await lobbyChannel.SendMessageAsync((string)insultList[r]);
 
-			}
-            catch (Exception ex) { Console.WriteLine(ex); }
         }
 
         private async Task UserLeftGuildExecuted(SocketGuild SocketGuild, SocketUser SocketUser)

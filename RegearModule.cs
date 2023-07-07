@@ -32,7 +32,12 @@ namespace DiscordBot.RegearModule
         private int iHealerMinmumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMinmumIP"));
         private int iSupportMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMinimumIP"));
 
-        private static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
+		private ulong roleIdNewRecruit = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("newRecruit"));
+		private ulong roleIdMember = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("member"));
+		private ulong roleIdOfficer = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("officer"));
+		private ulong roleIdVeteran = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
+
+		private static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
         private static ulong HealerMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMentorID"));
         private static ulong DPSMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMentorID"));
         private static ulong SupportMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMentorID"));
@@ -866,7 +871,66 @@ namespace DiscordBot.RegearModule
                 return false;
             }
         }
-		
+
+        public static bool HasRegearOverride(SocketGuildUser a_SocketGuildUser)
+        {
+            if(a_SocketGuildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"|| r.Name == "Admin"))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public ulong GetRegearPosterID(string a_sVictimName, SocketInteractionContext a_SocketInteractionContext)
+        {
+            var UsersList = CreateMemberDict(a_SocketInteractionContext);
+
+            foreach (var user in UsersList)
+            {
+                if(user.Key.ToLower() == a_sVictimName.ToLower())
+                {
+                    return user.Value;
+                }
+            }
+
+
+			return 0;
+        }
+
+		public Dictionary<string, ulong> CreateMemberDict(SocketInteractionContext context)
+		{
+			Dictionary<string, ulong> dict = new Dictionary<string, ulong>();
+
+			var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+			foreach (var member in iterable.FirstOrDefault())
+			{
+				if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
+					|| member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
+				{
+					if (member.DisplayName != null)
+					{
+						if (member.DisplayName.StartsWith("!!"))
+						{
+							string temp = member.DisplayName.Remove(0, 5);
+							dict.Add(temp, member.Id);
+						}
+						else
+						{
+							dict.Add(member.DisplayName, member.Id);
+						}
+					}
+					else if (member.DisplayName == null)
+					{
+						dict.Add(member.Username, member.Id);
+					}
+					else
+					{
+						continue;
+					}
+				}
+			}
+			return dict;
+		}
 		public class Equipment
         {
             private string image;
