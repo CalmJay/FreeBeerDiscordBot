@@ -4,20 +4,11 @@ using Discord.WebSocket;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
-using Tesseract;
-using IronOcr;
 using DiscordBot.Enums;
-using Aspose.Imaging.ProgressManagement;
-using DiscordbotLogging.Log;
-using Microsoft.VisualBasic;
-using Discord.Rest;
-using System.ComponentModel;
+
 
 namespace DiscordBot.LootSplitModule
 {

@@ -687,8 +687,10 @@ namespace CommandModule
                         .WithTitle("Regear Denied")
                         .WithCustomId("regear_deny_menu");
                         mb.AddTextInput("Why is this regear being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
+
                         string Reason = "Nothing";
                         bool confirmModal = false;
+
                         await Context.Interaction.RespondWithModalAsync(mb.Build());
                         Context.Client.ModalSubmitted += async modal =>
                         {
@@ -696,13 +698,11 @@ namespace CommandModule
                             {
 								await modal.DeferAsync();
 								Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
-								//await Context.Interaction.DeleteOriginalResponseAsync();
 								await interaction.Message.DeleteAsync();
 								await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied regear #{killId}. https://albiononline.com/en/killboard/kill/{killId} Reason: {Reason}");
 								confirmModal = true;
 							}
 						};
-                        //await FollowupAsync($"Regear Denied: #{killId} for {victimName}", ephemeral: true);
                     }
                     catch (Exception ex)
                     {
@@ -716,9 +716,6 @@ namespace CommandModule
 				}
 
 				await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
-				//await Context.Interaction.DeleteOriginalResponseAsync();
-
-
 			}
             else
             {
