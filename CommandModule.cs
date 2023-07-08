@@ -1,5 +1,4 @@
 ﻿using Discord;
-using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Enums;
@@ -13,7 +12,6 @@ using GoogleSheetsData;
 using MarketData;
 using Newtonsoft.Json.Linq;
 using PlayerData;
-using SharpLink;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -946,65 +944,6 @@ namespace CommandModule
             }
         }
 
-        [SlashCommand("play-song", "Play a song test")]
-        public async Task PlaySong(string searchQuery)
-        {
-            //TODO: Switch to VICTORIA for music https://github.com/Yucked/Victoria/wiki/%F0%9F%A7%AC-Samples
-            await DeferAsync();
-            IVoiceChannel voiceChannel = ((IGuildUser)Context.User).VoiceChannel;
-
-            LavalinkPlayer player = Program.lavalinkManager.GetPlayer(GuildID) ?? await Program.lavalinkManager.JoinAsync(voiceChannel);
-            LoadTracksResponse response = null;
-
-            var TodaysDate = DateTime.Today;
-
-            //response = await Program.lavalinkManager.GetTracksAsync($"ytsearch:{searchQuery}");
-            response = await Program.lavalinkManager.GetTracksAsync($"scsearch:{searchQuery}");
-            //response = await Program.lavalinkManager.GetTracksAsync($"ytmsearch:{SongName}");
-
-            // Gets the first track from the response
-            LavalinkTrack track = response.Tracks.First();
-            await player.PlayAsync(track);
-
-            await FollowupAsync($"Playing song: {player.CurrentTrack.Url}");
-        }
-
-        [SlashCommand("stop-song", "stop a song ")]
-        public async Task StopSong()
-        {
-
-            var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id) ??
-            await Program.lavalinkManager.JoinAsync((Context.User as IGuildUser)?.VoiceChannel);
-            await player.StopAsync();
-            await RespondAsync("Stopped playing. Your queue is still intact though. Use `clear` to Destroy Queue", ephemeral: true);
-        }
-
-        [SlashCommand("set-volume", "Volume between 1 - 100")]
-        public async Task SetVolumne(uint volume)
-        {
-            if (volume > 111)
-            {
-                await RespondAsync($"Volume doesn't go higher than 111", ephemeral: true);
-            }
-            else
-            {
-                var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id) ??
-                await Program.lavalinkManager.JoinAsync((Context.User as IGuildUser)?.VoiceChannel);
-                await player.SetVolumeAsync(volume);
-                await FollowupAsync($"Volume set to {volume}.", ephemeral: true);
-            }
-
-        }
-        [SlashCommand("clear-songs", "Clear the songs queue")]
-        public async Task ClearQueue()
-        {
-
-            var player = Program.lavalinkManager.GetPlayer(Context.Guild.Id);
-            await Program.lavalinkManager.StopAsync();
-            await player.DisconnectAsync();
-            await RespondAsync("Your queue has been cleared Queue", ephemeral: true);
-        }
-
 
         [SlashCommand("split-loot", "Perform a loot split.")]
         public async Task SplitLoot(LootSplitType LootSplitType, SocketGuildUser CallerName, EventTypeEnum EventType, int? NonDamagedLootTotal = null, int? DamagedLootTotal = null, int? SilverBagsTotal = null)
@@ -1206,65 +1145,5 @@ namespace CommandModule
 
 
         }
-
-        [ComponentInteraction("getrole*")]
-		public async Task GetRole()
-		{
-			var interaction = Context.Interaction as IComponentInteraction;
-			IComponentInteraction ButtonInteraction = Context.Interaction as IComponentInteraction;
-
-			string sGameName = ButtonInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
-			ulong roleID = Convert.ToUInt64(ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString());
-
-
-			
-
-			var user = Context.Guild.GetUser(Context.User.Id);
-
-
-            if(!user.Roles.Any(r => r.Name == sGameName))
-            {
-				await user.AddRoleAsync(roleID);
-                await Context.User.SendMessageAsync($"You have been granted the {sGameName} role");
-				await DeferAsync();
-			}
-            else
-            {
-				await user.RemoveRoleAsync(roleID);
-				await Context.User.SendMessageAsync($"{sGameName} role has been removed");
-				await DeferAsync();
-			}
-
-
-			var membercount = Context.Guild.GetRole(roleID).Members.Count();
-
-			EmbedBuilder previousEmbed = new EmbedBuilder();
-			var previousButtons = ComponentBuilder.FromComponents(ButtonInteraction.Message.Components);
-
-			previousEmbed.Title = ButtonInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
-			previousEmbed.AddField("Role Name", ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString(), true);
-			previousEmbed.AddField("Current Members", membercount, true);
-			previousEmbed.AddField("Game ID:", ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString(), true);
-
-			var fieldtest = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value;
-
-			//foreach (var field in interaction.Message.Embeds.FirstOrDefault().Fields)
-   //         {
-   //             if(field.Value != null)
-   //             {
-   //                 Console.WriteLine("its here");
-   //             }
-   //         }
-
-			await Context.Interaction.ModifyOriginalResponseAsync((x) =>
-			{
-				x.Embed = previousEmbed.Build();
-				x.Components = previousButtons.Build();
-			});
-
-
-
-
-		}
 	}
 }
