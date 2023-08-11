@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using static System.Net.Mime.MediaTypeNames;
 using System.Configuration;
+using DiscordBot.LootSplitModule;
 
 namespace DNet_V3_Tutorial
 {
@@ -33,12 +34,17 @@ namespace DNet_V3_Tutorial
         public int iSupportMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMinimumIP"));
         public int iTemporaryPeakRegearAdjustment = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TemporaryPeakRegearAdjustment"));
         public int iTestSetting = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TestSetting"));
+
         public static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
         public static ulong HealerMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMentorID"));
         public static ulong DPSMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMentorID"));
         public static ulong SupportMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMentorID"));
 
-        public PingModule(ConsoleLogger logger)
+		private ulong roleIdNewRecruit = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("newRecruit"));
+		private ulong roleIdMember = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("member"));
+		private ulong roleIdOfficer = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("officer"));
+		private ulong roleIdVeteran = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
+		public PingModule(ConsoleLogger logger)
         {
             _logger = logger;
         }
@@ -410,37 +416,79 @@ namespace DNet_V3_Tutorial
 
         public async Task ServerScript()
         {
-            //var message = await Context.Channel.GetMessageAsync(1079801885025914910);
+            //Add All Albion Members Members with new role
+            LootSplitModule lootSplitModule = new LootSplitModule();
+            //1127663954701856891 Albion Online role
 
-            //var users = message.Reactions.Values;
-            //IEmote emoji = Emoji.Parse(":thumbsup:");
-            //RequestOptions options = new RequestOptions();
+            Dictionary<string, ulong> FreeBeerPlayersList = lootSplitModule.CreateMemberDict(Context);
+			//var DiscordUsersList = Context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
 
-            ////var userslist = message.GetReactionUsersAsync(emoji, 300);
+			foreach (var player in FreeBeerPlayersList)
+            {
+                if(IsPlayerInFreeBeerGuild(player))
+                {
+					SocketGuildUser guildUser = (SocketGuildUser)Context.User;
+					var user = guildUser.Guild.GetUser(player.Value);
 
-            //var temp = await (message.GetReactionUsersAsync(emoji, 300)).FlattenAsync();
-
-
-            //List<string> usersreacted= new List<string>();
-            //string? usernameCleanup = "";
-            //foreach (var user in temp) 
-            //{
-            //    var userinfo = Context.Guild.GetUser(user.Id);
-            //    if (userinfo != null)
-            //    {
-            //        usernameCleanup = (userinfo.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(userinfo.Nickname) : userinfo.Username;
-            //        usersreacted.Add(usernameCleanup);
-            //    }
-            //    else
-            //    {
-            //        usersreacted.Add(user.Username);
-            //    }
+					if (user.Roles.Any(r => r.Name == "Albion Online") || user.Roles.Any(r => r.Id == 1127663954701856891))
+                    {
+						
+					}
+                    else
+                    {
+						await user.AddRoleAsync(1127663954701856891);
+					}
+                    
+                }
+            }
 
 
-            //}
 
-            //WriteToCSV(usersreacted);
-            //Console.WriteLine("Reactions grabbed");
+
+			//var message = await Context.Channel.GetMessageAsync(1079801885025914910);
+
+   //         var users = message.Reactions.Values;
+   //         IEmote emoji = Emoji.Parse(":thumbsup:");
+   //         RequestOptions options = new RequestOptions();
+
+   //         //var userslist = message.GetReactionUsersAsync(emoji, 300);
+
+   //         var temp = await (message.GetReactionUsersAsync(emoji, 300)).FlattenAsync();
+
+
+   //         List<string> usersreacted = new List<string>();
+   //         string? usernameCleanup = "";
+   //         foreach (var user in temp)
+   //         {
+   //             var userinfo = Context.Guild.GetUser(user.Id);
+   //             if (userinfo != null)
+   //             {
+   //                 usernameCleanup = (userinfo.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(userinfo.Nickname) : userinfo.Username;
+   //                 usersreacted.Add(usernameCleanup);
+   //             }
+   //             else
+   //             {
+   //                 usersreacted.Add(user.Username);
+   //             }
+
+
+   //         }
+
+   //         WriteToCSV(usersreacted);
+   //         Console.WriteLine("Reactions grabbed");
+        }
+
+		public bool IsPlayerInFreeBeerGuild(KeyValuePair<string, ulong>player)
+        {
+            if(player.Value == roleIdNewRecruit || player.Value == roleIdMember || player.Value == roleIdVeteran || player.Value == roleIdOfficer)
+            {
+				return true;
+			}
+            else 
+            { 
+                return false; 
+            }
+            
         }
     }
 }

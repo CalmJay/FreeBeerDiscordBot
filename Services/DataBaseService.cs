@@ -21,11 +21,39 @@ namespace DiscordBot.Services
                 await freeBeerdbContext.SaveChangesAsync();
             }
         }
-        public async Task<Boolean> CheckPlayerIsExist(string playerName)
+
+		public async Task RegisterAlliancePlayerInfo(RegisteredAllianceMembers a_Player)
+		{
+			if (!await CheckAlliancePlayerIsExist(a_Player.PlayerID))
+			{
+				await freeBeerdbContext.RegisteredAllianceMembers.AddAsync(a_Player);
+				await freeBeerdbContext.SaveChangesAsync();
+			}
+		}
+		//public async Task RegisterGuild(RegisteredGuilds a_guildID)
+		//{
+		//	if (!await CheckForRegisteredGuild(a_guildID.GuildID))
+		//	{
+		//		await freeBeerdbContext.RegisteredGuild.AddAsync(a_guildID);
+		//		await freeBeerdbContext.SaveChangesAsync();
+		//	}
+		//}
+
+		public async Task<Boolean> CheckPlayerIsExist(string playerName)
         {
             return await freeBeerdbContext.Player.AnyAsync(x => x.PlayerName == playerName);
         }
-        public Task<Boolean> PlayerReachRegearCap(string playerName, int a_iRegearLimitCap)
+		public async Task<Boolean> CheckAlliancePlayerIsExist(string playerID)
+		{
+			return await freeBeerdbContext.RegisteredAllianceMembers.AnyAsync(x => x.PlayerID == playerID);
+		}
+
+		//public async Task<Boolean> CheckForRegisteredGuild(string playerID)
+		//{
+		//	return await freeBeerdbContext.RegisteredAllianceMembers.AnyAsync(x => x.PlayerID == playerID);
+		//}
+
+		public Task<Boolean> PlayerReachRegearCap(string playerName, int a_iRegearLimitCap)
         {
             List<PlayerLoot> playerLoots = new List<PlayerLoot>();
             var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
@@ -84,7 +112,18 @@ namespace DiscordBot.Services
             }
 
         }
-        public MoneyType GetMoneyTypeByName(MoneyTypes moneyType)
+		public void DeleteRegisteredAlliancePlayer(string a_sPlayerID)
+		{
+			var player = freeBeerdbContext.RegisteredAllianceMembers.AsQueryable().Where(x => x.PlayerID == a_sPlayerID).FirstOrDefault();
+			if (player != null)
+			{
+				freeBeerdbContext.RegisteredAllianceMembers.Remove(player);
+				freeBeerdbContext.SaveChanges();
+			}
+
+		}
+
+		public MoneyType GetMoneyTypeByName(MoneyTypes moneyType)
         {
             return freeBeerdbContext.MoneyType.AsQueryable().Where(x => x.Type == (int)moneyType).FirstOrDefault();
         }

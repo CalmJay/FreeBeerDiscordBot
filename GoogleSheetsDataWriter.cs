@@ -6,6 +6,7 @@ using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
 using DiscordBot.Enums;
+using DiscordBot.RegearModule;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
@@ -485,12 +486,8 @@ namespace GoogleSheetsData
                 var req = serviceValues.BatchUpdate(batchUpdateSpreadsheetRequest, RegearSheetID);  //public SheetsService Service; property of parent class
                 BatchUpdateSpreadsheetResponse response = req.Execute();
 
-                ////COPY DATA FROM Payouts TO Newly Rendered Paychex sheet
-
                 List<object> DaterowValues = serviceValues.Values.Get(RegearSheetID, "Payouts!3:3").Execute().Values.FirstOrDefault().ToList();
                 IList<IList<object>> rowValues = serviceValues.Values.Get(RegearSheetID, $"Payouts!R3C2:R350C{DaterowValues.Count}").Execute().Values;
-
-
 
                 List<string> GuildMembersNames = null;
                 List<int> GuildMembersAmounts = null;
@@ -510,10 +507,11 @@ namespace GoogleSheetsData
                 
 
                 //get all user info
+                RegearModule regearModule = new RegearModule();
+                regearModule.CreateMemberDict(a_socketInteraction);
+				//get all paychex info
 
-                //get all paychex info
-
-                int dateIndex = 1;
+				int dateIndex = 1;
 
                 foreach (var dates in dateRowValues)
                 {

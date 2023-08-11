@@ -11,6 +11,8 @@ using DiscordbotLogging.Log;
 using FreeBeerBot;
 using GoogleSheetsData;
 using MarketData;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json.Linq;
 using PlayerData;
 using SharpLink;
@@ -29,7 +31,7 @@ namespace CommandModule
     {
         public InteractionService Commands { get; set; }
         private PlayerDataHandler.Rootobject PlayerEventData { get; set; }
-        private ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("guildID"));
+        private ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("FreeBeerDiscordGuildID"));
         private static Logger _logger;
         private DataBaseService dataBaseService;
         private static LootSplitModule lootSplitModule;
@@ -157,11 +159,11 @@ namespace CommandModule
         {
             PlayerDataLookUps albionData = new PlayerDataLookUps();
             PlayerLookupInfo playerInfo = new PlayerLookupInfo();
-            
-			await DeferAsync(true);
 
-			playerInfo = await albionData.GetPlayerInfo(Context, InGameName);
-            
+            await DeferAsync(true);
+
+            playerInfo = await albionData.GetPlayerInfo(Context, InGameName);
+
             if (playerInfo != null || DiscordUser != null)
             {
                 await GoogleSheetsDataWriter.UnResgisterUserFromDataSources(InGameName, DiscordUser);
@@ -177,9 +179,9 @@ namespace CommandModule
                     }
                 }
 
-				//TODO: REMOVE PLAYER FROM DATABASE HERE
-				await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command Unregister", null));
-				await FollowupAsync($"{InGameName} was unregistered", ephemeral: true);
+                //TODO: REMOVE PLAYER FROM DATABASE HERE
+                await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command Unregister", null));
+                await FollowupAsync($"{InGameName} was unregistered", ephemeral: true);
             }
             else
             {
@@ -390,57 +392,57 @@ namespace CommandModule
                 string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
                 string PaychexDate = "";
                 List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
-				var embed = new EmbedBuilder();
+                var embed = new EmbedBuilder();
 
-				embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
+                embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
 
-				string biweeklyLastSundayDate = $"{HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
-				if (!paychexSheets.Any(s => s.Contains(biweeklyLastSundayDate)))
-				{
-					embed.AddField("Last weeks estimated paychex:", $"${paychexRunningTotal[0]:n0}");
-				}
-
-				embed.AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}");
-				embed.AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}");
-				embed.AddField("Regear Status:", $"{regearStatus}");
-
-				if (paychexRunningTotal.Count > 0)
+                string biweeklyLastSundayDate = $"{HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
+                if (!paychexSheets.Any(s => s.Contains(biweeklyLastSundayDate)))
                 {
-                    
+                    embed.AddField("Last weeks estimated paychex:", $"${paychexRunningTotal[0]:n0}");
+                }
 
-					foreach (var entries in paychexTotals)
-					{
-						embed.AddField(entries.Key, $"{entries.Value:n0}");
+                embed.AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}");
+                embed.AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}");
+                embed.AddField("Regear Status:", $"{regearStatus}");
 
-						if (entries.Key.Length > 0)
-						{
-							int iter = entries.Key.IndexOf(" ") + 1;
-							PaychexDate = entries.Key.Substring(0, iter);
-						}
+                if (paychexRunningTotal.Count > 0)
+                {
 
-						if (entries.Key.Contains("NOT CLAIMED"))
-						{
-							paychexbutton.Style = ButtonStyle.Success;
-							paychexbutton.IsDisabled = false;
-							paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
-							paychexbutton.CustomId = $"paychex:{PaychexDate.Split("(")[0].Trim()}:{sUserNickname}";
-						}
-						else if (entries.Key.Contains("(CLAIMED)"))
-						{
-							paychexbutton.Style = ButtonStyle.Danger;
-							paychexbutton.IsDisabled = true;
-							paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
-							paychexbutton.CustomId = $"Paychex{entries.Key}";
-						}
-						else
-						{
-							paychexbutton.Label = $"Pending {PaychexDate}";
-							paychexbutton.CustomId = $"Paychex{entries.Key}";
-							paychexbutton.Style = ButtonStyle.Secondary;
-							paychexbutton.IsDisabled = true;
-						}
-						component.WithButton(paychexbutton);
-					}
+
+                    foreach (var entries in paychexTotals)
+                    {
+                        embed.AddField(entries.Key, $"{entries.Value:n0}");
+
+                        if (entries.Key.Length > 0)
+                        {
+                            int iter = entries.Key.IndexOf(" ") + 1;
+                            PaychexDate = entries.Key.Substring(0, iter);
+                        }
+
+                        if (entries.Key.Contains("NOT CLAIMED"))
+                        {
+                            paychexbutton.Style = ButtonStyle.Success;
+                            paychexbutton.IsDisabled = false;
+                            paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
+                            paychexbutton.CustomId = $"paychex:{PaychexDate.Split("(")[0].Trim()}:{sUserNickname}";
+                        }
+                        else if (entries.Key.Contains("(CLAIMED)"))
+                        {
+                            paychexbutton.Style = ButtonStyle.Danger;
+                            paychexbutton.IsDisabled = true;
+                            paychexbutton.Label = $"Claimed {PaychexDate.Split("(")[0]}";
+                            paychexbutton.CustomId = $"Paychex{entries.Key}";
+                        }
+                        else
+                        {
+                            paychexbutton.Label = $"Pending {PaychexDate}";
+                            paychexbutton.CustomId = $"Paychex{entries.Key}";
+                            paychexbutton.Style = ButtonStyle.Secondary;
+                            paychexbutton.IsDisabled = true;
+                        }
+                        component.WithButton(paychexbutton);
+                    }
                     await FollowupAsync(null, null, false, true, null, null, component.Build(), embed.Build());
 
                 }
@@ -556,8 +558,6 @@ namespace CommandModule
         [SlashCommand("regear", "Submit a regear")]
         public async Task RegearSubmission(int EventID, SocketGuildUser callerName, EventTypeEnum EventType, SocketGuildUser mentor = null)
         {
-            List<string> args = new List<string>();
-
             PlayerDataLookUps eventData = new PlayerDataLookUps();
             RegearModule regearModule = new RegearModule();
 
@@ -568,6 +568,10 @@ namespace CommandModule
             string? sCallerNickname = (callerName.Nickname != null) ? callerName.Nickname : callerName.Username;
 
             bool bRegearAllowed = true;
+            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
+
+            PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
+            //ulong regearPoster = regearModule.GetRegearPosterID(PlayerEventData.Victim.Name, Context);
 
             if (sUserNickname.Contains("!sl"))
             {
@@ -579,9 +583,7 @@ namespace CommandModule
                 sCallerNickname = new PlayerDataLookUps().CleanUpShotCallerName(sCallerNickname);
             }
 
-            await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Submit", $"User: {Context.User.Username}, Command: regear", null));
 
-            PlayerEventData = await eventData.GetAlbionEventInfo(EventID);
 
             if (DateTime.Parse(PlayerEventData.TimeStamp) <= DateTime.Now.AddHours(-72) && !guildUser.Roles.Any(r => r.Name == "AO - Officers"))
             {
@@ -663,7 +665,7 @@ namespace CommandModule
             string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value.ToString();
             int killId = Convert.ToInt32(interaction.Message.Embeds.FirstOrDefault().Fields[0].Value);
             ulong regearPoster = regearModule.GetRegearPosterID(victimName, Context);
-			string? sUserNickname = (guildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.DisplayName) : guildUser.Username;
+            string? sUserNickname = (guildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.DisplayName) : guildUser.Username;
             string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name == "Mentor").FirstOrDefault().Value.ToString() : null;
 
             if (RegearModule.HasRegearOverride(guildUser) || (sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower()) || victimName.ToLower() == guildUser.DisplayName.ToLower())
@@ -683,47 +685,49 @@ namespace CommandModule
                 {
                     try
                     {
-                        var mb = new ModalBuilder()
-                        .WithTitle("Regear Denied")
-                        .WithCustomId("regear_deny_menu");
-                        mb.AddTextInput("Why is this regear being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
+                      await interaction.Message.DeleteAsync();
+						          await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied regear #{killId}. Please seek out them if you need a reason why.");
+						          //var mb = new ModalBuilder()
+						          //.WithTitle("Regear Denied")
+						          //.WithCustomId($"regear_deny_menu{killId}");
+						          //mb.AddTextInput("Why is this regear being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
 
-                        string Reason = "Nothing";
-                        bool confirmModal = false;
+						          //string Reason = "Nothing";
+						          //bool confirmModal = false;
 
-                        await Context.Interaction.RespondWithModalAsync(mb.Build());
-                        Context.Client.ModalSubmitted += async modal =>
-                        {
-                            if(!confirmModal)
-                            {
-								await modal.DeferAsync();
-								Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
-								await interaction.Message.DeleteAsync();
-								await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied regear #{killId}. https://albiononline.com/en/killboard/kill/{killId} Reason: {Reason}");
-								confirmModal = true;
-							}
-						};
-                    }
+						          //await Context.Interaction.RespondWithModalAsync(mb.Build());
+						          //Context.Client.ModalSubmitted += async modal =>
+						          //{
+						          //    if (!confirmModal)
+						          //    {
+						          //        await modal.DeferAsync();
+						          //        Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
+						          //        await interaction.Message.DeleteAsync();
+						          //        await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied regear #{killId}. https://albiononline.com/en/killboard/kill/{killId} Reason: {Reason}");
+						          //        confirmModal = true;
+						          //    }
+						          //};
+					          }
                     catch (Exception ex)
                     {
                         Console.WriteLine(ex);
                     }
                 }
-				else
-				{
+                else
+                {
                     await interaction.Message.DeleteAsync();
-					await RespondAsync($"Regear #{killId} cancelled", ephemeral: true );
-				}
+                    await RespondAsync($"Regear #{killId} cancelled", ephemeral: true);
+                }
 
-				await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
-			}
+                await _logger.Log(new LogMessage(LogSeverity.Info, "Regear Denied", $"User: {Context.User.Username}, Denied regear {killId} for {victimName} ", null));
+            }
             else
             {
                 await RespondAsync($"<@{Context.User.Id}>Stop pressing random buttons idiot. That aint your job.", null, false, true);
             }
         }
 
-		[ComponentInteraction("approve")]
+        [ComponentInteraction("approve")]
         public async Task RegearApprove()
         {
             SocketGuildUser guildUser = (SocketGuildUser)Context.User;
@@ -900,7 +904,7 @@ namespace CommandModule
             ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
             string Reason = "";
 
-			if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || regearPoster == guildUser.Id)
+            if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || regearPoster == guildUser.Id)
             {
                 dataBaseService = new DataBaseService();
 
@@ -909,22 +913,22 @@ namespace CommandModule
                     dataBaseService.DeletePlayerLootByQueueId(iQueueID.ToString());
                     var guildUsertest = Context.Guild.GetUser(regearPoster);
 
-                    var mb = new ModalBuilder()
-                    .WithTitle("OC Break Denied")
-                    .WithCustomId("deny_menu");
-                    mb.AddTextInput("Why is this OC Break being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
-					await DeferAsync(true);
-					await Context.Interaction.RespondWithModalAsync(mb.Build());
-                    Context.Client.ModalSubmitted += async modal =>
-                    {
-                        
-						 Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";  
-					};
+                    //var mb = new ModalBuilder()
+                    //.WithTitle("OC Break Denied")
+                    //.WithCustomId("deny_menu");
+                    //mb.AddTextInput("Why is this OC Break being denied?", "deny_reason", TextInputStyle.Paragraph, placeholder: "Enter something here why this person is robbing the guild", required: false, value: null, maxLength: 500);
+                    //await DeferAsync(true);
+                    //await Context.Interaction.RespondWithModalAsync(mb.Build());
+                    //Context.Client.ModalSubmitted += async modal =>
+                    //{
+
+                    //    Reason = (modal.Data.Components.FirstOrDefault().Value != null || modal.Data.Components.FirstOrDefault().Value != "") ? modal.Data.Components.FirstOrDefault().Value : "None";
+                    //};
 
                     //await Context.Interaction.User.SendMessageAsync($"{guildUser.DisplayName} denied OC break {iQueueID}. Reason: {Reason}");
-					await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied OC break {iQueueID}. Reason: {Reason}");
-					await Context.Interaction.DeleteOriginalResponseAsync();
-                    
+                    await Context.Guild.GetUser(regearPoster).SendMessageAsync($"{guildUser.DisplayName} denied OC break {iQueueID}. If you need reason for deny seek out why.");
+                    await Context.Interaction.DeleteOriginalResponseAsync();
+
                     //await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
                 }
                 catch (Exception ex)
@@ -1163,31 +1167,31 @@ namespace CommandModule
         public async Task AddGame(string Game_Name, SocketRole? Role = null)
         {
             SocketRole newRole = null;
-			if (Role == null)
-			{
-				await Context.Guild.CreateRoleAsync(Game_Name, null);
+            if (Role == null)
+            {
+                await Context.Guild.CreateRoleAsync(Game_Name, null);
 
                 var roleIds = Context.Guild.Roles;
 
-                foreach(var roles in roleIds)
+                foreach (var roles in roleIds)
                 {
-                    if(roles.Name == Game_Name)
+                    if (roles.Name == Game_Name)
                     {
-						newRole = Context.Guild.GetRole(roles.Id);
-					}
+                        newRole = Context.Guild.GetRole(roles.Id);
+                    }
                 }
-                
-			}
 
-			var membercount = Context.Guild.GetRole((Role == null) ? newRole.Id : Role.Id).Members.Count();
+            }
+
+            var membercount = Context.Guild.GetRole((Role == null) ? newRole.Id : Role.Id).Members.Count();
 
 
-			var embed = new EmbedBuilder();
+            var embed = new EmbedBuilder();
             embed.WithTitle($"{Game_Name}");
-            embed.AddField("Role Name", (Role == null)? newRole : Role.Name, true);
+            embed.AddField("Role Name", (Role == null) ? newRole : Role.Name, true);
             embed.AddField("Current Members playing", membercount, true);
             embed.AddField("Game ID:", (Role == null) ? newRole.Id : Role.Id, true);
-			var comp = new ComponentBuilder();
+            var comp = new ComponentBuilder();
             var approveSplit = new ButtonBuilder()
             {
                 Label = "Get/Remove Role",
@@ -1196,7 +1200,7 @@ namespace CommandModule
             };
             comp.WithButton(approveSplit);
 
-            
+
 
             await RespondAsync(null, null, false, false, null, null, comp.Build(), embed.Build());
 
@@ -1205,63 +1209,246 @@ namespace CommandModule
         }
 
         [ComponentInteraction("getrole*")]
-		public async Task GetRole()
-		{
-			var interaction = Context.Interaction as IComponentInteraction;
-			IComponentInteraction ButtonInteraction = Context.Interaction as IComponentInteraction;
+        public async Task GetRole()
+        {
+            var interaction = Context.Interaction as IComponentInteraction;
+            IComponentInteraction ButtonInteraction = Context.Interaction as IComponentInteraction;
 
-			string sGameName = ButtonInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
-			ulong roleID = Convert.ToUInt64(ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString());
-
-
-			
-
-			var user = Context.Guild.GetUser(Context.User.Id);
+            string sGameName = ButtonInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
+            ulong roleID = Convert.ToUInt64(ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString());
 
 
-            if(!user.Roles.Any(r => r.Name == sGameName))
+
+
+            var user = Context.Guild.GetUser(Context.User.Id);
+
+
+            if (!user.Roles.Any(r => r.Name == sGameName))
             {
-				await user.AddRoleAsync(roleID);
+                await user.AddRoleAsync(roleID);
                 await Context.User.SendMessageAsync($"You have been granted the {sGameName} role");
-				await DeferAsync();
-			}
+                await DeferAsync();
+            }
             else
             {
-				await user.RemoveRoleAsync(roleID);
-				await Context.User.SendMessageAsync($"{sGameName} role has been removed");
+                await user.RemoveRoleAsync(roleID);
+                await Context.User.SendMessageAsync($"{sGameName} role has been removed");
+                await DeferAsync();
+            }
+
+
+            var membercount = Context.Guild.GetRole(roleID).Members.Count();
+
+            EmbedBuilder previousEmbed = new EmbedBuilder();
+            var previousButtons = ComponentBuilder.FromComponents(ButtonInteraction.Message.Components);
+
+            previousEmbed.Title = ButtonInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
+            previousEmbed.AddField("Role Name", ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString(), true);
+            previousEmbed.AddField("Current Members", membercount, true);
+            previousEmbed.AddField("Game ID:", ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString(), true);
+
+            var fieldtest = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value;
+
+            await Context.Interaction.ModifyOriginalResponseAsync((x) =>
+            {
+                x.Embed = previousEmbed.Build();
+                x.Components = previousButtons.Build();
+            });
+
+
+
+
+        }
+
+        [SlashCommand("register-guild-to-alliance", "Register a guild to the alliance")]
+        public async Task RegisterGuild(string Guild_Name)
+        {
+
+			//dataBaseService = new DataBaseService();
+			//await dataBaseService.RegisterAlliancePlayerInfo(new RegisteredGuild
+			//{
+			//	//GuildID = playerInfo.GuildId,
+			//	//GuildName = playerInfo.GuildName
+			//});
+
+		}
+
+		[SlashCommand("register-to-allaince", "Register yourself to the alliance")]
+		public async Task RegisterToAllaince()
+		{
+			string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).DisplayName != null) ? (Context.Interaction.User as SocketGuildUser).DisplayName : Context.Interaction.User.Username;
+			var socketUser = (SocketGuildUser)Context.User;
+
+			PlayerLookupInfo playerInfo = new PlayerLookupInfo();
+			PlayerDataLookUps albionData = new PlayerDataLookUps();
+
+			var tempRoleIDReign = Context.Guild.GetRole(1128714322860843068);
+			var tempRolIDFreeBeer = Context.Guild.GetRole(1128714260386689075);
+			//var tempRoleIDWarriorsCompany = Context.Guild.GetRole(1128714214987538472);
+			var tempRoleIDAlpacasOnYourBack = Context.Guild.GetRole(1129090950971535500);
+
+			var tempGuildIDReign = "gbwnj2Z2TFiImf3gAPTgRg";
+			var tempGuildIDFreeBeer = "9ndyGFTPT0mYwPOPDXDmSQ";
+			//var tempGuildIDWarriorsCompany = "yD2A0-UjQgG6swbTkOrqiQ";
+			string tempGuildIDAlpacasOnYourBack = "asUiraoQS02Rf7ipBjKo_g";
+
+			var AllianceID = "VnJPzLDbROy3rdfbc28L_w";
+            string GuildTag = "NA";
+			dataBaseService = new DataBaseService();
+
+			await _logger.Log(new LogMessage(LogSeverity.Info, "Alliance Register", $"User: {Context.User.Username}, Command: register-alliance", null));
+
+			try
+            {
+				playerInfo = await albionData.GetPlayerInfo(Context, sUserNickname);
+
 				await DeferAsync();
-			}
+
+				if (IsPlayerGuildInAlliance(playerInfo.GuildId) && IsPlayerInAlliance(playerInfo.AllianceId))
+        {
+            if(playerInfo.Name == sUserNickname)
+            {
+                if(!await dataBaseService.CheckAlliancePlayerIsExist(playerInfo.Id))
+                {
+			            if (playerInfo.GuildId == tempGuildIDFreeBeer)
+			            {
+				            await socketUser.AddRoleAsync(tempRolIDFreeBeer);
+                                    GuildTag = $"[Free] {playerInfo.Name}";
+			            }
+			            else if (playerInfo.GuildId == tempGuildIDReign)
+			            {
+				            await socketUser.AddRoleAsync(tempRoleIDReign);
+                                    GuildTag = $"[REIGN] {playerInfo.Name}";
+			            }
+			            //else if (playerInfo.GuildId == tempGuildIDWarriorsCompany)
+			            //{
+			            //	await socketUser.AddRoleAsync(tempRoleIDWarriorsCompany);
+            //                         GuildTag = $"[Warriors] {playerInfo.Name}";
+			            //}
+                  else if(playerInfo.GuildId == tempGuildIDAlpacasOnYourBack)
+                  {
+                      await socketUser.AddRoleAsync(tempRoleIDAlpacasOnYourBack);
+                      GuildTag = $"[Alpacas] {playerInfo.Name}";
+
+			            }
+
+							try
+							{
+								await socketUser.ModifyAsync(x => x.Nickname = GuildTag);
+							}
+							catch (Exception ex) 
+              {
+                  Console.WriteLine($"Modifying guild tag into server nickname failed. User: {playerInfo.Name}");
+              }
+							
+
+							await dataBaseService.RegisterAlliancePlayerInfo(new RegisteredAllianceMembers
+							{
+								PlayerID = playerInfo.Id,
+								PlayerName = playerInfo.Name,
+								GuildID = playerInfo.GuildId,
+								GuildName = playerInfo.GuildName,
+								AllianceID = playerInfo.AllianceId,
+								AllianceName = playerInfo.AllianceName,
+								DateRegistered = DateTime.Today,
+								KillFame = playerInfo.KillFame
+							});
+
+							await FollowupAsync($"<@{socketUser.Id}> in guild {playerInfo.GuildName} has been registed to the Alliance.");
+						}
+              else
+              {
+							  await FollowupAsync("Registration failed. You're already registered to the Alliance");
+						  }
+					  }
+                    else
+                    {
+                        await FollowupAsync("Registration failed. Your discord name must match EXACTLY to your in-game name");
+                    }
+				}
+                else
+                {
+					await FollowupAsync("Registration failed. Your guild is not registered to the Alliance.");
+				}
+			  }
+            catch (Exception ex) 
+            {
+                await RespondAsync("Registration failed. Can't find you or your discord name doesn't match your in-game name.", ephemeral: true);
+            }
+			
+			
+		}
+		[SlashCommand("remove-guild-from-alliance", "Removes a guild from the alliance")]
+		public async Task UnRegisterGuild(string Guild_Name)
+		{
 
 
-			var membercount = Context.Guild.GetRole(roleID).Members.Count();
+		}
 
-			EmbedBuilder previousEmbed = new EmbedBuilder();
-			var previousButtons = ComponentBuilder.FromComponents(ButtonInteraction.Message.Components);
+    [SlashCommand("unregister-user-from-allaince", "Removes a user from the alliance")]
+    public async Task UnRegisterAllianceMember(string Player_Name, SocketGuildUser? DiscordUser = null)
+    {
 
-			previousEmbed.Title = ButtonInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
-			previousEmbed.AddField("Role Name", ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString(), true);
-			previousEmbed.AddField("Current Members", membercount, true);
-			previousEmbed.AddField("Game ID:", ButtonInteraction.Message.Embeds.FirstOrDefault().Fields[2].Value.ToString(), true);
+        PlayerDataLookUps albionData = new PlayerDataLookUps();
+        PlayerLookupInfo playerInfo = new PlayerLookupInfo();
 
-			var fieldtest = interaction.Message.Embeds.FirstOrDefault().Fields[1].Value;
+        try
+        {
+		      playerInfo = await albionData.GetPlayerInfo(Context, Player_Name);
 
-			//foreach (var field in interaction.Message.Embeds.FirstOrDefault().Fields)
-   //         {
-   //             if(field.Value != null)
-   //             {
-   //                 Console.WriteLine("its here");
-   //             }
-   //         }
+		      if (DiscordUser != null)
+		      {
+			      foreach (var roles in DiscordUser.Roles)
+			      {
+				      if (roles.Name != "@everyone")
+				      {
+					      await DiscordUser.RemoveRoleAsync(roles.Id);
+				      }
+			      }
+		      }
 
-			await Context.Interaction.ModifyOriginalResponseAsync((x) =>
+		      dataBaseService = new DataBaseService();
+		      dataBaseService.DeleteRegisteredAlliancePlayer(playerInfo.Id);
+		      await RespondAsync($"Member {playerInfo.Name} has been de-registered from the allaince", ephemeral: true);
+	      }
+        catch 
+        {
+            await RespondAsync("De-register failed. Incorrect name or they don't exist in database", ephemeral: true);
+        }
+            
+		}
+			
+
+		[SlashCommand("view-alliance-stats", "Check out alliance stats")]
+		public async Task GetAllianceStats()
+		{
+
+
+		}
+
+		private bool IsPlayerGuildInAlliance(string guildID)
+        {
+			string tempGuildIDReign = "gbwnj2Z2TFiImf3gAPTgRg";
+			string tempGuildIDFreeBeer = "9ndyGFTPT0mYwPOPDXDmSQ";
+			//string tempGuildIDWarriorsCompany = "yD2A0-UjQgG6swbTkOrqiQ";
+            string tempGuildIDAlpacasOnYourBack = "asUiraoQS02Rf7ipBjKo_g";
+
+			if (guildID == tempGuildIDReign || guildID == tempGuildIDFreeBeer || guildID == tempGuildIDAlpacasOnYourBack)
+            {
+                return true;
+            }
+            return false;
+        }
+
+		private bool IsPlayerInAlliance(string a_sAllianceID)
+		{
+			var AllianceID = "VnJPzLDbROy3rdfbc28L_w";
+
+			if (a_sAllianceID == AllianceID)
 			{
-				x.Embed = previousEmbed.Build();
-				x.Components = previousButtons.Build();
-			});
-
-
-
-
+				return true;
+			}
+			return false;
 		}
 	}
 }
