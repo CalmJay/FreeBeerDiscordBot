@@ -30,16 +30,13 @@ namespace DiscordBot.Services
 				await freeBeerdbContext.SaveChangesAsync();
 			}
 		}
-		//public async Task RegisterGuild(RegisteredGuilds a_guildID)
-		//{
-		//	if (!await CheckForRegisteredGuild(a_guildID.GuildID))
-		//	{
-		//		await freeBeerdbContext.RegisteredGuild.AddAsync(a_guildID);
-		//		await freeBeerdbContext.SaveChangesAsync();
-		//	}
-		//}
+    public async Task RegisterGuild(RegisteredAllianceGuilds a_guildID)
+    {
+      await freeBeerdbContext.RegisteredAllianceGuilds.AddAsync(a_guildID);
+      await freeBeerdbContext.SaveChangesAsync();
+    }
 
-		public async Task<Boolean> CheckPlayerIsExist(string playerName)
+    public async Task<Boolean> CheckPlayerIsExist(string playerName)
         {
             return await freeBeerdbContext.Player.AnyAsync(x => x.PlayerName == playerName);
         }
@@ -47,13 +44,12 @@ namespace DiscordBot.Services
 		{
 			return await freeBeerdbContext.RegisteredAllianceMembers.AnyAsync(x => x.PlayerID == playerID);
 		}
+    public async Task<Boolean> CheckForRegisteredGuild(string guildID)
+    {
+      return await freeBeerdbContext.RegisteredAllianceGuilds.AnyAsync(x => x.GuildID == guildID);
+    }
 
-		//public async Task<Boolean> CheckForRegisteredGuild(string playerID)
-		//{
-		//	return await freeBeerdbContext.RegisteredAllianceMembers.AnyAsync(x => x.PlayerID == playerID);
-		//}
-
-		public Task<Boolean> PlayerReachRegearCap(string playerName, int a_iRegearLimitCap)
+    public Task<Boolean> PlayerReachRegearCap(string playerName, int a_iRegearLimitCap)
         {
             List<PlayerLoot> playerLoots = new List<PlayerLoot>();
             var playerLoot = freeBeerdbContext.PlayerLoot.AsQueryable().Where(x => x.Player.PlayerName == playerName).ToList();
