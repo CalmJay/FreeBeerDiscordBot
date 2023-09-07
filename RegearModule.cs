@@ -388,7 +388,7 @@ namespace DiscordBot.RegearModule
 
             if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
             {
-                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
+                returnValue = Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
             }
@@ -400,20 +400,20 @@ namespace DiscordBot.RegearModule
             }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
 
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "Free Regear - Eligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
             {
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "NOT ELIGIBLE FOR REGEAR";
                 regearRoleIcon = ":poop:";
             }
@@ -536,7 +536,7 @@ namespace DiscordBot.RegearModule
 
             if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
             {
-                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
+                returnValue =  Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
             }
@@ -548,19 +548,19 @@ namespace DiscordBot.RegearModule
             }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                returnValue =  Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                returnValue =  Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Free Regear - Eligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
             {
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "Shit Tier Regear - Eligible";
                 regearRoleIcon = ":poop:";
             }
@@ -803,7 +803,7 @@ namespace DiscordBot.RegearModule
                     {
                         var value = marketData.Min(x => x.data.FirstOrDefault().avg_price);
 
-                        if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't generally cost over 5 mil. more checks need to be in place)
+                        if (value < 10000000)// Very simple check to verify if a single item is too high. (a single item shouldn't generally cost over 5 mil. more checks need to be in place)
                         {
                             returnValue = value;
                         }
@@ -876,7 +876,10 @@ namespace DiscordBot.RegearModule
 
         public static bool HasRegearOverride(SocketGuildUser a_SocketGuildUser)
         {
-            if(a_SocketGuildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"|| r.Name == "Admin"))
+            ulong ManagementRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("ManagementRoleID"));
+            ulong OfficerRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OfficerRoleID"));
+
+            if(a_SocketGuildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID || r.Name == "Admin"))
             {
                 return true;
             }

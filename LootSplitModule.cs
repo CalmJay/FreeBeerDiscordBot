@@ -14,7 +14,9 @@ namespace DiscordBot.LootSplitModule
 {
     public class LootSplitModule
 	{
-      public ulong roleIdNewRecruit = 847350505977675796;
+    private ulong ManagementRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("ManagementRoleID"));
+    private ulong OfficerRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OfficerRoleID"));
+    public ulong roleIdNewRecruit = 847350505977675796;
       public ulong roleIdMember = 739948841847095387;
       public ulong roleIdOfficer = 335894631810334720;
       public ulong roleIdVeteran = 739950349405782046;
@@ -470,7 +472,7 @@ namespace DiscordBot.LootSplitModule
 
 			var guildUser = (SocketGuildUser)Context.User;
 
-			if (guildUser.Roles.Any(r => r.Name == "AO - Officers" || r.Name == "admin" || r.Name == "AO - REGEARS") || socketThreadChannel.Owner.DisplayName == Context.User.Username || Context.Interaction.User.Username == sPartyLeader)//Add check to allow the ownder of the model submit
+			if (guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID || r.Name == "admin") || socketThreadChannel.Owner.DisplayName == Context.User.Username || Context.Interaction.User.Username == sPartyLeader)//Add check to allow the ownder of the model submit
 			{
                 
 				var mb = new ModalBuilder()
