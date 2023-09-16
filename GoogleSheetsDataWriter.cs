@@ -661,7 +661,7 @@ namespace GoogleSheetsData
                     rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, a_iAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Deposit" } } };
                     break;
                 case MiniMarketType.Purchase:
-                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, -discountedAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Purchase" } } };
+                    rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, -a_iAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Purchase" } } };
                     break;
                 case MiniMarketType.CreditsTransfer:
                     rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + sUserNickname, a_iAmount, DateTime.UtcNow.Date.ToString("M/d/yyyy"), sManagerNickname, "Credits Transfer" } } };

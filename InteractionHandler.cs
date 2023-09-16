@@ -102,6 +102,7 @@ namespace InteractionHandlerService
         await arg.SendMessageAsync($"Don't forget to post info first before you run /Split-Loot");
       }
     }
+
     private async Task UserJoinedGuildExecuted(SocketGuildUser SocketGuildUser)
     {
       if (SocketGuildUser.Guild.Id == FreeBeerGuildID)

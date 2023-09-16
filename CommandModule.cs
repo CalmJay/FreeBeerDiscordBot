@@ -33,6 +33,7 @@ namespace CommandModule
   {
     public InteractionService Commands { get; set; }
     private PlayerDataHandler.Rootobject PlayerEventData { get; set; }
+
     private ulong GuildID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("FreeBeerDiscordGuildID"));
     private static Logger _logger;
     private DataBaseService dataBaseService;
@@ -40,8 +41,16 @@ namespace CommandModule
     private int iRegearLimit = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("RegearSubmissionCap"));
     private bool bAutomatedRegearProcessing = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("AutomaticRegearProcessing"));
     string AllianceGuildGuidID = System.Configuration.ConfigurationManager.AppSettings.Get("FreeBeerAllianceAPIID");
-    public IEnumerable<IMessage> msgs { get; set; }
+    private ulong ManagementRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("ManagementRoleID"));
+    private ulong OfficerRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OfficerRoleID"));
 
+    private ulong GoldTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegear"));
+    private ulong SilverTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
+    private ulong BronzeTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegear"));
+    private ulong FreeTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("FreeTierRegear"));
+
+
+    public IEnumerable<IMessage> msgs { get; set; }
     public CommandModule(ConsoleLogger logger)
     {
       _logger = logger;
@@ -532,7 +541,7 @@ namespace CommandModule
       string? sUserNickname = (GuildUser.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(GuildUser.Nickname) : GuildUser.Username;
       var socketUser = (SocketGuildUser)Context.User;
 
-      if (socketUser.Roles.Any(r => r.Name == "AO - Officers") || socketUser.Roles.Any(r => r.Name == "AO - HO Manager") || socketUser.Roles.Any(r => r.Name == "AO - Minimart"))
+      if (socketUser.Roles.Any(r => r.Id == OfficerRoleID) || socketUser.Roles.Any(r => r.Name == "AO - HO Manager") || socketUser.Roles.Any(r => r.Name == "AO - Minimart"))
       {
         await DeferAsync();
         await _logger.Log(new LogMessage(LogSeverity.Info, "mm Transaction", $"User: {Context.User.Username}, Command: mm-transaction", null));
@@ -544,7 +553,7 @@ namespace CommandModule
         {
           int discount = Convert.ToInt32(Amount * .10);
 
-          await ReplyAsync($"{TransactionType} of {Amount.ToString("N0")} is complete. Discount of {discount.ToString("N0")} was subtracted. {sUserNickname} current balance is {miniMarketCreditsTotal} ");
+          await ReplyAsync($"{TransactionType} of {Amount.ToString("N0")} is complete. {sUserNickname} current balance is {miniMarketCreditsTotal} ");
           await FollowupAsync("React :thumbsup: when you pickup your items.");
         }
         else
@@ -588,28 +597,28 @@ namespace CommandModule
 
 
 
-      if (DateTime.Parse(PlayerEventData.TimeStamp) <= DateTime.Now.AddHours(-72) && !guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+      if (DateTime.Parse(PlayerEventData.TimeStamp) <= DateTime.Now.AddHours(-72) && !guildUser.Roles.Any(r => r.Id == OfficerRoleID))
       {
         await RespondAsync($"Requirement failed. Your time to submit this regear is past 72 hours. Regear denied. ", null, false, true);
         bRegearAllowed = false;
       }
 
-      if (EventType == EventTypeEnum.SpecialEvent)
+      if (EventType == EventTypeEnum.SpecialEvent || guildUser.Roles.Any(r => r.Id == GoldTierRegearID || r.Id == SilverTierRegearID))
       {
         bRegearAllowed = true;
       }
-      else if (guildUser.Roles.Any(x => x.Id == 970083088241672245) && mentor == null)
+      else if (guildUser.Roles.Any(x => x.Id == BronzeTierRegearID) && mentor == null)
       {
         await RespondAsync($"Hey bud. You need to submit your regear with your mentor tagged. They are the optional choice at the end of the command. ", null, false, true);
         bRegearAllowed = false;
       }
-      else if (mentor != null && RegearModule.ISUserMentor(mentor) && guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Elligible"))
+      else if (mentor != null && RegearModule.ISUserMentor(mentor) && guildUser.Roles.Any(r => r.Id == BronzeTierRegearID))
       {
         await RespondAsync($"Cleary you need a mentor you idiot. Make sure you select an ACTUAL mentor", null, false, true);
         bRegearAllowed = false;
       }
 
-      if (bRegearAllowed || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+      if (bRegearAllowed || guildUser.Roles.Any(r => r.Id == OfficerRoleID || r.Id == ManagementRoleID))
       {
         dataBaseService = new DataBaseService();
         await dataBaseService.AddPlayerInfo(new Player
@@ -618,7 +627,7 @@ namespace CommandModule
           PlayerName = PlayerEventData.Victim.Name
         });
 
-        if (!await dataBaseService.PlayerReachRegearCap(sUserNickname, iRegearLimit) || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+        if (!await dataBaseService.PlayerReachRegearCap(sUserNickname, iRegearLimit) || guildUser.Roles.Any(r => r.Id == OfficerRoleID))
         {
           if (!await dataBaseService.CheckKillIdIsRegeared(EventID.ToString()))
           {
@@ -626,15 +635,15 @@ namespace CommandModule
             {
               var moneyType = (MoneyTypes)Enum.Parse(typeof(MoneyTypes), "ReGear");
 
-              if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+              if (PlayerEventData.Victim.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Id == OfficerRoleID))
               {
                 await DeferAsync();
 
                 await regearModule.PostRegear(Context, PlayerEventData, sCallerNickname, EventType, moneyType, mentor);
                 await Context.User.SendMessageAsync($"<@{Context.User.Id}> Your regear ID:{regearModule.RegearQueueID} has been submitted successfully.");
 
-                await FollowupAsync("Regear Submission Complete");
-                await DeleteOriginalResponseAsync();
+                await FollowupAsync("Regear Submission", ephemeral: true);
+                //await DeleteOriginalResponseAsync();
               }
               else
               {
@@ -744,7 +753,7 @@ namespace CommandModule
       string? sUserNickname = (guildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(guildUser.DisplayName) : guildUser.Username;
       string? sSelectedMentor = (interaction.Message.Embeds.FirstOrDefault().Fields.Any(x => x.Name == "Mentor")) ? interaction.Message.Embeds.FirstOrDefault().Fields.Where(x => x.Name == "Mentor").FirstOrDefault().Value.ToString() : null;
 
-      if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower())
+      if (guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID) || sSelectedMentor != null && RegearModule.ISUserMentor(guildUser) && sSelectedMentor.ToLower() == sUserNickname.ToLower())
       {
         PlayerDataLookUps eventData = new PlayerDataLookUps();
         PlayerEventData = await eventData.GetAlbionEventInfo(iKillId);
@@ -786,7 +795,7 @@ namespace CommandModule
       string sBattleID = (PlayerEventData.EventId == PlayerEventData.BattleId) ? "No battle found" : PlayerEventData.BattleId.ToString();
       string sKillerGuildName = (PlayerEventData.Killer.GuildName == "" || PlayerEventData.Killer.GuildName == null) ? "No Guild" : PlayerEventData.Killer.GuildName;
 
-      if (socketGuildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+      if (socketGuildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID))
       {
         var embed = new EmbedBuilder()
         .WithTitle($"Regear audit on {PlayerEventData.Victim.Name}")
@@ -832,7 +841,7 @@ namespace CommandModule
 
       await _logger.Log(new LogMessage(LogSeverity.Info, "OC break Submit", $"User: {Context.User.Username}, Command: oc-regear", null));
 
-      if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Name == "AO - Officers"))
+      if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Id == OfficerRoleID))
       {
         await DeferAsync();
         await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak, enumEventType);
@@ -872,7 +881,7 @@ namespace CommandModule
 
       PlayerDataLookUps eventData = new PlayerDataLookUps();
 
-      if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"))
+      if (guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID))
       {
         await GoogleSheetsDataWriter.WriteToRegearSheet(Context, tempPlayerEventData, refundAmount, callername, eventType, MoneyTypes.OCBreak);
         await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
@@ -900,14 +909,15 @@ namespace CommandModule
     public async Task OCDenied()
     {
       var guildUser = (SocketGuildUser)Context.User;
-
       var interaction = Context.Interaction as IComponentInteraction;
       string victimName = interaction.Message.Embeds.FirstOrDefault().Fields[0].Value.ToString();
       var iQueueID = interaction.Message.Embeds.FirstOrDefault().Fields[4].Value;
       ulong regearPoster = Convert.ToUInt64(interaction.Message.Embeds.FirstOrDefault().Fields[5].Value);
       string Reason = "";
 
-      if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers") || regearPoster == guildUser.Id)
+      await DeferAsync();
+
+      if (guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID) || regearPoster == guildUser.Id)
       {
         dataBaseService = new DataBaseService();
 
@@ -1031,15 +1041,16 @@ namespace CommandModule
           cleanedUpNames.Add(new PlayerDataLookUps().CleanUpShotCallerName(user.DisplayName));
         }
       }
-      if (NonDamagedLootTotal != null || DamagedLootTotal != null)
+      if (NonDamagedLootTotal != null || DamagedLootTotal != null || SilverBagsTotal != null)
       {
         await lootSplitMod.LootSplitInitialPrompt(Context, cleanedUpNames, sCallerNickname, LootSplitType, EventType, NonDamagedLootTotal, DamagedLootTotal, SilverBagsTotal);
+        await FollowupAsync("Loot Split submitted");
       }
       else
       {
-        await RespondAsync("You must add a loot amount if you want", ephemeral: true);
+        await FollowupAsync("You must add some sort of loot amount", ephemeral: true);
       }
-      await FollowupAsync("Loot Split submitted");
+      
       await _logger.Log(new LogMessage(LogSeverity.Info, "Split-Loot Command", $"User: {Context.User.Username} initiated a split-loot", null));
     }
 
@@ -1075,7 +1086,7 @@ namespace CommandModule
       List<string> membersSplit = interaction.Message.Embeds.FirstOrDefault().Fields[9].Value.Replace(" ", "").Split(',').ToList();
 
       //check perms to push buttons
-      if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin"))
+      if (guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID || r.Name == "admin"))
       {
         await RespondAsync("Processing. Please wait till you get the confirmation before closing thread...");
 
@@ -1153,7 +1164,7 @@ namespace CommandModule
       string sPartyLeader = interaction.Message.Embeds.FirstOrDefault().Fields[10].Value;
 
       //check perms for button pushing
-      if (guildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers" || r.Name == "admin" || socketThreadChannel.Owner.DisplayName == Context.User.Username || Context.Interaction.User.Username == sPartyLeader))
+      if (guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID || r.Name == "admin" || socketThreadChannel.Owner.DisplayName == Context.User.Username || Context.Interaction.User.Username == sPartyLeader))
       {
         await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
         await RespondAsync("Loot split denied/cancelled");
@@ -1188,7 +1199,6 @@ namespace CommandModule
 
       var membercount = Context.Guild.GetRole((Role == null) ? newRole.Id : Role.Id).Members.Count();
 
-
       var embed = new EmbedBuilder();
       embed.WithTitle($"{Game_Name}");
       embed.AddField("Role Name", (Role == null) ? newRole : Role.Name, true);
@@ -1203,11 +1213,7 @@ namespace CommandModule
       };
       comp.WithButton(approveSplit);
 
-
-
       await RespondAsync(null, null, false, false, null, null, comp.Build(), embed.Build());
-
-
 
     }
 
@@ -1258,9 +1264,6 @@ namespace CommandModule
         x.Components = previousButtons.Build();
       });
 
-
-
-
     }
 
     [SlashCommand("register-guild-to-alliance", "Register a guild to the alliance")]
@@ -1285,10 +1288,8 @@ namespace CommandModule
       {
         await RespondAsync("Registration failed. Can't find guild or guild is not currently in Free Beer alliance", ephemeral: true);
       }
-      
-
-      
     }
+
 
     [SlashCommand("register-to-allaince", "Register yourself to the alliance")]
     public async Task RegisterToAllaince()

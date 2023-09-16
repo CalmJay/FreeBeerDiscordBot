@@ -686,10 +686,8 @@ namespace DiscordBot.RegearModule
             double returnValue = a_iEquipmentPrice;
 
             string mountTier = a_PlayerEquipment.Mount.Type.ToString().Split('_')[0];
-            if (a_PlayerEquipment.Mount.Type.ToString().Contains("UNIQUE_MOUNT") || mountTier == "T5" || mountTier == "T6" || mountTier == "T7" || mountTier == "T8")
-            {
-                returnValue = Math.Min(mountCap, a_iEquipmentPrice);
-            }
+
+            returnValue = Math.Min(mountCap, a_iEquipmentPrice);
             
             return returnValue;
         }
