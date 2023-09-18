@@ -45,7 +45,8 @@ namespace DiscordBot.RegearModule
 
       public double TotalRegearSilverAmount { get; set; }
       public ulong RegearQueueID { get; set; }
-      private string regearRoleIcon { get; set; }
+      public int KillID { get; set; }
+    private string regearRoleIcon { get; set; }
 
 		    public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
         {
@@ -57,6 +58,7 @@ namespace DiscordBot.RegearModule
             var bytes = converter.FromHtmlString(html);
 
             RegearQueueID = command.Interaction.Id;
+            KillID = a_EventData.EventId;
 
             var approveButton = new ButtonBuilder()
             {
@@ -223,7 +225,6 @@ namespace DiscordBot.RegearModule
                                         .WithImageUrl($"attachment://image.jpg");
 
                     await command.Channel.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
-                    //await command.User.SendMessageAsync("Test",false, null, null, null, null, embeds: test);
                 }
             }
             catch (Exception ex)
