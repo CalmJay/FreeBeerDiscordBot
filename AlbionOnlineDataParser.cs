@@ -15,7 +15,7 @@ namespace AlbionOnlineDataParser
             ApiClient.BaseAddress = new Uri("https://gameinfo.albiononline.com/api/gameinfo/");
             ApiClient.DefaultRequestHeaders.Accept.Clear();
             ApiClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-        }      
+        }
         public static void InitializeAlbionDataProjectCurrentPrices()
         {
             ApiAlbionDataProjectCurrentPrices = new HttpClient();
@@ -23,7 +23,7 @@ namespace AlbionOnlineDataParser
             ApiAlbionDataProjectCurrentPrices.DefaultRequestHeaders.Accept.Clear();
             ApiAlbionDataProjectCurrentPrices.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }
-        
+
         public static void InitializeAlbion24HourDataMarketPricesHistory()
         {
             //https://www.albion-online-data.com/api/v2/stats/history/T8_HEAD_PLATE_SET2?time-scale=24&locations=Martlock&qualities=2
@@ -36,7 +36,7 @@ namespace AlbionOnlineDataParser
         public static void InitializeAlbionData24DayAveragePrices()
         {
             ApiAlbionDataProjectMonthlyPrices = new HttpClient();
-            ApiAlbionDataProjectMonthlyPrices.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/prices/");
+            ApiAlbionDataProjectMonthlyPrices.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/history/");
             ApiAlbionDataProjectMonthlyPrices.DefaultRequestHeaders.Accept.Clear();
             ApiAlbionDataProjectMonthlyPrices.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }

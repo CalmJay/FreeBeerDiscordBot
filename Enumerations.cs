@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DiscordBot.Enums
+﻿namespace DiscordBot.Enums
 {
     public enum EventTypeEnum
     {
+        Bandit,
         Castle,
         Chest,
         Ganking,
@@ -13,6 +10,7 @@ namespace DiscordBot.Enums
         Hideout,
         Mages,
         Orb,
+        Outpost,
         Other,
         SpecialEvent,
         Territory,
@@ -91,5 +89,43 @@ namespace DiscordBot.Enums
         CreditsTransfer,
         AccountSetup,
         Other
+    }
+
+    public enum LootSplitType
+    {
+        Guild,
+        Personal,
+        OffSeason,
+        Other
+    }
+
+    public enum PricingOptions
+    {
+        MonthlyAverage,
+        DayAverage,
+        CurrentPrice
+    }
+
+    public enum ItemQuality
+    {
+        Normal = 1,
+        Good = 2,
+        Outstanding = 3,
+        Excellent = 4,
+        Masterpiece = 5
+    }
+
+    public enum RegearTiers
+    {
+        Gold,
+        Silver,
+        Bronze,
+        None
+    }
+
+    public enum  Options
+    {
+        Add,
+        Remove
     }
 }

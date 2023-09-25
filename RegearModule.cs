@@ -1,49 +1,56 @@
 ﻿using CoreHtmlToImage;
 using Discord;
+using Discord.Interactions;
+using Discord.Rest;
 using Discord.WebSocket;
 using DiscordBot.Enums;
+using DiscordBot.Models;
 using DiscordBot.Services;
+using MarketData;
 using PlayerData;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Discord.Interactions;
-using MarketData;
-using DiscordBot.Models;
-using Aspose.Words.Lists;
-using Newtonsoft.Json;
-using Microsoft.EntityFrameworkCore.Internal;
-using System.Security.Cryptography.X509Certificates;
+using static PlayerData.PlayerDataHandler;
 
 namespace DiscordBot.RegearModule
 {
     public class RegearModule
-    {
-        private DataBaseService dataBaseService;
+	  {
+      private DataBaseService dataBaseService;
 
-        private int goldTierRegearCap = 1700000;
-        private int silverTierRegearCap = 1300000;
-        private int bronzeTierRegearCap = 1000000;
-        private int shitTierRegearCap = 600000;
-        private int iTankMinimumIP = 1450;
-        private int iDPSMinimumIP = 1450;
-        private int iHealerMinmumIP = 1350;
-        private int iSupportMinimumIP = 1350;
+      private int goldTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegearPriceCap"));
+      private int silverTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegearPriceCap"));
+      private int bronzeTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegearPriceCap"));
+      private int shitTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DefaultTierSubmissionCap"));
+      private int mountCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("MountPriceCap"));
 
-        public double TotalRegearSilverAmount { get; set; }
-        public ulong RegearQueueID { get; set; }
-        private ClassType eRegearClassType { get; set; }
+      private int iTankMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMinimumIP"));
+      private int iDPSMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMinimumIP"));
+      private int iHealerMinmumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMinmumIP"));
+      private int iSupportMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMinimumIP"));
 
-        private string regearRoleIcon { get; set; }
+		  private ulong roleIdNewRecruit = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("newRecruit"));
+		  private ulong roleIdMember = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("member"));
+		  private ulong roleIdOfficer = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("officer"));
+		  private ulong roleIdVeteran = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
 
+		  private static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
+      private static ulong HealerMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMentorID"));
+      private static ulong DPSMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMentorID"));
+      private static ulong SupportMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMentorID"));
 
-        public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
+      public double TotalRegearSilverAmount { get; set; }
+      public ulong RegearQueueID { get; set; }
+      public int KillID { get; set; }
+    private string regearRoleIcon { get; set; }
+
+		    public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
         {
-            ulong id = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"));
-
-            var chnl = command.Client.GetChannel(id) as IMessageChannel;
+            var chnl = command.Client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"))) as IMessageChannel;
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, a_EventData);
 
             var converter = new HtmlConverter();
@@ -51,6 +58,7 @@ namespace DiscordBot.RegearModule
             var bytes = converter.FromHtmlString(html);
 
             RegearQueueID = command.Interaction.Id;
+            KillID = a_EventData.EventId;
 
             var approveButton = new ButtonBuilder()
             {
@@ -131,19 +139,15 @@ namespace DiscordBot.RegearModule
                         embed.Color = Color.Green;
                     }
 
-                    //Check for if Siphoned Energy is in players inventory\
-                    foreach (var item in a_EventData.Victim.Inventory)
+                    if (a_EventData.Victim.Inventory.Any(x => x != null && x.Type == "UNIQUE_GVGTOKEN_GENERIC"))
                     {
-                        if (item != null && item.Type == "UNIQUE_GVGTOKEN_GENERIC")
-                        {
-                            embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.First(z => z.Type == "UNIQUE_GVGTOKEN_GENERIC").Count}", true);
-                        }
+                        embed.AddField("OC in Bag", $"Amount: {a_EventData.Victim.Inventory.Where(x => x != null && x.Type == "UNIQUE_GVGTOKEN_GENERIC").FirstOrDefault().Count}", true);
                     }
 
-                    if(a_Mentor != null)
-                    {      
+                    if (a_Mentor != null)
+                    {
                         embed.AddField("Mentor", (a_Mentor.Nickname != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_Mentor.Nickname) : a_Mentor.Username, true);
-                        await a_Mentor.SendMessageAsync($"Your mentee {a_EventData.Victim.Name} has submitted a regear. https://discord.com/channels/157626637913948160/602243828266696720/{command.Interaction.Id}");
+                        await a_Mentor.SendMessageAsync($"Your mentee {a_EventData.Victim.Name} has submitted a regear. https://discord.com/channels/335894087397933056/1047554594420564130/{command.Interaction.Id}");
                     }
 
                     await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
@@ -154,6 +158,7 @@ namespace DiscordBot.RegearModule
             {
                 throw;
             }
+        
         }
         public async Task PostOCRegear(SocketInteractionContext command, List<string> items, string a_sPartyLeader, MoneyTypes a_eMoneyTypes, EventTypeEnum a_eEventTypes)
         {
@@ -190,37 +195,36 @@ namespace DiscordBot.RegearModule
 
             try
             {
-                dataBaseService = new DataBaseService();
-                var player = dataBaseService.GetPlayerInfoByName(sUserNickname);
-                var moneyType = dataBaseService.GetMoneyTypeByName(a_eMoneyTypes);
-                await dataBaseService.AddPlayerReGear(new PlayerLoot
-                {
-                    TypeId = moneyType.Id,
-                    CreateDate = DateTime.Now,
-                    Loot = Convert.ToDecimal(marketData[1]),
-                    PlayerId = player.Id,
-                    Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
-                    PartyLeader = a_sPartyLeader,
-                    KillId = "NA",
-                    Reason = a_eEventTypes.ToString(),
-                    QueueId = RegearQueueID.ToString()
-                });
+                //dataBaseService = new DataBaseService();
+                //var player = dataBaseService.GetPlayerInfoByName(sUserNickname);
+                //var moneyType = dataBaseService.GetMoneyTypeByName(a_eMoneyTypes);
+                //await dataBaseService.AddPlayerReGear(new PlayerLoot
+                //{
+                //    TypeId = moneyType.Id,
+                //    CreateDate = DateTime.Now,
+                //    Loot = Convert.ToDecimal(marketData[1]),
+                //    PlayerId = player.Id,
+                //    Message = " Regear(s) have been processed.  Has been added to your account. Please emote :beers: to confirm",
+                //    PartyLeader = a_sPartyLeader,
+                //    KillId = "NA",
+                //    Reason = a_eEventTypes.ToString(),
+                //    QueueId = RegearQueueID.ToString()
+                //});
 
 
                 using (MemoryStream imgStream = new MemoryStream(bytes))
                 {
                     var embed = new EmbedBuilder()
-                                        .WithTitle($" {regearRoleIcon} OC Submission from {sUserNickname}{regearRoleIcon}")                                
+                                        .WithTitle($" {regearRoleIcon} OC Submission from {sUserNickname}{regearRoleIcon}")
                                         .AddField("Victim", sUserNickname, true)
                                         .AddField("Caller Name: ", a_sPartyLeader, true)
                                         .AddField("Refund Amount: ", TotalRegearSilverAmount, true)
                                         .AddField("Event Type: ", a_eEventTypes, true)
-                                        .AddField("QueueID", command.Interaction.Id,true)
+                                        .AddField("QueueID", command.Interaction.Id, true)
                                         .AddField("Discord User ID: ", command.User.Id, true)
                                         .WithImageUrl($"attachment://image.jpg");
 
-                    await chnl.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
-
+                    await command.Channel.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
                 }
             }
             catch (Exception ex)
@@ -237,11 +241,10 @@ namespace DiscordBot.RegearModule
 
             if (socketInteractionUser.User is SocketGuildUser guildUser)
             {
-                if ((guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible" || r.Name == "Bronze Tier Regear - Elligible")) || (guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID)))
+                if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Elligible" || r.Name == "Gold Tier Regear - Elligible" || r.Name == "Bronze Tier Regear - Elligible") || guildUser.Roles.Any(r => r.Id == GoldTierID || r.Id == SilverTierID))
                 {
                     return true;
                 }
-                //ADD BRONZE REGEAR LOGIC
             }
             return true;
 
@@ -250,7 +253,7 @@ namespace DiscordBot.RegearModule
         public async Task<List<string>> GetMarketDataAndGearImg(SocketInteractionContext command, PlayerDataHandler.Rootobject a_Playerdata)
         {
             double returnValue = 0;
-            string sMarketLocation = "Bridgewatch,BridgewatchPortal,Caerleon,FortSterling,FortSterling,Lymhurst,LymhurstPortal,Martlock,martlockportal,Thetford,Thetfordportal";//System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all cities market data will be pulled
+            string sMarketLocation = System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket"); //If field is null, all selling locations market data will be pulled
             var guildUser = (SocketGuildUser)command.User;
             var regearIconType = "";
             PlayerDataHandler.Equipment1 victimEquipment = a_Playerdata.Victim.Equipment;
@@ -330,6 +333,7 @@ namespace DiscordBot.RegearModule
             foreach (var item in equipmentList)
             {
                 string itemType = (item.Split('_')[1] == "2H") ? "MAIN" : item.Split('_')[1];
+                double equipmentFetchPrice = 0;
 
                 Equipment underRegearItem = submittedRegearItems.Where(x => itemType.Contains(x.Type)).FirstOrDefault();
                 MarketDataFetching marketDataFetching = new MarketDataFetching();
@@ -339,16 +343,14 @@ namespace DiscordBot.RegearModule
 
                 if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
                 {
-                    //Check for Daily Average
+                    //Check for daily average price
                     List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(item);
 
                     if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
                     {
-                        
-
-                        //Check for 24 Day Average
+                        //Check for monthly average price
                         List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(item);
-                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
+                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.data != null).Count() == 0)
                         {
                             notAvailableInMarketList.Add(marketDataCurrent.FirstOrDefault().item_id.Replace('_', ' ').Replace('@', '.'));
                             underRegearItem.ItemPrice = "$0 (Not Found)";
@@ -356,36 +358,38 @@ namespace DiscordBot.RegearModule
                         else
                         {
                             //get monthly prices
-                            var equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
-                            returnValue += equipmentFetchPrice;
+                            equipmentFetchPrice = FetchItemPrice(marketDataMonthly, out string? errorMessage);
                             underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
-                            //underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                         }
                     }
                     else
                     {
                         //get daily prices
-                        var equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
-                        returnValue += equipmentFetchPrice;
+                        equipmentFetchPrice = FetchItemPrice(marketDataDaily, out string? errorMessage);
                         underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
-                        //underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                     }
                 }
                 else
                 {
                     //get current prices
-                    var equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
-
-                    returnValue += equipmentFetchPrice;
+                    equipmentFetchPrice = FetchItemPrice(marketDataCurrent, out string? errorMessage);
                     underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage;
-                    //underRegearItem.ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString() : errorMessage;
                 }
+
+                //if mount is T5 or higher and exceed cap amount
+                if(underRegearItem.Type != null && underRegearItem.Type == "MOUNT" && equipmentFetchPrice > mountCap)
+                {
+                    equipmentFetchPrice = MountRegearCap(equipmentFetchPrice, victimEquipment);
+                    underRegearItem.ItemPrice = "$" + equipmentFetchPrice.ToString("N0") + (" (CAP REACHED)");
+                }
+
+                returnValue += equipmentFetchPrice;
             }
 
 
             if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
             {
-                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
+                returnValue = Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
             }
@@ -397,20 +401,20 @@ namespace DiscordBot.RegearModule
             }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
 
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "Free Regear - Eligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
             {
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "NOT ELIGIBLE FOR REGEAR";
                 regearRoleIcon = ":poop:";
             }
@@ -447,7 +451,7 @@ namespace DiscordBot.RegearModule
             var regearIconType = "";
             var guildUser = (SocketGuildUser)command.User;
             string? sUserNickname = ((command.User as SocketGuildUser).Nickname != null) ? (command.User as SocketGuildUser).Nickname : command.User.Username;
-
+            string sMarketLocation = System.Configuration.ConfigurationManager.AppSettings.Get("chosenCityMarket");
             List<Item> items = new List<Item>();
             double returnValue = 0;
 
@@ -459,36 +463,7 @@ namespace DiscordBot.RegearModule
 
             List<Equipment> underRegearItem = new List<Equipment>();
 
-            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Elligible")) // Role ID 1049889855619989515
-            {
-                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
-                regearIconType = "Gold Tier Regear - Elligible";
-                regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
-            }
-            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
-            {
-                returnValue = Math.Min(silverTierRegearCap, returnValue);
-                regearIconType = "Silver Tier Regear - Elligible";
-                regearRoleIcon = "<:FreeBeerSilverCreditCard:1071163029493919905> ";
-            }
-            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
-            {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
-                regearIconType = "Bronze Tier Regear - Elligible";
-                regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
-            }
-            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
-            {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
-                regearIconType = "Free Regear - Eligible";
-                regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
-            }
-            else
-            {
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
-                regearIconType = "Shit Tier Regear - Elligible";
-                regearRoleIcon = ":poop:";
-            }
+
 
             foreach (var item in submittedOCItems)
             {
@@ -497,19 +472,19 @@ namespace DiscordBot.RegearModule
                 MarketDataFetching marketDataFetching = new MarketDataFetching();
 
                 //Check for Current Price
-                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(itemDes + "?quality=3");
+                List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(itemDes + $"?quality=3&{sMarketLocation}");
 
                 if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
                 {
                     //Check for Daily Average
-                    List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(itemDes + "?quality=3");
+                    List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(itemDes + $"?quality=3&{sMarketLocation}");
 
                     if (marketDataDaily == null || marketDataDaily.Where(x => x.data != null).Count() == 0)
                     {
 
                         //Check for 24 Day Average
-                        List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(itemDes + "?quality=3");
-                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.prices_avg != null).Count() == 0)
+                        List<EquipmentMarketDataMonthylyAverage> marketDataMonthly = await marketDataFetching.GetMarketPriceMonthlyAverage(itemDes + $"?quality=3&{sMarketLocation}");
+                        if (marketDataMonthly == null || marketDataMonthly.Where(x => x.data != null).Count() == 0)
                         {
                             underRegearItem.Add(new Equipment
                             {
@@ -558,6 +533,37 @@ namespace DiscordBot.RegearModule
                         //ItemPrice = (errorMessage == null) ? "$" + equipmentFetchPrice.ToString("N0") : errorMessage,
                     });
                 }
+            }
+
+            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
+            {
+                returnValue =  Math.Min(goldTierRegearCap, returnValue);
+                regearIconType = "Gold Tier Regear - Eligible";
+                regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
+            {
+                returnValue = Math.Min(silverTierRegearCap, returnValue);
+                regearIconType = "Silver Tier Regear - Eligible";
+                regearRoleIcon = "<:FreeBeerSilverCreditCard:1071163029493919905> ";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
+            {
+                returnValue =  Math.Min(bronzeTierRegearCap, returnValue);
+                regearIconType = "Bronze Tier Regear - Eligible";
+                regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
+            }
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
+            {
+                returnValue =  Math.Min(bronzeTierRegearCap, returnValue);
+                regearIconType = "Free Regear - Eligible";
+                regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
+            }
+            else
+            {
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
+                regearIconType = "Shit Tier Regear - Eligible";
+                regearRoleIcon = ":poop:";
             }
 
             TotalRegearSilverAmount = returnValue;
@@ -676,6 +682,17 @@ namespace DiscordBot.RegearModule
             }
         }
 
+        private double MountRegearCap(double a_iEquipmentPrice, PlayerDataHandler.Equipment1 a_PlayerEquipment)
+        {
+            double returnValue = a_iEquipmentPrice;
+
+            string mountTier = a_PlayerEquipment.Mount.Type.ToString().Split('_')[0];
+
+            returnValue = Math.Min(mountCap, a_iEquipmentPrice);
+            
+            return returnValue;
+        }
+
 
         private bool IsRegearTankClass(string a_sGearItem)
         {
@@ -707,21 +724,21 @@ namespace DiscordBot.RegearModule
         private bool IsRegearSupportClass(string a_sGearItem)
         {
 
-            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("FLAIL") || a_sGearItem.Contains("ENIGMATICORB") || a_sGearItem.Contains("CURSEDSTAFF"))
+            if (a_sGearItem.Contains("ARCANE") || a_sGearItem.Contains("ENIGMATIC") || a_sGearItem.Contains("KEEPER") || a_sGearItem.Contains("ENIGMATICORB") || a_sGearItem.Contains("CURSEDSTAFF"))
             {
                 return true;
             }
             return false;
         }
 
-        public double FetchItemPrice<T>(T Test, out string? ErrorMessage)
+        public double FetchItemPrice<T>(T ItemData, out string? ErrorMessage)
         {
             double returnValue = 0;
             ErrorMessage = null;
 
-            if (Test.GetType() == typeof(List<EquipmentMarketData>))
+            if (ItemData.GetType() == typeof(List<EquipmentMarketData>))
             {
-                var marketData = (List<EquipmentMarketData>)(object)Test;
+                var marketData = (List<EquipmentMarketData>)(object)ItemData;
                 var itemsData = marketData.Where(x => x.sell_price_min != 0);
 
                 if (itemsData != null)
@@ -746,9 +763,9 @@ namespace DiscordBot.RegearModule
                 }
                 return returnValue;
             }
-            if (Test.GetType() == typeof(List<AverageItemPrice>))
+            if (ItemData.GetType() == typeof(List<AverageItemPrice>))
             {
-                var marketData = (List<AverageItemPrice>)(object)Test;
+                var marketData = (List<AverageItemPrice>)(object)ItemData;
                 var itemsData = marketData.Where(x => x.data.Any(x => x.avg_price != 0));
 
                 if (itemsData != null)
@@ -774,18 +791,18 @@ namespace DiscordBot.RegearModule
                 return returnValue;
 
             }
-            if (Test.GetType() == typeof(List<EquipmentMarketDataMonthylyAverage>))
+            if (ItemData.GetType() == typeof(List<EquipmentMarketDataMonthylyAverage>))
             {
-                var marketData = (List<EquipmentMarketDataMonthylyAverage>)(object)Test;
-                var itemsData = marketData.Where(x => x.prices_avg.Any(x => x != 0));
+                var marketData = (List<EquipmentMarketDataMonthylyAverage>)(object)ItemData;
+                var itemsData = marketData.Where(x => x.data.Any(x => x.avg_price != 0));
 
                 if (itemsData != null)
                 {
-                    if (marketData.Count() != 0 && marketData.Where(x => x.prices_avg.Any(x => x != 0)).FirstOrDefault().prices_avg.FirstOrDefault() != 0)
+                    if (marketData.Count() != 0 && marketData.Where(x => x.data.Any(x => x.avg_price != 0)).FirstOrDefault().data.FirstOrDefault().avg_price != 0)
                     {
-                        var value = marketData.Min(x => x.prices_avg.Min());
+                        var value = marketData.Min(x => x.data.FirstOrDefault().avg_price);
 
-                        if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+                        if (value < 10000000)// Very simple check to verify if a single item is too high. (a single item shouldn't generally cost over 5 mil. more checks need to be in place)
                         {
                             returnValue = value;
                         }
@@ -809,19 +826,19 @@ namespace DiscordBot.RegearModule
 
             var guildUser = (SocketGuildUser)a_SocketContext.User;
 
-            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
+            if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible"))
             {
                 return true;
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible")) //ROLE ID 970083338591289364
+            else if (guildUser.Roles.Any(r => r.Name == "Silver Tier Regear - Eligible"))
             {
                 return true;
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
+            else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible"))
             {
                 return true;
             }
-            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
+            else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible"))
             {
                 return true;
             }
@@ -831,7 +848,94 @@ namespace DiscordBot.RegearModule
             }
         }
 
-        public class Equipment
+        public static bool ISUserMentor(SocketGuildUser a_SocketGuildUser)
+        {
+
+            if (a_SocketGuildUser.Roles.Any(r => r.Id == TankMentorID))
+            {
+                return true;
+            }
+            else if (a_SocketGuildUser.Roles.Any(r => r.Id == HealerMentorID))
+            {
+                return true;
+            }
+            else if (a_SocketGuildUser.Roles.Any(r => r.Id == DPSMentorID))
+            {
+                return true;
+            }
+            else if (a_SocketGuildUser.Roles.Any(r => r.Id == SupportMentorID))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static bool HasRegearOverride(SocketGuildUser a_SocketGuildUser)
+        {
+            ulong ManagementRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("ManagementRoleID"));
+            ulong OfficerRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OfficerRoleID"));
+
+            if(a_SocketGuildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID || r.Name == "Admin"))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public ulong GetRegearPosterID(string a_sVictimName, SocketInteractionContext a_SocketInteractionContext)
+        {
+            var UsersList = CreateMemberDict(a_SocketInteractionContext);
+
+            foreach (var user in UsersList)
+            {
+                if(user.Key.ToLower() == a_sVictimName.ToLower())
+                {
+                    return user.Value;
+                }
+            }
+
+
+			return 0;
+        }
+
+		public Dictionary<string, ulong> CreateMemberDict(SocketInteractionContext context)
+		{
+			Dictionary<string, ulong> dict = new Dictionary<string, ulong>();
+
+			var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+			foreach (var member in iterable.FirstOrDefault())
+			{
+				if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(ulong.Parse("602244098908225537"))
+					|| member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
+				{
+					if (member.DisplayName != null)
+					{
+						if (member.DisplayName.StartsWith("!!"))
+						{
+							string temp = member.DisplayName.Remove(0, 5);
+							dict.Add(temp, member.Id);
+						}
+						else
+						{
+							dict.Add(member.DisplayName, member.Id);
+						}
+					}
+					else if (member.DisplayName == null)
+					{
+						dict.Add(member.Username, member.Id);
+					}
+					else
+					{
+						continue;
+					}
+				}
+			}
+			return dict;
+		}
+		public class Equipment
         {
             private string image;
             private string itemPrice;
