@@ -43,7 +43,8 @@ namespace FreeBeerBot
       // Add the DiscordSocketClient, along with specifying the GatewayIntents and user caching
       .AddSingleton(x => new DiscordSocketClient(new DiscordSocketConfig
       {
-        GatewayIntents = GatewayIntents.All, //Toggle intents inside the Discord Developer portal to add more security.
+        //GatewayIntents = GatewayIntents.All, //Toggle intents inside the Discord Developer portal to add more security.
+        GatewayIntents = (GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.GuildMembers) ^ GatewayIntents.GuildBans,
         AlwaysDownloadUsers = true,
         UseInteractionSnowflakeDate = false
       }))

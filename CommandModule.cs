@@ -49,6 +49,9 @@ namespace CommandModule
 
     private ulong ManagementRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("ManagementRoleID"));
     private ulong OfficerRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OfficerRoleID"));
+    private ulong VeteranRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
+    private ulong MemberRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("member"));
+    private ulong NewRecruitRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("newRecruit"));
 
     private ulong GoldTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegear"));
     private ulong SilverTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
@@ -57,7 +60,7 @@ namespace CommandModule
 
     private int iMiniMartAccountCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("MiniMartAccountCap"));
     private string FreeBeerAPIGuildID = System.Configuration.ConfigurationManager.AppSettings.Get("FreeBeerGuildAPIID");
-      
+
     public IEnumerable<IMessage> msgs { get; set; }
     public CommandModule(ConsoleLogger logger)
     {
@@ -67,33 +70,30 @@ namespace CommandModule
     [SlashCommand("get-player-info", "Search for Player Info")]
     public async Task GetBasicPlayerInfo(string a_sPlayerName)
     {
-      PlayerLookupInfo playerInfo = new PlayerLookupInfo();
-      PlayerDataLookUps albionData = new PlayerDataLookUps();
+      PlayerLookupInfo? playerInfo = new PlayerLookupInfo();
+      PlayerDataLookUps? albionData = new PlayerDataLookUps();
 
       playerInfo = await albionData.GetPlayerInfo(Context, a_sPlayerName);
+      var detailedplayerinfo = await albionData.GetDetailedAlbionPlayerInfo(playerInfo.Id);
 
+     
       await _logger.Log(new LogMessage(LogSeverity.Info, "Get Player Info", $"User: {Context.User.Username} has used command, Command: Get-Player-Info", null));
 
       try
       {
-        if(playerInfo.GuildId == FreeBeerAPIGuildID)
-        {
 
-        }
-        else
-        {
-            var embed = new EmbedBuilder()
-          .WithTitle($"Player Search Results")
-          .AddField("Player Name", (playerInfo.Name == null) ? "No info" : playerInfo.Name, true)
-          .AddField("Kill Fame", (playerInfo.KillFame == 0) ? 0 : playerInfo.KillFame)
-          .AddField("Death Fame: ", (playerInfo.DeathFame == 0) ? 0 : playerInfo.DeathFame, true)
-          .AddField("Guild Name ", (playerInfo.GuildName == null || playerInfo.GuildName == "") ? "No info" : playerInfo.GuildName, true)
-          .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true)
-          .AddField("Sigma Info", $"https://app.sigmacomputing.com/embed/2Fb3n6osB7MZ0psRKGqR6?name={a_sPlayerName}")
-          .AddField("AlbionDB Info", $"https://albiondb.net/player/{a_sPlayerName}");
+        var embed = new EmbedBuilder()
+      .WithTitle($"Player Search Results")
+      .AddField("Player Name", (playerInfo.Name == null) ? "No info" : playerInfo.Name, true)
+      .AddField("Kill Fame", (playerInfo.KillFame == 0) ? 0 : playerInfo.KillFame)
+      .AddField("Death Fame: ", (playerInfo.DeathFame == 0) ? 0 : playerInfo.DeathFame, true)
+      .AddField("Guild Name ", (playerInfo.GuildName == null || playerInfo.GuildName == "") ? "No info" : playerInfo.GuildName, true)
+      .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true)
+      .AddField("Sigma Info", $"https://app.sigmacomputing.com/embed/2Fb3n6osB7MZ0psRKGqR6?name={a_sPlayerName}")
+      .AddField("AlbionDB Info", $"https://albiondb.net/player/{a_sPlayerName}");
 
-          await RespondAsync(null, null, false, true, null, null, null, embed.Build());
-        }
+        await RespondAsync(null, null, false, true, null, null, null, embed.Build());
+
 
       }
       catch (Exception ex)
@@ -135,7 +135,7 @@ namespace CommandModule
 
       playerInfo = await albionData.GetPlayerInfo(Context, sUserNickname);
 
-      if (sUserNickname.ToLower() == playerInfo.Name.ToLower())
+      if (sUserNickname.ToLower() == playerInfo.Name.ToLower() && playerInfo != null)
       {
         await dataBaseService.AddPlayerInfo(new Player
         {
@@ -181,7 +181,7 @@ namespace CommandModule
       }
       else
       {
-        await RespondAsync($"The users discord name doen't match the ingame name. Please try again", null, false, true);
+        await RespondAsync($"Player not found. The users discord may not match the ingame name. Please try again", null, false, true);
       }
 
     }
@@ -212,6 +212,10 @@ namespace CommandModule
 
         //TODO: REMOVE PLAYER FROM DATABASE HERE
         await _logger.Log(new LogMessage(LogSeverity.Info, "Unregister ", $"User: {Context.User.Username} has used command Unregister", null));
+
+        IMessageChannel RecruitersModChannel = Context.Client.GetChannel(RecruitersModChannelID) as IMessageChannel;
+        await RecruitersModChannel.SendMessageAsync($"{InGameName} has been unregistered by {(Context.User as SocketGuildUser).Nickname} ");
+
         await FollowupAsync($"{InGameName} was unregistered", ephemeral: true);
       }
       else
@@ -556,6 +560,48 @@ namespace CommandModule
       await DeferAsync();
       await _logger.Log(new LogMessage(LogSeverity.Info, "Render Paychex", $"User: {Context.User.Username}, Command: render-paychex", null));
       await GoogleSheetsDataWriter.RenderPaychex(Context);
+
+      var ListOfusers = Context.Guild.GetUsersAsync().FirstOrDefaultAsync().Result.ToList();
+      int i = 0;
+
+      foreach (var user in ListOfusers)
+      {
+        if (user.RoleIds.Any(x => x == NewRecruitRoleID || x == MemberRoleID || x == VeteranRoleID || x == OfficerRoleID))
+        {
+          PlayerLookupInfo? playerInfo = new PlayerLookupInfo();
+          PlayerDataLookUps? albionData = new PlayerDataLookUps();
+
+          string? sUserNickname = (user.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(user.DisplayName) : user.DisplayName;
+
+          playerInfo = await albionData.GetPlayerInfo(Context, sUserNickname);
+
+          if (playerInfo != null)
+          {
+            var detailedplayerinfo = await albionData.GetDetailedAlbionPlayerInfo(playerInfo.Id);
+
+            dataBaseService = new DataBaseService();
+            await dataBaseService.LogPlayerInfo(new LoggedPlayerInfo
+            {
+              PlayerId = detailedplayerinfo.Id,
+              PlayerName = detailedplayerinfo.Name,
+              GuildID = detailedplayerinfo.GuildId,
+              DeathFame = detailedplayerinfo.DeathFame,
+              KillFame = detailedplayerinfo.KillFame,
+              FameRatio = (float)detailedplayerinfo.FameRatio,
+              PVEFame = detailedplayerinfo.LifetimeStatistics.PvE.Total,
+              GatheringFame = detailedplayerinfo.LifetimeStatistics.Gathering.All.Total,
+              CraftingFame = detailedplayerinfo.LifetimeStatistics.Crafting.Total,
+              RecordedDate = DateTime.Today
+            });
+
+            i++;
+          }
+        }
+      }
+
+      //await FollowupAsync($"{i} Free Beer members have been logged");
+
+
     }
 
 
@@ -626,33 +672,36 @@ namespace CommandModule
         bRegearAllowed = false;
       }
 
-      if((Context.User as SocketGuildUser).Nickname == null)
+      if (sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null)
       {
-        IMessageChannel RecruitersModChannel = Context.Client.GetChannel(RecruitersModChannelID) as IMessageChannel;
+        IMessageChannel RecruitersModChannel = Context.Client.GetChannel(1024308022840918026) as IMessageChannel;//using bot workshop channel
         await RecruitersModChannel.SendMessageAsync($"{sUserNickname} may have not been registed. Please verify their registration ");
         await RespondAsync($"Regear submission failed. Please update your discord server nickname to EXACTLY match your in-game name. ", null, false, true);
-        
+
         bRegearAllowed = false;
       }
-      else if (EventType == EventTypeEnum.SpecialEvent || guildUser.Roles.Any(r => r.Id == GoldTierRegearID || r.Id == SilverTierRegearID) || (guildUser.Roles.Any(r => r.Id == OfficerRoleID || r.Id == ManagementRoleID)))
+      else if (mentor != null && RegearModule.ISUserMentor(mentor) && guildUser.Roles.Any(r => r.Id == BronzeTierRegearID))
+      {
+        bRegearAllowed = true;
+      }
+      else if (EventType == EventTypeEnum.SpecialEvent || guildUser.Roles.Any(r => r.Id == GoldTierRegearID || r.Id == SilverTierRegearID))
       {
         bRegearAllowed = true;
       }
       else if (guildUser.Roles.Any(x => x.Id == BronzeTierRegearID) && mentor == null)
       {
-        await RespondAsync($"Hey bud. You need to submit your regear with your mentor tagged. They are the optional choice at the end of the command. ", null, false, true);
-        bRegearAllowed = false;
+        bRegearAllowed = true;
       }
-      else if (mentor != null && RegearModule.ISUserMentor(mentor) && guildUser.Roles.Any(r => r.Id == BronzeTierRegearID))
+      else if (mentor != null && RegearModule.ISUserMentor(mentor) == false && guildUser.Roles.Any(r => r.Id == BronzeTierRegearID))
       {
         await RespondAsync($"Cleary you need a mentor you idiot. Make sure you select an ACTUAL mentor", null, false, true);
         bRegearAllowed = false;
       }
 
-      if (bRegearAllowed)
+      if (bRegearAllowed || guildUser.Roles.Any(r => r.Id == OfficerRoleID || r.Id == ManagementRoleID))
       {
         dataBaseService = new DataBaseService();
-        await dataBaseService.AddPlayerInfo(new Player
+        await dataBaseService.AddPlayerInfo(new DiscordBot.Models.Player
         {
           PlayerId = PlayerEventData.Victim.Id,
           PlayerName = PlayerEventData.Victim.Name
@@ -865,12 +914,13 @@ namespace CommandModule
       string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : Context.User.Username;
       string? sCallerNickname = (callerName.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(callerName.DisplayName) : callerName.Username;
 
-      var playerInfo = await eventData.GetAlbionPlayerInfo(sUserNickname);
-      var PlayerEventData = playerInfo.players.Where(x => x.Name.ToLower() == sUserNickname.ToLower()).FirstOrDefault();
+      var playerInfo = await eventData.GetPlayerInfo(Context, sUserNickname);
+      //var PlayerEventData = playerInfo.players.Where(x => x.Name.ToLower() == sUserNickname.ToLower()).FirstOrDefault();
+
 
       await _logger.Log(new LogMessage(LogSeverity.Info, "OC break Submit", $"User: {Context.User.Username}, Command: oc-regear", null));
 
-      if (PlayerEventData.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Id == OfficerRoleID))
+      if (playerInfo.Name.ToLower() == sUserNickname.ToLower() || guildUser.Roles.Any(r => r.Id == OfficerRoleID))
       {
         await DeferAsync();
         await regearModule.PostOCRegear(Context, items.Split(",").ToList(), sCallerNickname, MoneyTypes.OCBreak, enumEventType);
@@ -1079,7 +1129,7 @@ namespace CommandModule
       {
         await FollowupAsync("You must add some sort of loot amount", ephemeral: true);
       }
-      
+
       await _logger.Log(new LogMessage(LogSeverity.Info, "Split-Loot Command", $"User: {Context.User.Username} initiated a split-loot", null));
     }
 
@@ -1300,7 +1350,7 @@ namespace CommandModule
     {
       //await DeferAsync();
       GuildDataHandler.GuildInfo guildData = await new GuildDataHandler().GetGuildSearchInfo(Context, Guild_Name);
-      if(AllianceGuildGuidID == guildData.AllianceId)
+      if (AllianceGuildGuidID == guildData.AllianceId)
       {
         dataBaseService = new DataBaseService();
         await dataBaseService.RegisterGuild(new RegisteredAllianceGuilds

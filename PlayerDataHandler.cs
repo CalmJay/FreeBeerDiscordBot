@@ -827,12 +827,136 @@ namespace PlayerData
     public List<PlayerLookupInfo> players { get; set; }
   }
 
+  /// <TESTINGDETAILEDINFO>
 
+  public class DetailedPlayerInfo
+  {
+    public float AverageItemPower { get; set; }
+    public Equipment Equipment { get; set; }
+    public object[] Inventory { get; set; }
+    public string Name { get; set; }
+    public string Id { get; set; }
+    public string GuildName { get; set; }
+    public string GuildId { get; set; }
+    public string AllianceName { get; set; }
+    public string AllianceId { get; set; }
+    public string AllianceTag { get; set; }
+    public string Avatar { get; set; }
+    public string AvatarRing { get; set; }
+    public int DeathFame { get; set; }
+    public int KillFame { get; set; }
+    public float FameRatio { get; set; }
+    public Lifetimestatistics LifetimeStatistics { get; set; }
+  }
+
+  public class Equipment
+  {
+    public object MainHand { get; set; }
+    public object OffHand { get; set; }
+    public object Head { get; set; }
+    public object Armor { get; set; }
+    public object Shoes { get; set; }
+    public object Bag { get; set; }
+    public object Cape { get; set; }
+    public object Mount { get; set; }
+    public object Potion { get; set; }
+    public object Food { get; set; }
+  }
+
+  public class Lifetimestatistics
+  {
+    public Pve PvE { get; set; }
+    public Gathering Gathering { get; set; }
+    public Crafting Crafting { get; set; }
+    public int CrystalLeague { get; set; }
+    public int FishingFame { get; set; }
+    public int FarmingFame { get; set; }
+    public DateTime Timestamp { get; set; }
+  }
+
+  public class Pve
+  {
+    public long Total { get; set; }
+    public int Royal { get; set; }
+    public int Outlands { get; set; }
+    public int Avalon { get; set; }
+    public int Hellgate { get; set; }
+    public int CorruptedDungeon { get; set; }
+    public int Mists { get; set; }
+  }
+
+  public class Gathering
+  {
+    public Fiber Fiber { get; set; }
+    public Hide Hide { get; set; }
+    public Ore Ore { get; set; }
+    public Rock Rock { get; set; }
+    public Wood Wood { get; set; }
+    public All All { get; set; }
+  }
+
+  public class Fiber
+  {
+    public int Total { get; set; }
+    public int Royal { get; set; }
+    public int Outlands { get; set; }
+    public int Avalon { get; set; }
+  }
+
+  public class Hide
+  {
+    public int Total { get; set; }
+    public int Royal { get; set; }
+    public int Outlands { get; set; }
+    public int Avalon { get; set; }
+  }
+
+  public class Ore
+  {
+    public int Total { get; set; }
+    public int Royal { get; set; }
+    public int Outlands { get; set; }
+    public int Avalon { get; set; }
+  }
+
+  public class Rock
+  {
+    public int Total { get; set; }
+    public int Royal { get; set; }
+    public int Outlands { get; set; }
+    public int Avalon { get; set; }
+  }
+
+  public class Wood
+  {
+    public int Total { get; set; }
+    public int Royal { get; set; }
+    public int Outlands { get; set; }
+    public int Avalon { get; set; }
+  }
+
+  public class All
+  {
+    public long Total { get; set; }
+    public int Royal { get; set; }
+    public int Outlands { get; set; }
+    public int Avalon { get; set; }
+  }
+
+  public class Crafting
+  {
+    public long Total { get; set; }
+    public int Royal { get; set; }
+    public int Outlands { get; set; }
+    public int Avalon { get; set; }
+  }
+
+  /// </summary>
   public class PlayerDataLookUps
   {
     public async Task<PlayerLookupInfo> GetPlayerInfo(SocketInteractionContext a_socketInteraction, string? userNickname)
     {
-      PlayerLookupInfo returnValue = null;
+      PlayerLookupInfo? returnValue = null;
       string? sPlayerData = null;
       string? sPlayerAlbionId = null; //either get from google sheet or search in albion API
       string? sUserNickname = ((a_socketInteraction.User as SocketGuildUser).DisplayName != null) ? (a_socketInteraction.User as SocketGuildUser).DisplayName : a_socketInteraction.User.Username;
@@ -858,8 +982,6 @@ namespace PlayerData
           //USE THIS LOGIC TO CREATE METHOD TO ADD USER TO DATABASE
           if (playerSearchData.players.FirstOrDefault() != null)
           {
-
-
             if (playerSearchData.players.Count > 1)
             {
               returnValue = playerSearchData.players.Where(x => x.FameRatio > 0).FirstOrDefault();
@@ -870,28 +992,31 @@ namespace PlayerData
             }
 
             //Console.WriteLine("Guild Nickname Matches Albion Username");
-
-            new PlayerLookupInfo()
+            if(returnValue != null)
             {
-              Id = returnValue.Id,
-              Name = returnValue.Name,
-              GuildId = returnValue.GuildId,
-              GuildName = returnValue.GuildName,
-              AllianceId = returnValue.AllianceId,
-              AllianceName = returnValue.AllianceName,
-              Avatar = returnValue.Avatar,
-              AvatarRing = returnValue.AvatarRing,
-              KillFame = returnValue.KillFame,
-              DeathFame = returnValue.DeathFame,
-              FameRatio = returnValue.FameRatio,
-              totalKills = returnValue.totalKills,
-              gvgKills = returnValue.gvgKills,
-              gvgWon = returnValue.gvgWon,
-            };
+              new PlayerLookupInfo()
+              {
+                Id = returnValue.Id,
+                Name = returnValue.Name,
+                GuildId = returnValue.GuildId,
+                GuildName = returnValue.GuildName,
+                AllianceId = returnValue.AllianceId,
+                AllianceName = returnValue.AllianceName,
+                Avatar = returnValue.Avatar,
+                AvatarRing = returnValue.AvatarRing,
+                KillFame = returnValue.KillFame,
+                DeathFame = returnValue.DeathFame,
+                FameRatio = returnValue.FameRatio,
+                totalKills = returnValue.totalKills,
+                gvgKills = returnValue.gvgKills,
+                gvgWon = returnValue.gvgWon,
+              };
+            }
+            
           }
           else
           {
-            await a_socketInteraction.Interaction.FollowupAsync($"Player not found in Albion API. Discord name may not match in-game name or possible misspell.", ephemeral: true);
+            //await a_socketInteraction.Interaction.FollowupAsync($"Player not found in Albion API. Discord name may not match in-game name or possible misspell.", ephemeral: true);
 
             Console.WriteLine($"Player not found. Discord name doesnt match in-game name. Discord user: {a_socketInteraction.User.Username}");
             returnValue = null;
@@ -920,16 +1045,16 @@ namespace PlayerData
 
       return eventData;
     }
-    public async Task<PlayersSearch> GetAlbionPlayerInfo(string Name)
+    public async Task<DetailedPlayerInfo> GetDetailedAlbionPlayerInfo(string a_sPlayerID)
     {
       string playerData = null;
-      PlayersSearch eventData = null;
-      using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"search?q={Name}"))
+      DetailedPlayerInfo eventData = null;
+      using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"players/{a_sPlayerID}"))
       {
         if (response.IsSuccessStatusCode)
         {
           playerData = await response.Content.ReadAsStringAsync();
-          eventData = JsonConvert.DeserializeObject<PlayersSearch>(playerData);
+          eventData = JsonConvert.DeserializeObject<DetailedPlayerInfo>(playerData);
         }
       }
 

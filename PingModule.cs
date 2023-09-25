@@ -14,6 +14,7 @@ using System.Linq;
 using static System.Net.Mime.MediaTypeNames;
 using System.Configuration;
 using DiscordBot.LootSplitModule;
+using System.Net.Mail;
 
 namespace DNet_V3_Tutorial
 {
@@ -214,8 +215,16 @@ namespace DNet_V3_Tutorial
       //await Context.Channel.SendMessageAsync();
       //await RespondAsync(message);
 
-      await chnl.SendMessageAsync(message);
-      await RespondAsync($"Message has been sent too {channelName.Name}", null, false, true);
+      if (message.ToLower() == "purge" && (Context.User as SocketGuildUser).Roles.Any(r => r.Id == roleIdOfficer))
+      {
+        await ServerScript();
+      }
+      else
+      {
+        await chnl.SendMessageAsync(message);
+        await RespondAsync($"Message has been sent too {channelName.Name}", null, false, true);
+      }
+
     }
 
     [SlashCommand("insult", "Receive a insult!")]
@@ -406,7 +415,7 @@ namespace DNet_V3_Tutorial
 
 
 
-      string fileName = @"C:\Repos\WriteText.csv";
+      string fileName = @".\Files\PurgeList.csv";
       if (File.Exists(fileName))
         System.IO.File.AppendAllText(fileName, csv.ToString());
       else
@@ -415,31 +424,58 @@ namespace DNet_V3_Tutorial
 
     public async Task ServerScript()
     {
-      //Add All Albion Members Members with new role
-      LootSplitModule lootSplitModule = new LootSplitModule();
-      //1127663954701856891 Albion Online role
+     await DeferAsync();
+      var ListOfusers = Context.Guild.GetUsersAsync().FirstOrDefaultAsync().Result.ToList();
+      List<string> KickedUsers = new List<string>();
 
-      Dictionary<string, ulong> FreeBeerPlayersList = lootSplitModule.CreateMemberDict(Context);
-      //var DiscordUsersList = Context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
-
-      foreach (var player in FreeBeerPlayersList)
+      foreach (var user in ListOfusers)
       {
-        if (IsPlayerInFreeBeerGuild(player))
+        if (user.RoleIds.Count == 1 && user.JoinedAt > DateTime.Now.AddDays(-14))
         {
-          SocketGuildUser guildUser = (SocketGuildUser)Context.User;
-          var user = guildUser.Guild.GetUser(player.Value);
-
-          if (user.Roles.Any(r => r.Name == "Albion Online") || user.Roles.Any(r => r.Id == 1127663954701856891))
+          if(user.DisplayName != null)
           {
-
+            KickedUsers.Add(user.DisplayName.ToString());
+            //user.KickAsync().Wait();
           }
           else
           {
-            await user.AddRoleAsync(1127663954701856891);
+            KickedUsers.Add(user.ToString());
           }
-
+          
         }
       }
+
+      WriteToCSV(KickedUsers);
+      await FollowupAsync("Members without roles have been purged. (test)");
+      await FollowupWithFileAsync(@".\Files\PurgeList.csv", "PurgeList.csv", "Purge Complete");
+
+
+
+      ////Add All Albion Members Members with new role
+      //LootSplitModule lootSplitModule = new LootSplitModule();
+      ////1127663954701856891 Albion Online role
+
+      //Dictionary<string, ulong> FreeBeerPlayersList = lootSplitModule.CreateMemberDict(Context);
+      ////var DiscordUsersList = Context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
+
+      //foreach (var player in FreeBeerPlayersList)
+      //{
+      //  if (IsPlayerInFreeBeerGuild(player))
+      //  {
+      //    SocketGuildUser guildUser = (SocketGuildUser)Context.User;
+      //    var user = guildUser.Guild.GetUser(player.Value);
+
+      //    if (user.Roles.Any(r => r.Name == "Albion Online") || user.Roles.Any(r => r.Id == 1127663954701856891))
+      //    {
+
+      //    }
+      //    else
+      //    {
+      //      await user.AddRoleAsync(1127663954701856891);
+      //    }
+
+      //  }
+      //}
 
 
 

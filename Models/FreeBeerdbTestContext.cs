@@ -20,6 +20,7 @@ namespace DiscordBot.Models
     public virtual DbSet<MoneyType> MoneyType { get; set; }
     public virtual DbSet<Player> Player { get; set; }
     public virtual DbSet<PlayerLoot> PlayerLoot { get; set; }
+    public virtual DbSet<LoggedPlayerInfo> LoggedPlayerInfo { get; set; }
     public virtual DbSet<RegisteredAllianceMembers> RegisteredAllianceMembers { get; set; }
     public virtual DbSet<RegisteredAllianceGuilds> RegisteredAllianceGuilds { get; set; }
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
