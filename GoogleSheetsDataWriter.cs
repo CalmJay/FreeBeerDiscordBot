@@ -282,8 +282,8 @@ namespace GoogleSheetsData
     {
       SpreadsheetsResource serviceValues = GetSheetsService().Spreadsheets;
 
-      DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
-      DateTime lastbiweeklySunday = HelperMethods.StartOfWeek(lastSunday.AddDays(-7), DayOfWeek.Sunday);
+      DateTime lastSunday = GoogleSheetHelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+      DateTime lastbiweeklySunday = GoogleSheetHelperMethods.StartOfWeek(lastSunday.AddDays(-7), DayOfWeek.Sunday);
 
       string biweeklyLastSundayDate = $"{lastbiweeklySunday.ToShortMonthName()}-{lastbiweeklySunday.Day}";
       string currentWeekPaychexDate = $"{lastSunday.ToShortMonthName()}-{lastSunday.Day}";
@@ -388,8 +388,8 @@ namespace GoogleSheetsData
     {
       SpreadsheetsResource serviceValues = GetSheetsService().Spreadsheets;
 
-      DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
-      DateTime lastbiweeklySunday = HelperMethods.StartOfWeek(lastSunday.AddDays(-7), DayOfWeek.Sunday);
+      DateTime lastSunday = GoogleSheetHelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+      DateTime lastbiweeklySunday = GoogleSheetHelperMethods.StartOfWeek(lastSunday.AddDays(-7), DayOfWeek.Sunday);
 
       string biweeklyLastSundayDate = $"{lastbiweeklySunday.ToShortMonthName()}-{lastbiweeklySunday.Day}";
       string currentWeekPaychexDate = $"{lastSunday.ToShortMonthName()}-{lastSunday.Day}";
@@ -462,8 +462,8 @@ namespace GoogleSheetsData
 
       SocketGuildUser socketGuildUser = (SocketGuildUser)a_socketInteraction.User;
 
-      string lastSundayMonth = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday).ToShortMonthName();
-      int lastSunday = HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day;
+      string lastSundayMonth = GoogleSheetHelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday).ToShortMonthName();
+      int lastSunday = GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day;
       string paychexRenderedName = $"{lastSundayMonth}-{lastSunday} Paychex";
 
 
@@ -497,7 +497,7 @@ namespace GoogleSheetsData
         //var testPaymentAmounts = serviceValues.Values.Get(RegearSheetID, "Payouts!B4:B").Execute().Values;
 
 
-        DateTime lastSundayPaychexDate = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+        DateTime lastSundayPaychexDate = GoogleSheetHelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
         string shortmonth = DateTime.Now.ToShortMonthName();
 
         string combinedDate = $"{lastSundayMonth}-{lastSunday}";//This gets the running total
@@ -556,7 +556,7 @@ namespace GoogleSheetsData
       string? sUserNickname = (a_SocketGuildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.DisplayName) : a_SocketGuildUser.Username;
 
       var serviceValues = GetSheetsService().Spreadsheets;
-      DateTime lastSunday = HelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
+      DateTime lastSunday = GoogleSheetHelperMethods.StartOfWeek(DateTime.Today, DayOfWeek.Sunday);
       var shortmonth = DateTime.Now.ToShortMonthName();
       string cleanupedTotal = "NA";
 
@@ -865,7 +865,7 @@ namespace GoogleSheetsData
       return returnValue;
     }
   }
-  public static class HelperMethods
+  public static class GoogleSheetHelperMethods
   {
     public static DateTime StartOfWeek(this DateTime dt, DayOfWeek startOfWeek)
     {

@@ -46,8 +46,9 @@ namespace InteractionHandlerService
       _client.ThreadCreated += ThreadCreationExecuted;
       _client.UserJoined += UserJoinedGuildExecuted;
       _client.UserLeft += UserLeftGuildExecuted;
-      //_client.ButtonExecuted += ButtonExecuted;
+      _client.ButtonExecuted += ButtonExecuted;
       _client.ModalSubmitted += ModalSubmittedExecuted;
+      
 
 
       // Process the command execution results 
@@ -205,10 +206,10 @@ namespace InteractionHandlerService
       return Task.CompletedTask;
     }
 
-    //private async Task<Task> ButtonExecuted(SocketMessageComponent MessageComponet)
-    //{
-    //	return Task.CompletedTask;
-    //}
+    private async Task<Task> ButtonExecuted(SocketMessageComponent MessageComponet)
+    {
+      return Task.CompletedTask;
+    }
 
     private Task ModalCommandExecuted(ModalCommandInfo arg1, Discord.IInteractionContext arg2, IResult arg3)
     {
