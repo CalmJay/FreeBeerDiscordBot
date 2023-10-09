@@ -28,6 +28,11 @@ using DiscordBot;
 using Discord.Rest;
 using Aspose.Words.Drawing;
 using System.Globalization;
+using Microsoft.Extensions.FileSystemGlobbing;
+using System.Threading.Channels;
+using static DiscordBot.GuildDataHandler;
+using Microsoft.VisualBasic;
+using static PlayerData.PlayerDataHandler;
 
 namespace CommandModule
 {
@@ -47,6 +52,7 @@ namespace CommandModule
 
     private ulong RecruitersModChannelID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("RecruitersModChannel"));
 
+    private ulong RecruitersRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("RecruitersRoleID"));
     private ulong ManagementRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("ManagementRoleID"));
     private ulong OfficerRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OfficerRoleID"));
     private ulong VeteranRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
@@ -57,9 +63,12 @@ namespace CommandModule
     private ulong SilverTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegear"));
     private ulong BronzeTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegear"));
     private ulong FreeTierRegearID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("FreeTierRegear"));
+    private ulong ApplicantRoleID = 1156954659525771344;
 
     private int iMiniMartAccountCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("MiniMartAccountCap"));
     private string FreeBeerAPIGuildID = System.Configuration.ConfigurationManager.AppSettings.Get("FreeBeerGuildAPIID");
+
+    private int iRecruitmentKillFame = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("RecruitmentKillFame"));
 
     public IEnumerable<IMessage> msgs { get; set; }
     public CommandModule(ConsoleLogger logger)
@@ -76,7 +85,7 @@ namespace CommandModule
       playerInfo = await albionData.GetPlayerInfo(Context, a_sPlayerName);
       var detailedplayerinfo = await albionData.GetDetailedAlbionPlayerInfo(playerInfo.Id);
 
-     
+
       await _logger.Log(new LogMessage(LogSeverity.Info, "Get Player Info", $"User: {Context.User.Username} has used command, Command: Get-Player-Info", null));
 
       try
@@ -84,11 +93,14 @@ namespace CommandModule
 
         var embed = new EmbedBuilder()
       .WithTitle($"Player Search Results")
-      .AddField("Player Name", (playerInfo.Name == null) ? "No info" : playerInfo.Name, true)
-      .AddField("Kill Fame", (playerInfo.KillFame == 0) ? 0 : playerInfo.KillFame)
-      .AddField("Death Fame: ", (playerInfo.DeathFame == 0) ? 0 : playerInfo.DeathFame, true)
-      .AddField("Guild Name ", (playerInfo.GuildName == null || playerInfo.GuildName == "") ? "No info" : playerInfo.GuildName, true)
-      .AddField("Alliance Name", (playerInfo.AllianceName == null || playerInfo.AllianceName == "") ? "No info" : playerInfo.AllianceName, true)
+      .AddField("Player Name", (detailedplayerinfo.Name == null) ? "No info" : detailedplayerinfo.Name, true)
+      .AddField("Kill Fame", (detailedplayerinfo.KillFame == 0) ? 0 : detailedplayerinfo.KillFame)
+      .AddField("Guild Name ", (detailedplayerinfo.GuildName == null || detailedplayerinfo.GuildName == "") ? "No info" : detailedplayerinfo.GuildName, true)
+      .AddField("Alliance Name", (detailedplayerinfo.AllianceName == null || detailedplayerinfo.AllianceName == "") ? "No info" : detailedplayerinfo.AllianceName, true)
+      .AddField("Death Fame: ", (detailedplayerinfo.DeathFame == 0) ? 0 : detailedplayerinfo.DeathFame, true)
+      .AddField("Crafting Fame: ", (detailedplayerinfo.LifetimeStatistics.Crafting.Total == 0) ? 0 : detailedplayerinfo.LifetimeStatistics.Crafting.Total, true)
+      .AddField("Gathering Fame: ", (detailedplayerinfo.LifetimeStatistics.Gathering.All.Total == 0) ? 0 : detailedplayerinfo.LifetimeStatistics.Gathering.All.Total, true)
+      .AddField("PVE Fame: ", (detailedplayerinfo.LifetimeStatistics.PvE.Total == 0) ? 0 : detailedplayerinfo.LifetimeStatistics.PvE.Total, true)
       .AddField("Sigma Info", $"https://app.sigmacomputing.com/embed/2Fb3n6osB7MZ0psRKGqR6?name={a_sPlayerName}")
       .AddField("AlbionDB Info", $"https://albiondb.net/player/{a_sPlayerName}");
 
@@ -114,7 +126,7 @@ namespace CommandModule
       string? sUserNickname = (guildUserName.DisplayName == null) ? guildUserName.Username : guildUserName.DisplayName;
 
       var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
-      var newMemberRole = guildUserName.Guild.GetRole(847350505977675796);//new member role id
+      var newMemberRole = guildUserName.Guild.GetRole(NewRecruitRoleID);
       var freeRegearRole = guildUserName.Guild.GetRole(1052241667329118349);//free regear role id
 
       var user = guildUserName.Guild.GetUser(guildUserName.Id);
@@ -137,7 +149,7 @@ namespace CommandModule
 
       if (sUserNickname.ToLower() == playerInfo.Name.ToLower() && playerInfo != null)
       {
-        await dataBaseService.AddPlayerInfo(new Player
+        await dataBaseService.AddPlayerInfo(new DiscordBot.Models.Player
         {
           PlayerId = playerInfo.Id,
           PlayerName = playerInfo.Name
@@ -177,7 +189,7 @@ namespace CommandModule
         await FollowupAsync($"{ingameName} was registered", null, false, true);
 
         IMessageChannel RecruitersModChannel = Context.Client.GetChannel(RecruitersModChannelID) as IMessageChannel;
-        await RecruitersModChannel.SendMessageAsync($"{ingameName} has been registered by {(Context.User as SocketGuildUser).Nickname} ");
+        await RecruitersModChannel.SendMessageAsync($"{ingameName} has been manually registered by {(Context.User as SocketGuildUser).Nickname} ");
       }
       else
       {
@@ -431,7 +443,7 @@ namespace CommandModule
 
         embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
 
-        string biweeklyLastSundayDate = $"{HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{HelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
+        string biweeklyLastSundayDate = $"{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
         if (!paychexSheets.Any(s => s.Contains(biweeklyLastSundayDate)))
         {
           embed.AddField("Last weeks estimated paychex:", $"${paychexRunningTotal[0]:n0}");
@@ -671,8 +683,7 @@ namespace CommandModule
         await RespondAsync($"Requirement failed. Your time to submit this regear is past 72 hours. Regear denied. ", null, false, true);
         bRegearAllowed = false;
       }
-
-      if (sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null)
+      else if (sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null || !guildUser.Roles.Any(r => r.Id == OfficerRoleID || r.Id == ManagementRoleID))
       {
         IMessageChannel RecruitersModChannel = Context.Client.GetChannel(1024308022840918026) as IMessageChannel;//using bot workshop channel
         await RecruitersModChannel.SendMessageAsync($"{sUserNickname} may have not been registed. Please verify their registration ");
@@ -684,13 +695,14 @@ namespace CommandModule
       {
         bRegearAllowed = true;
       }
-      else if (EventType == EventTypeEnum.SpecialEvent || guildUser.Roles.Any(r => r.Id == GoldTierRegearID || r.Id == SilverTierRegearID))
+      else if (guildUser.Roles.Any(r => r.Id == GoldTierRegearID || r.Id == SilverTierRegearID))
       {
         bRegearAllowed = true;
       }
-      else if (guildUser.Roles.Any(x => x.Id == BronzeTierRegearID) && mentor == null)
+      else if (mentor == null && guildUser.Roles.Any(r => r.Id == BronzeTierRegearID))
       {
-        bRegearAllowed = true;
+        await RespondAsync($"You need to assign your regear a mentor", null, false, true);
+        bRegearAllowed = false;
       }
       else if (mentor != null && RegearModule.ISUserMentor(mentor) == false && guildUser.Roles.Any(r => r.Id == BronzeTierRegearID))
       {
@@ -698,7 +710,7 @@ namespace CommandModule
         bRegearAllowed = false;
       }
 
-      if (bRegearAllowed || guildUser.Roles.Any(r => r.Id == OfficerRoleID || r.Id == ManagementRoleID))
+      if (guildUser.Roles.Any(r => r.Id == OfficerRoleID || r.Id == ManagementRoleID) || bRegearAllowed)
       {
         dataBaseService = new DataBaseService();
         await dataBaseService.AddPlayerInfo(new DiscordBot.Models.Player
@@ -1260,6 +1272,9 @@ namespace CommandModule
     public async Task AddGame(string Game_Name, SocketRole? Role = null)
     {
       SocketRole newRole = null;
+      var embed = new EmbedBuilder();
+      var comp = new ComponentBuilder();
+
       if (Role == null)
       {
         await Context.Guild.CreateRoleAsync(Game_Name, null);
@@ -1274,26 +1289,230 @@ namespace CommandModule
           }
         }
 
+
+        var membercount = Context.Guild.GetRole((Role == null) ? newRole.Id : Role.Id).Members.Count();
+
+        embed.WithTitle($"{Game_Name}");
+        embed.AddField("Role Name", (Role == null) ? newRole : Role.Name, true);
+        embed.AddField("Current Members playing", membercount, true);
+        embed.AddField("Game ID:", (Role == null) ? newRole.Id : Role.Id, true);
+        var AddRemoveRoleButton = new ButtonBuilder()
+        {
+          Label = "Get/Remove Role",
+          CustomId = $"getrole-{Game_Name}",
+          Style = ButtonStyle.Success
+        };
+        comp.WithButton(AddRemoveRoleButton);
+
+        await RespondAsync(null, null, false, false, null, null, comp.Build(), embed.Build());
+
+      }
+      else if (Role.Id == ApplicantRoleID)
+      {
+        //1156954659525771344 = application role. Code it to config
+
+        embed.WithTitle($"Still interested in joining Free Beer?");
+        //embed.WithDescription("Still interested in joining Free Beer? Press the button below to start the process.");
+        embed.WithColor(Color.Green);
+        embed.WithFooter("MAKE SURE YOUR DISCORD NICKNAME MATCHES YOUR IN-GAME NAME BEFORE APPLYING. CHECK YOUR PROFILE SETTINGS FOR THIS");
+
+
+        var GetApplicationRole = new ButtonBuilder()
+        {
+          Label = "APPLY HERE",
+          CustomId = $"getapplicantrole",
+          Style = ButtonStyle.Success,
+          Emote = Emoji.Parse(":point_right:")
+        };
+        comp.WithButton(GetApplicationRole);
+
+        //await ReplyAsync(null, false, embed.Build(), null, null, null, comp.Build());
+        await RespondAsync(null, null, false, false, null, null, comp.Build(), embed.Build());
+      }
+      else
+      {
+        await RespondAsync("Something went wrong.", ephemeral: true);
       }
 
-      var membercount = Context.Guild.GetRole((Role == null) ? newRole.Id : Role.Id).Members.Count();
 
-      var embed = new EmbedBuilder();
-      embed.WithTitle($"{Game_Name}");
-      embed.AddField("Role Name", (Role == null) ? newRole : Role.Name, true);
-      embed.AddField("Current Members playing", membercount, true);
-      embed.AddField("Game ID:", (Role == null) ? newRole.Id : Role.Id, true);
-      var comp = new ComponentBuilder();
-      var approveSplit = new ButtonBuilder()
+
+    }
+
+    [ComponentInteraction("getapplicantrole")]
+    public async Task VerifyApplicant()
+    {
+      //ADD ANTI SPAM MEASURES HERE
+      //MAKE THE EMBED APPLICATIONS A FOLLOWING
+
+      
+
+      var socketUser = (SocketGuildUser)Context.User;
+      IComponentInteraction ButtonInteraction = Context.Interaction as IComponentInteraction;
+
+      IMessageChannel RecruitersModChannel = Context.Client.GetChannel(RecruitersModChannelID) as IMessageChannel;
+
+      if (HelperMethods.IsUserFreeBeerMember(socketUser))
       {
-        Label = "Get/Remove Role",
-        CustomId = $"getrole-{Game_Name}",
-        Style = ButtonStyle.Success
-      };
-      comp.WithButton(approveSplit);
+        await RespondAsync("You're already a member of Free Beer.", ephemeral: true);
+      }
+      else if (!HelperMethods.IsUserFreeBeerMember(socketUser))
+      {
+        await DeferAsync();
+        if (socketUser.Nickname != null)
+        {
+          PlayerLookupInfo? playerInfo = new PlayerLookupInfo();
+          PlayerDataLookUps? albionData = new PlayerDataLookUps();//TODO: STATIC MEMBER
 
-      await RespondAsync(null, null, false, false, null, null, comp.Build(), embed.Build());
+          try
+          {
+            playerInfo = await albionData.GetPlayerInfo(Context, socketUser.DisplayName);
+            var detailedplayerinfo = await albionData.GetDetailedAlbionPlayerInfo(playerInfo.Id);
 
+            if (detailedplayerinfo.Name.ToLower() == socketUser.Nickname.ToLower())
+            {
+              if(detailedplayerinfo.KillFame >= iRecruitmentKillFame)
+              {
+                await socketUser.AddRoleAsync(ApplicantRoleID);
+
+                var componentInteraction = Context.Interaction as IComponentInteraction;
+                var channel = Context.Guild.GetForumChannel(1157007187630100531);
+                var threadChannel = await channel.CreatePostAsync($"{socketUser.Nickname} Application {DateTime.Now.ToString("M/d/yyyy")}", ThreadArchiveDuration.OneWeek, null, $"<@{socketUser.Id}> Please post any related info for your application from <#880611577236164628>");
+                var user = Context.Guild.GetUser(socketUser.Id);
+
+                if (user is not null)
+                {
+                  await threadChannel.AddUserAsync(user).ConfigureAwait(false);
+                  await threadChannel.AddUserAsync(Context.User as IGuildUser).ConfigureAwait(false);
+                }
+                else
+                {
+                  await RespondAsync();
+                }
+
+                var embed = new EmbedBuilder();
+
+                embed.WithTitle($"{socketUser.Nickname}");
+                embed.AddField("PVE Total Fame:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Total:n0}", true);
+                embed.AddField("Fame for Killing Players", $"{detailedplayerinfo.KillFame:n0}", true);
+                embed.AddField("Fame for Killing Mobs:", $"{detailedplayerinfo.DeathFame:n0}", true);
+                embed.AddField("Fame for Gathering:", $"{detailedplayerinfo.LifetimeStatistics.Gathering.All.Total:n0}", true);
+                embed.AddField("Fame for Crafting:", $"{detailedplayerinfo.LifetimeStatistics.Crafting.Total:n0}", true);
+                embed.AddField("Fishing Fame:", $"{detailedplayerinfo.LifetimeStatistics.FishingFame:n0}", true);
+                embed.AddField("Infamy: Corrupted Dungeons", $"{detailedplayerinfo.LifetimeStatistics.PvE.CorruptedDungeon:n0}", true);
+                embed.AddField("Infamy: Hellgates:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Hellgate:n0}", true);
+                embed.AddField("Mists:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Mists:n0}");
+                embed.AddField("Outlands:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Outlands:n0}");
+                embed.AddField("Avalon:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Avalon:n0}");
+
+                var approveButton = new ButtonBuilder()
+                {
+                  Label = "Accept",
+                  CustomId = "acceptapplicant",
+                  Style = ButtonStyle.Success
+                };
+                var denyButton = new ButtonBuilder()
+                {
+                  Label = "Deny",
+                  CustomId = "denyApplicant",
+                  Style = ButtonStyle.Danger
+                };
+
+                var component = new ComponentBuilder();
+                component.WithButton(approveButton);
+                component.WithButton(denyButton);
+
+                await threadChannel.SendMessageAsync($"Here's some in-game info I found for {socketUser.Nickname}", embed: embed.Build(), components: component.Build());
+                await FollowupAsync("Info fetch complete");
+                
+              }
+              else
+              {
+                await RecruitersModChannel.SendMessageAsync($"{socketUser.DisplayName} application was auto denied. They don't meet the fame requirments of {iRecruitmentKillFame:n0}. ");
+
+                await socketUser.SendMessageAsync($"Your application to Free Beer has been denied for now until you meet fame requirements of {iRecruitmentKillFame:n0}.");
+              }
+            }
+            else
+            {
+              await RespondAsync("I couldn't find you. Update your server name to match your in-game name. If there's still an issues please reach out to a recruiter in #lobby", ephemeral: true);
+            }
+          }
+          catch (Exception ex)
+          {
+            Console.WriteLine(ex.Message);
+            await RespondAsync("Yeah applying ain't gonna work for ya. Please reach out to a recruiter in #lobby", ephemeral: true);
+          }
+        }
+        else
+        {
+          await RespondAsync("Please change your Free Beer server nickname to match your in-game name. You can adjust that in your discord profile settings", ephemeral: true);
+        }
+      }
+      else
+      {
+        await RespondAsync("Yeah applying ain't gonna work for ya. Please reach out to a recruiter in #lobby", ephemeral: true);
+      }
+    }
+
+    
+    [ComponentInteraction("denyApplicant")]
+    public async Task DenyApplicant()
+    {
+      var socketUser = (SocketGuildUser)Context.User;
+
+      if (socketUser.Roles.Any(r => r.Id == OfficerRoleID) || socketUser.Roles.Any(r => r.Id == RecruitersRoleID))
+      {
+        IMessageChannel RecruitersModChannel = Context.Client.GetChannel(RecruitersModChannelID) as IMessageChannel;
+        await DeferAsync();
+
+        var componentInteraction = Context.Interaction as IComponentInteraction;
+        var channel = Context.Guild.GetForumChannel(1157007187630100531);
+        RegearModule regearModule = new RegearModule();
+
+        string ApplicantsName = componentInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
+        ulong DeniedApplicantID = regearModule.GetRegearPosterID(ApplicantsName, Context);
+        var SocketApplicantUser = Context.Guild.GetUser(DeniedApplicantID);
+        await SocketApplicantUser.RemoveRoleAsync(ApplicantRoleID);
+
+        await SocketApplicantUser.SendMessageAsync($"{ApplicantsName} Your application to Free Beer has been denied for now.");
+
+        await RecruitersModChannel.SendMessageAsync($"THIS IS A TEST: {ApplicantsName} application been denied by {socketUser.DisplayName}. Link to application: https://discord.com/channels/335894087397933056/{componentInteraction.ChannelId}");
+
+        await FollowupAsync($"{ApplicantsName} application has been denied on {DateTime.Today.ToString("M/d/yyyy")}");
+      }
+      else
+      {
+
+      }
+      
+
+    }
+
+    [ComponentInteraction("acceptapplicant")]
+    async Task AcceptApplicant()
+    {
+      var socketUser = (SocketGuildUser)Context.User;
+
+      if (socketUser.Roles.Any(r => r.Id == OfficerRoleID) || socketUser.Roles.Any(r => r.Id == RecruitersRoleID))
+      {
+        //await DeferAsync();
+        IMessageChannel RecruitersModChannel = Context.Client.GetChannel(RecruitersModChannelID) as IMessageChannel;
+
+        var componentInteraction = Context.Interaction as IComponentInteraction;
+
+        string ApplicantsName = componentInteraction.Message.Embeds.FirstOrDefault().Title.ToString();
+
+        RegearModule regearModule = new RegearModule();
+
+        ulong AcceptedApplicantID = regearModule.GetRegearPosterID(ApplicantsName, Context);
+        var SocketApplicantUser = Context.Guild.GetUser(AcceptedApplicantID);
+
+        await socketUser.RemoveRoleAsync(ApplicantRoleID);
+
+        await RecruitersModChannel.SendMessageAsync($"THIS IS A TEST: {ApplicantsName} has been accepted and auto registred by {socketUser.DisplayName}. Link to application: https://discord.com/channels/335894087397933056/{componentInteraction.ChannelId}");
+        await RespondAsync($"{ApplicantsName} application has been accepted on {DateTime.Today.ToString("M/d/yyyy")}"); //Creates unknownwebhook same interaction twice
+        await Register(SocketApplicantUser, ApplicantsName);
+      }
     }
 
     [ComponentInteraction("getrole*")]
