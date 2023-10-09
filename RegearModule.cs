@@ -19,34 +19,36 @@ using static PlayerData.PlayerDataHandler;
 namespace DiscordBot.RegearModule
 {
     public class RegearModule
-	{
-        private DataBaseService dataBaseService;
+	  {
+      private DataBaseService dataBaseService;
 
-        private int goldTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegearPriceCap"));
-        private int silverTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegearPriceCap"));
-        private int bronzeTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegearPriceCap"));
-        private int shitTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DefaultTierSubmissionCap"));
-        private int mountCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("MountPriceCap"));
-        private int iTankMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMinimumIP"));
-        private int iDPSMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMinimumIP"));
-        private int iHealerMinmumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMinmumIP"));
-        private int iSupportMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMinimumIP"));
+      private int goldTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("GoldTierRegearPriceCap"));
+      private int silverTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SilverTierRegearPriceCap"));
+      private int bronzeTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("BronzeTierRegearPriceCap"));
+      private int shitTierRegearCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DefaultTierSubmissionCap"));
+      private int mountCap = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("MountPriceCap"));
 
-		private ulong roleIdNewRecruit = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("newRecruit"));
-		private ulong roleIdMember = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("member"));
-		private ulong roleIdOfficer = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("officer"));
-		private ulong roleIdVeteran = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
+      private int iTankMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMinimumIP"));
+      private int iDPSMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMinimumIP"));
+      private int iHealerMinmumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMinmumIP"));
+      private int iSupportMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMinimumIP"));
 
-		private static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
-        private static ulong HealerMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMentorID"));
-        private static ulong DPSMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMentorID"));
-        private static ulong SupportMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMentorID"));
+		  private ulong roleIdNewRecruit = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("newRecruit"));
+		  private ulong roleIdMember = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("member"));
+		  private ulong roleIdOfficer = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("officer"));
+		  private ulong roleIdVeteran = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
 
-        public double TotalRegearSilverAmount { get; set; }
-        public ulong RegearQueueID { get; set; }
-        private string regearRoleIcon { get; set; }
+		  private static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
+      private static ulong HealerMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMentorID"));
+      private static ulong DPSMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DPSMentorID"));
+      private static ulong SupportMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMentorID"));
 
-		public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
+      public double TotalRegearSilverAmount { get; set; }
+      public ulong RegearQueueID { get; set; }
+      public int KillID { get; set; }
+    private string regearRoleIcon { get; set; }
+
+		    public async Task PostRegear(SocketInteractionContext command, PlayerDataHandler.Rootobject a_EventData, string partyLeader, EventTypeEnum a_eEventType, MoneyTypes moneyTypes, SocketGuildUser? a_Mentor)
         {
             var chnl = command.Client.GetChannel(ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("regearTeamChannelId"))) as IMessageChannel;
             var marketDataAndGearImg = await GetMarketDataAndGearImg(command, a_EventData);
@@ -56,6 +58,7 @@ namespace DiscordBot.RegearModule
             var bytes = converter.FromHtmlString(html);
 
             RegearQueueID = command.Interaction.Id;
+            KillID = a_EventData.EventId;
 
             var approveButton = new ButtonBuilder()
             {
@@ -155,6 +158,7 @@ namespace DiscordBot.RegearModule
             {
                 throw;
             }
+        
         }
         public async Task PostOCRegear(SocketInteractionContext command, List<string> items, string a_sPartyLeader, MoneyTypes a_eMoneyTypes, EventTypeEnum a_eEventTypes)
         {
@@ -221,7 +225,6 @@ namespace DiscordBot.RegearModule
                                         .WithImageUrl($"attachment://image.jpg");
 
                     await command.Channel.SendFileAsync(imgStream, "image.jpg", $"Regear Submission from {command.User} ", false, embed.Build(), null, false, null, null, components: component.Build());
-                    //await command.User.SendMessageAsync("Test",false, null, null, null, null, embeds: test);
                 }
             }
             catch (Exception ex)
@@ -386,7 +389,7 @@ namespace DiscordBot.RegearModule
 
             if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
             {
-                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
+                returnValue = Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
             }
@@ -398,20 +401,20 @@ namespace DiscordBot.RegearModule
             }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                returnValue = Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
 
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "Free Regear - Eligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
             {
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "NOT ELIGIBLE FOR REGEAR";
                 regearRoleIcon = ":poop:";
             }
@@ -534,7 +537,7 @@ namespace DiscordBot.RegearModule
 
             if (guildUser.Roles.Any(r => r.Name == "Gold Tier Regear - Eligible")) // Role ID 1049889855619989515
             {
-                returnValue = returnValue = Math.Min(goldTierRegearCap, returnValue);
+                returnValue =  Math.Min(goldTierRegearCap, returnValue);
                 regearIconType = "Gold Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerGoldCreditCard:1071162762056708206>";
             }
@@ -546,19 +549,19 @@ namespace DiscordBot.RegearModule
             }
             else if (guildUser.Roles.Any(r => r.Name == "Bronze Tier Regear - Eligible")) //Role ID 970083088241672245
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                returnValue =  Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Bronze Tier Regear - Eligible";
                 regearRoleIcon = "<:FreeBeerBronzeCreditCard:1072023947899576412> ";
             }
             else if (guildUser.Roles.Any(r => r.Name == "Free Regear - Eligible")) // Role ID 1052241667329118349
             {
-                returnValue = returnValue = Math.Min(bronzeTierRegearCap, returnValue);
+                returnValue =  Math.Min(bronzeTierRegearCap, returnValue);
                 regearIconType = "Free Regear - Eligible";
                 regearRoleIcon = "<:FreeRegearToken:1052241548856791040> ";
             }
             else
             {
-                returnValue = returnValue = Math.Min(shitTierRegearCap, returnValue);
+                returnValue = Math.Min(shitTierRegearCap, returnValue);
                 regearIconType = "Shit Tier Regear - Eligible";
                 regearRoleIcon = ":poop:";
             }
@@ -684,10 +687,8 @@ namespace DiscordBot.RegearModule
             double returnValue = a_iEquipmentPrice;
 
             string mountTier = a_PlayerEquipment.Mount.Type.ToString().Split('_')[0];
-            if (a_PlayerEquipment.Mount.Type.ToString().Contains("UNIQUE_MOUNT") || mountTier == "T5" || mountTier == "T6" || mountTier == "T7" || mountTier == "T8")
-            {
-                returnValue = Math.Min(mountCap, a_iEquipmentPrice);
-            }
+
+            returnValue = Math.Min(mountCap, a_iEquipmentPrice);
             
             return returnValue;
         }
@@ -801,7 +802,7 @@ namespace DiscordBot.RegearModule
                     {
                         var value = marketData.Min(x => x.data.FirstOrDefault().avg_price);
 
-                        if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't generally cost over 5 mil. more checks need to be in place)
+                        if (value < 10000000)// Very simple check to verify if a single item is too high. (a single item shouldn't generally cost over 5 mil. more checks need to be in place)
                         {
                             returnValue = value;
                         }
@@ -874,7 +875,10 @@ namespace DiscordBot.RegearModule
 
         public static bool HasRegearOverride(SocketGuildUser a_SocketGuildUser)
         {
-            if(a_SocketGuildUser.Roles.Any(r => r.Name == "AO - REGEARS" || r.Name == "AO - Officers"|| r.Name == "Admin"))
+            ulong ManagementRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("ManagementRoleID"));
+            ulong OfficerRoleID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OfficerRoleID"));
+
+            if(a_SocketGuildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID || r.Name == "Admin"))
             {
                 return true;
             }
@@ -904,7 +908,7 @@ namespace DiscordBot.RegearModule
 			var iterable = context.Guild.GetUsersAsync().ToListAsync().Result.ToList();
 			foreach (var member in iterable.FirstOrDefault())
 			{
-				if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(roleIdMember)
+				if (member.RoleIds.Contains(roleIdNewRecruit) || member.RoleIds.Contains(ulong.Parse("602244098908225537"))
 					|| member.RoleIds.Contains(roleIdOfficer) || member.RoleIds.Contains(roleIdVeteran))
 				{
 					if (member.DisplayName != null)
