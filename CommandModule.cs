@@ -683,7 +683,7 @@ namespace CommandModule
         await RespondAsync($"Requirement failed. Your time to submit this regear is past 72 hours. Regear denied. ", null, false, true);
         bRegearAllowed = false;
       }
-      else if (sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null || !guildUser.Roles.Any(r => r.Id == OfficerRoleID || r.Id == ManagementRoleID))
+      else if (sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null)
       {
         IMessageChannel RecruitersModChannel = Context.Client.GetChannel(1024308022840918026) as IMessageChannel;//using bot workshop channel
         await RecruitersModChannel.SendMessageAsync($"{sUserNickname} may have not been registed. Please verify their registration ");
@@ -1344,8 +1344,6 @@ namespace CommandModule
       //ADD ANTI SPAM MEASURES HERE
       //MAKE THE EMBED APPLICATIONS A FOLLOWING
 
-      
-
       var socketUser = (SocketGuildUser)Context.User;
       IComponentInteraction ButtonInteraction = Context.Interaction as IComponentInteraction;
 
@@ -1357,7 +1355,7 @@ namespace CommandModule
       }
       else if (!HelperMethods.IsUserFreeBeerMember(socketUser))
       {
-        await DeferAsync();
+        await DeferAsync(true);
         if (socketUser.Nickname != null)
         {
           PlayerLookupInfo? playerInfo = new PlayerLookupInfo();
@@ -1383,47 +1381,46 @@ namespace CommandModule
                 {
                   await threadChannel.AddUserAsync(user).ConfigureAwait(false);
                   await threadChannel.AddUserAsync(Context.User as IGuildUser).ConfigureAwait(false);
+
+                  var embed = new EmbedBuilder();
+
+                  embed.WithTitle($"{socketUser.Nickname}");
+                  embed.AddField("PVE Total Fame:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Total:n0}", true);
+                  embed.AddField("Fame for Killing Players", $"{detailedplayerinfo.KillFame:n0}", true);
+                  embed.AddField("Fame for Killing Mobs:", $"{detailedplayerinfo.DeathFame:n0}", true);
+                  embed.AddField("Fame for Gathering:", $"{detailedplayerinfo.LifetimeStatistics.Gathering.All.Total:n0}", true);
+                  embed.AddField("Fame for Crafting:", $"{detailedplayerinfo.LifetimeStatistics.Crafting.Total:n0}", true);
+                  embed.AddField("Fishing Fame:", $"{detailedplayerinfo.LifetimeStatistics.FishingFame:n0}", true);
+                  embed.AddField("Infamy: Corrupted Dungeons", $"{detailedplayerinfo.LifetimeStatistics.PvE.CorruptedDungeon:n0}", true);
+                  embed.AddField("Infamy: Hellgates:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Hellgate:n0}", true);
+                  embed.AddField("Mists:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Mists:n0}");
+                  embed.AddField("Outlands:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Outlands:n0}");
+                  embed.AddField("Avalon:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Avalon:n0}");
+
+                  var approveButton = new ButtonBuilder()
+                  {
+                    Label = "Accept",
+                    CustomId = "acceptapplicant",
+                    Style = ButtonStyle.Success
+                  };
+                  var denyButton = new ButtonBuilder()
+                  {
+                    Label = "Deny",
+                    CustomId = "denyApplicant",
+                    Style = ButtonStyle.Danger
+                  };
+
+                  var component = new ComponentBuilder();
+                  component.WithButton(approveButton);
+                  component.WithButton(denyButton);
+
+                  await threadChannel.SendMessageAsync($"Here's some in-game info I found for {socketUser.Nickname}", embed: embed.Build(), components: component.Build());
+                  await FollowupAsync("Application created", ephemeral: true);
                 }
                 else
                 {
-                  await RespondAsync();
+                  Console.WriteLine("USER NOT FOUND DURING GET USER LOOKUP. Possibly bad ID");
                 }
-
-                var embed = new EmbedBuilder();
-
-                embed.WithTitle($"{socketUser.Nickname}");
-                embed.AddField("PVE Total Fame:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Total:n0}", true);
-                embed.AddField("Fame for Killing Players", $"{detailedplayerinfo.KillFame:n0}", true);
-                embed.AddField("Fame for Killing Mobs:", $"{detailedplayerinfo.DeathFame:n0}", true);
-                embed.AddField("Fame for Gathering:", $"{detailedplayerinfo.LifetimeStatistics.Gathering.All.Total:n0}", true);
-                embed.AddField("Fame for Crafting:", $"{detailedplayerinfo.LifetimeStatistics.Crafting.Total:n0}", true);
-                embed.AddField("Fishing Fame:", $"{detailedplayerinfo.LifetimeStatistics.FishingFame:n0}", true);
-                embed.AddField("Infamy: Corrupted Dungeons", $"{detailedplayerinfo.LifetimeStatistics.PvE.CorruptedDungeon:n0}", true);
-                embed.AddField("Infamy: Hellgates:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Hellgate:n0}", true);
-                embed.AddField("Mists:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Mists:n0}");
-                embed.AddField("Outlands:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Outlands:n0}");
-                embed.AddField("Avalon:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Avalon:n0}");
-
-                var approveButton = new ButtonBuilder()
-                {
-                  Label = "Accept",
-                  CustomId = "acceptapplicant",
-                  Style = ButtonStyle.Success
-                };
-                var denyButton = new ButtonBuilder()
-                {
-                  Label = "Deny",
-                  CustomId = "denyApplicant",
-                  Style = ButtonStyle.Danger
-                };
-
-                var component = new ComponentBuilder();
-                component.WithButton(approveButton);
-                component.WithButton(denyButton);
-
-                await threadChannel.SendMessageAsync($"Here's some in-game info I found for {socketUser.Nickname}", embed: embed.Build(), components: component.Build());
-                await FollowupAsync("Info fetch complete");
-                
               }
               else
               {
