@@ -6,23 +6,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Temp\**" />
-    <EmbeddedResource Remove="Temp\**" />
-    <None Remove="Temp\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Albion.Network" Version="5.0.1" />
     <PackageReference Include="AlbionData.Models" Version="0.1.12" />
     <PackageReference Include="Aspose.Imaging" Version="23.6.0" />
     <PackageReference Include="Aspose.Words" Version="23.6.0" />
     <PackageReference Include="CoreHtmlToImage" Version="1.0.6" />
-    <PackageReference Include="Discord.Net" Version="3.9.0" />
-    <PackageReference Include="Discord.Net.Core" Version="3.9.0" />
-    <PackageReference Include="Google.Apis.Sheets.v4" Version="1.60.0.2979" />
-    <PackageReference Include="GroupDocs.Merger" Version="22.12.0" />
-    <PackageReference Include="IronOcr" Version="2023.6.6" />
-    <PackageReference Include="Leadtools.Formats.Raster.Common" Version="22.0.0.6" />
+    <PackageReference Include="Discord.Net" Version="3.12.0" />
+    <PackageReference Include="Discord.Net.Core" Version="3.12.0" />
+    <PackageReference Include="Google.Apis.Sheets.v4" Version="1.61.0.3092" />
+    <PackageReference Include="GroupDocs.Merger" Version="23.5.0" />
+    <PackageReference Include="Leadtools.Formats.Raster.Common" Version="22.0.0.8" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -37,7 +30,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="System.Configuration.Abstractions" Version="2.0.2.45" />
-    <PackageReference Include="Tesseract" Version="5.2.0" />
     <PackageReference Include="Victoria" Version="6.0.1026" />
   </ItemGroup>
 
@@ -54,35 +46,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="C:\Users\ragej\.nuget\packages\tesseract\5.2.0\build\\..\x64\leptonica-1.82.0.dll" />
+    <Folder Include="Temp\" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="C:\Users\ragej\.nuget\packages\tesseract\5.2.0\build\\..\x64\tesseract50.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\ragej\.nuget\packages\tesseract\5.2.0\build\\..\x86\leptonica-1.82.0.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\ragej\.nuget\packages\tesseract\5.2.0\build\\..\x86\tesseract50.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\ragej\.nuget\packages\tesseract\5.2.0\build\\..\x64\leptonica-1.82.0.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\ragej\.nuget\packages\tesseract\5.2.0\build\\..\x64\tesseract50.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\ragej\.nuget\packages\tesseract\5.2.0\build\\..\x86\leptonica-1.82.0.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\ragej\.nuget\packages\tesseract\5.2.0\build\\..\x86\tesseract50.dll" />
+    <ProjectReference Include="..\..\Users\ragej\Downloads\SharpLink-master\SharpLink-master\SharpLink\SharpLink.csproj" />
   </ItemGroup>
 
 </Project>
