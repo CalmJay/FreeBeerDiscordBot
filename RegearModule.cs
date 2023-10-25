@@ -151,10 +151,10 @@ namespace DiscordBot.RegearModule
             await a_Mentor.SendMessageAsync($"Your mentee {a_EventData.Victim.Name} has submitted a regear. https://discord.com/channels/335894087397933056/1047554594420564130/{command.Interaction.Id}");
           }
 
-          if (a_EventData.Victim.Inventory.Any(x => x != null && x.Type.Contains("TOOL") || x.Type.Contains("GATHERER")))
-          {
-            embed.AddField("Has Gather equipment", "yes", true);
-          }
+          //if (a_EventData.Victim.Inventory.Any(x => x != null && x.Type.Contains("TOOL") || x.Type.Contains("GATHERER")))
+          //{
+          //  embed.AddField("Has Gather equipment", "yes", true);
+          //}
 
           await chnl.SendFileAsync(imgStream, "image.jpg", null, false, embed.Build(), null, false, null, null, components: component.Build());
 
@@ -347,7 +347,7 @@ namespace DiscordBot.RegearModule
         //Check for Current Price
         List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(item);
 
-        if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() == 0)
+        if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() > 0)
         {
           //Check for daily average price
           List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(item);
@@ -753,7 +753,7 @@ namespace DiscordBot.RegearModule
           {
             var value = itemsData.Min(x => x.sell_price_min);
 
-            if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+            if (value <= 15000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
             {
               returnValue = value;
             }
@@ -780,7 +780,7 @@ namespace DiscordBot.RegearModule
           {
             var value = marketData.Min(x => x.data.Min(x => x.avg_price));
 
-            if (value < 5000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
+            if (value <= 15000000)// Very simple check to verify if a single item is too high. (a single item shouldn't cost over 5 mil. more checks need to be in place)
             {
               returnValue = value;
             }
@@ -808,7 +808,7 @@ namespace DiscordBot.RegearModule
           {
             var value = marketData.Min(x => x.data.FirstOrDefault().avg_price);
 
-            if (value < 10000000)// Very simple check to verify if a single item is too high. (a single item shouldn't generally cost over 5 mil. more checks need to be in place)
+            if (value <= 15000000)// Very simple check to verify if a single item is too high. (a single item shouldn't generally cost over 5 mil. more checks need to be in place)
             {
               returnValue = value;
             }

@@ -131,17 +131,15 @@ namespace CommandModule
 
       var user = guildUserName.Guild.GetUser(guildUserName.Id);
 
-      if (ingameName != null)
+      if (user.Nickname == null)
       {
-
-        if (sUserNickname.ToLower() != ingameName.ToLower())
+        try
         {
-          try
-          {
-            await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
-          }
-          catch (Exception ex) { }
-
+          await user.ModifyAsync(x => x.Nickname = ingameName);
+        }
+        catch (Exception ex) 
+        {
+          await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} nickname couldn't be updated", null));
         }
       }
 
@@ -295,7 +293,7 @@ namespace CommandModule
       var testuser = Context.User.Id;
       string? sPlayerData = null;
       var sPlayerAlbionId = new PlayerDataLookUps().GetPlayerInfo(Context, null);
-      string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).DisplayName != null) ? (Context.Interaction.User as SocketGuildUser).DisplayName : Context.Interaction.User.Username;
+      string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? (Context.User as SocketGuildUser).DisplayName : (Context.User as SocketGuildUser).Nickname;
 
       await _logger.Log(new LogMessage(LogSeverity.Info, "Recent-Deaths ", $"User: {Context.User.Username} has used command, Command: Recent-Deaths", null));
 
@@ -425,13 +423,14 @@ namespace CommandModule
     public async Task GetCurrentPaychexAmount()
     {
       await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
-      string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : (Context.User as SocketGuildUser).Username;
-
+      string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : (Context.User as SocketGuildUser).Nickname;
       var component = new ComponentBuilder();
       var paychexbutton = new ButtonBuilder();
-      await DeferAsync(true);
-      if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
+      DataBaseService dataBaseService = new DataBaseService();
+      
+      if(await dataBaseService.CheckPlayerIsExist(sUserNickname))
       {
+        await DeferAsync(true);
         List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
         Dictionary<string, string> paychexTotals = GoogleSheetsDataWriter.GetPaychexTotals(sUserNickname);
 
@@ -683,13 +682,16 @@ namespace CommandModule
         await RespondAsync($"Requirement failed. Your time to submit this regear is past 72 hours. Regear denied. ", null, false, true);
         bRegearAllowed = false;
       }
-      else if (sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null)
+      else if ((!guildUser.Roles.Any(r => r.Id == OfficerRoleID)))
       {
-        IMessageChannel RecruitersModChannel = Context.Client.GetChannel(1024308022840918026) as IMessageChannel;//using bot workshop channel
-        await RecruitersModChannel.SendMessageAsync($"{sUserNickname} may have not been registed. Please verify their registration ");
-        await RespondAsync($"Regear submission failed. Please update your discord server nickname to EXACTLY match your in-game name. ", null, false, true);
+        if(sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null)
+        {
+          IMessageChannel RecruitersModChannel = Context.Client.GetChannel(1024308022840918026) as IMessageChannel;//using bot workshop channel
+          await RecruitersModChannel.SendMessageAsync($"{sUserNickname} may have not been registed. Please verify their registration ");
+          await RespondAsync($"Regear submission failed. Please update your discord server nickname to EXACTLY match your in-game name. ", null, false, true);
 
-        bRegearAllowed = false;
+          bRegearAllowed = false;
+        }
       }
       else if (mentor != null && RegearModule.ISUserMentor(mentor) && guildUser.Roles.Any(r => r.Id == BronzeTierRegearID))
       {
@@ -1333,9 +1335,6 @@ namespace CommandModule
       {
         await RespondAsync("Something went wrong.", ephemeral: true);
       }
-
-
-
     }
 
     [ComponentInteraction("getapplicantrole")]
@@ -1351,9 +1350,9 @@ namespace CommandModule
 
       if (HelperMethods.IsUserFreeBeerMember(socketUser))
       {
-        await RespondAsync("You're already a member of Free Beer.", ephemeral: true);
+        await RespondAsync("You're already a member of Free Beer or your currently have an application open.", ephemeral: true);
       }
-      else if (!HelperMethods.IsUserFreeBeerMember(socketUser))
+      else if (!HelperMethods.IsUserFreeBeerMember(socketUser) || socketUser.Roles.Any(r => r.Id == 1015016450265727057))
       {
         await DeferAsync(true);
         if (socketUser.Nickname != null)
