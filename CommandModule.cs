@@ -391,7 +391,7 @@ namespace CommandModule
         case PricingOptions.MonthlyAverage:
           combinedInfo = $"{ItemCode}?qualities={(int)ItemQuality}&locations={SelectedMarkets}";
           MonthlyAverageMarketData = new MarketDataFetching().GetMarketPriceMonthlyAverage(combinedInfo);
-          var test = new AverageItemPrice().location;
+
           await RespondAsync($"The cheapest {PriceOption} of your {ItemQuality} item found in {MonthlyAverageMarketData.Result.FirstOrDefault().location.ToString()} cost: " + MonthlyAverageMarketData.Result.FirstOrDefault().data.FirstOrDefault().avg_price.ToString("N0"), null, false, true);
           break;
 
@@ -434,7 +434,7 @@ namespace CommandModule
         List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
         Dictionary<string, string> paychexTotals = GoogleSheetsDataWriter.GetPaychexTotals(sUserNickname);
 
-        string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+        string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname) ?? "0";
         string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
         string PaychexDate = "";
         List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
@@ -442,11 +442,12 @@ namespace CommandModule
 
         embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
 
-        string biweeklyLastSundayDate = $"{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
-        if (!paychexSheets.Any(s => s.Contains(biweeklyLastSundayDate)))
-        {
-          embed.AddField("Last weeks estimated paychex:", $"${paychexRunningTotal[0]:n0}");
-        }
+        //string biweeklyLastSundayDate = $"{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
+
+        //if (!paychexSheets.Any(s => s.Contains(biweeklyLastSundayDate)))
+        //{
+        //  embed.AddField("Last weeks estimated paychex:", $"${paychexRunningTotal[0]:n0}");
+        //}
 
         embed.AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}");
         embed.AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}");
@@ -1147,21 +1148,23 @@ namespace CommandModule
       await _logger.Log(new LogMessage(LogSeverity.Info, "Split-Loot Command", $"User: {Context.User.Username} initiated a split-loot", null));
     }
 
-    [ComponentInteraction("add-member")]
+    [ComponentInteraction("add-member*")]
     async Task AddMembersToLootSplit()
     {
       ;
       LootSplitModule lootSplitMod = new LootSplitModule();
       await lootSplitMod.AddRemoveNamesFromList(Context, Options.Add);
       await _logger.Log(new LogMessage(LogSeverity.Info, "Add member", $"User: {Context.User.Username} added member from split", null));
+      //await Context.Interaction.FollowupAsync("Member(s) added");
     }
 
-    [ComponentInteraction("remove-member")]
+    [ComponentInteraction("remove-member*")]
     async Task RemoveMembersFromSplit()
     {
       LootSplitModule lootSplitMod = new LootSplitModule();
       await lootSplitMod.AddRemoveNamesFromList(Context, Options.Remove);
       await _logger.Log(new LogMessage(LogSeverity.Info, "Remove member", $"User: {Context.User.Username} removed member from split", null));
+      //await Context.Interaction.FollowupAsync("Member(s) removed");
     }
 
     [ComponentInteraction("approve-split")]

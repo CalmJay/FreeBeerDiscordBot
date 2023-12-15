@@ -105,7 +105,7 @@ namespace MarketData
             }
             catch (Exception ex)
             {
-                //await _logger.Log(new LogMessage(LogSeverity.Info, "Insult Time!!!", $"User: {context.User.Username}, Command: insult", null));
+                Console.WriteLine(ex);  
                 throw;
             }
 

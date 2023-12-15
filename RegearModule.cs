@@ -347,7 +347,7 @@ namespace DiscordBot.RegearModule
         //Check for Current Price
         List<EquipmentMarketData> marketDataCurrent = await marketDataFetching.GetMarketPriceCurrentAsync(item);
 
-        if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min != 0).Count() > 0)
+        if (marketDataCurrent == null || marketDataCurrent.Where(x => x.sell_price_min == 0).Count() == 0)
         {
           //Check for daily average price
           List<AverageItemPrice> marketDataDaily = await marketDataFetching.GetMarketPriceDailyAverage(item);
