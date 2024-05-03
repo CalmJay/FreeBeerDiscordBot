@@ -81,7 +81,7 @@ namespace DNet_V3_Tutorial
     public async Task MenuInput()
     {
       //TODO: FIX THE SPELLING OF THE COMMAND
-
+      await _logger.Log(new LogMessage(LogSeverity.Info, "Configuation Menu", $"User: {Context.User.Username} has opened config menu, Command: configation", null));
       CreateConfiguationEmbed();
 
       await RespondAsync(ephemeral: true , embed: Embed.Build(), components: Componets.Build());
@@ -94,7 +94,7 @@ namespace DNet_V3_Tutorial
       var SettingsEmbed = new EmbedBuilder()
       .WithTitle($":beers: Free Beer Bot Configuration :beers:")
       .WithDescription($"**Loot Split Settings** \n" +
-        $"`Guild Fee` {configuationSettings.lootsplitsettings.guildfee}% \n" +
+        $"`Guild Fee (Not used atm)` {configuationSettings.lootsplitsettings.guildfee}% \n" +
         $"`Damaged Fee` {configuationSettings.lootsplitsettings.damagedfee}% \n" +
         $"`Non-Damaged Fee` {configuationSettings.lootsplitsettings.nondamagedfee}% \n" +
         $"`Include Silver bags` {configuationSettings.lootsplitsettings.includesilverbags} \n");
