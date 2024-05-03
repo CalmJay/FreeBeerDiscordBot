@@ -250,9 +250,9 @@ namespace DiscordBot.LootSplitModule
         DamagedLootTotal = (int)(a_iDamagedLootTotal != null ? a_iDamagedLootTotal : 0);
         SilverBagsTotal = (int)((SilverBagsTotalstring != null) ? SilverBagsTotalstring : 0); ;
 
-        double NonDamgedFeePercentage = (SplitLootFeeNonDamaged / 100);
-        double DamgedFeePercentage = (SplitLootFeeDamaged / 100);
-        double GuildFee = (GuildSplitFee / 100);
+        decimal NonDamgedFeePercentage = SplitLootFeeNonDamaged / 100m;
+        decimal DamgedFeePercentage = SplitLootFeeDamaged / 100m;
+        decimal GuildFee = GuildSplitFee / 100m;
 
 
         switch (a_eLootSplitType)
