@@ -1,8 +1,20 @@
 {
   "lootsplitsettings": {
     "name": "Loot Split Settings",
-    "guildfee": 30,
-    "damagedfee": 30,
-    "nondamagedfee": 25
+    "guildfee": "30",
+    "damagedfee": "30",
+    "nondamagedfee": "25",
+    "includesilverbags": "true"
+  },
+
+  "regearsettings": {
+    "name": "Regear Settings",
+    "GoldTierRegearMaxRefund": 1000000,
+    "SilverTierRegearMaxRefund": 800000,
+    "BronzeTierRegearMaxRefund": 500000,
+    "ShitTierRegearMaxRefund": 250000,
+    "GoldRegearDiscordRole": "",
+    "SilverRegearDiscordRole": "",
+    "BronzeRegearDiscordRole": ""
   }
 }  
