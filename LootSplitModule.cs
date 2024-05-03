@@ -9,6 +9,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using DiscordBot.Enums;
 using Discord.Rest;
+using DNet_V3_Tutorial;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace DiscordBot.LootSplitModule
 {
@@ -40,7 +43,10 @@ namespace DiscordBot.LootSplitModule
     private bool MemberAddedOrRemoved { get; set; }
     private EmbedBuilder Embed { get; set; }
     private ComponentBuilder Componets { get; set; }
-
+    public int SplitLootGuildFee = Int32.Parse((string)JsonNode.Parse(HelperMethods.ReadFromJsonString())["lootsplitsettings"]!["guildfee"]);
+    public int SplitLootFeeNonDamaged = Int32.Parse((string)JsonNode.Parse(HelperMethods.ReadFromJsonString())["lootsplitsettings"]!["nondamagedfee"]);
+    public int SplitLootFeeDamaged = Int32.Parse((string)JsonNode.Parse(HelperMethods.ReadFromJsonString())["lootsplitsettings"]!["damagedfee"]);
+    public bool SplitLootIncludeSilverBags = Convert.ToBoolean((string)JsonNode.Parse(HelperMethods.ReadFromJsonString())["lootsplitsettings"]!["includesilverbags"]);
     public Dictionary<string, ulong> CreateMemberDict()
     {
       return scrapedDict;
@@ -243,7 +249,12 @@ namespace DiscordBot.LootSplitModule
         NonDamagedLootTotal = (int)((a_iNonDamagedLootTotal != null) ? a_iNonDamagedLootTotal : 0);
         DamagedLootTotal = (int)(a_iDamagedLootTotal != null ? a_iDamagedLootTotal : 0);
         SilverBagsTotal = (int)((SilverBagsTotalstring != null) ? SilverBagsTotalstring : 0); ;
-        
+
+        double NonDamgedFeePercentage = (SplitLootFeeNonDamaged / 100);
+        double DamgedFeePercentage = (SplitLootFeeDamaged / 100);
+        double GuildFee = (GuildSplitFee / 100);
+
+
         switch (a_eLootSplitType)
         {
           case LootSplitType.Personal:
@@ -254,8 +265,17 @@ namespace DiscordBot.LootSplitModule
 
           case LootSplitType.Guild:
           case LootSplitType.OffSeason:
-            GuildSplitFee = (int)Math.Round(NonDamagedLootTotal * .25) + (int)Math.Round(DamagedLootTotal * .30) + (int)Math.Round(SilverBagsTotal * .25);
-            TotalLootSplitPerMember = ((NonDamagedLootTotal + DamagedLootTotal + SilverBagsTotal) - GuildSplitFee )/ a_MembersList.Count;
+            if(SplitLootIncludeSilverBags == true)
+            {
+              GuildSplitFee = (int)Math.Round(NonDamagedLootTotal * NonDamgedFeePercentage) + (int)Math.Round(DamagedLootTotal * DamgedFeePercentage) + (int)Math.Round(SilverBagsTotal * NonDamgedFeePercentage);
+              TotalLootSplitPerMember = ((NonDamagedLootTotal + DamagedLootTotal + SilverBagsTotal) - GuildSplitFee) / a_MembersList.Count;
+            }
+            else
+            {
+              GuildSplitFee = (int)Math.Round(NonDamagedLootTotal * NonDamgedFeePercentage) + (int)Math.Round(DamagedLootTotal * DamgedFeePercentage);
+              TotalLootSplitPerMember = ((NonDamagedLootTotal + DamagedLootTotal) - GuildSplitFee) / a_MembersList.Count;
+            }
+            
             break;
         }
         await ConfirmationEmbed(a_Context, a_MembersList, a_eLootSplitType, a_sCallerName, a_eEventType);
