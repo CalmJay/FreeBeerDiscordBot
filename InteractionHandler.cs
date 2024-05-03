@@ -48,7 +48,8 @@ namespace InteractionHandlerService
       _client.UserLeft += UserLeftGuildExecuted;
       _client.ButtonExecuted += ButtonExecuted;
       _client.ModalSubmitted += ModalSubmittedExecuted;
-      
+      _client.SelectMenuExecuted += MenuHandler;
+
 
 
       // Process the command execution results 
@@ -187,7 +188,10 @@ namespace InteractionHandlerService
         await lobbyChannel.SendMessageAsync($"Has left the server <@{SocketUser.GlobalName}>");
       }
     }
-
+    private Task MenuHandler(SocketMessageComponent arg)
+    {
+      return Task.CompletedTask;
+    }
     private Task ModalSubmittedExecuted(SocketModal a_Modal)
     {
       return Task.CompletedTask;

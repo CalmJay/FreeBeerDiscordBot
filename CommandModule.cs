@@ -163,8 +163,7 @@ namespace CommandModule
 
         var embed = new EmbedBuilder()
        .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
-       .WithDescription("We're glad to have you. Please read/watch the following below.")
-       .AddField($"Onboarding Video", "https://www.youtube.com/watch?v=dmUomrP-6RA")
+       .WithDescription("We're glad to have you. Please read the following below.")
        .AddField($"Rule book", "https://docs.google.com/document/d/1Vmw-D62zHBpQf8PvR8WLKAqBVncNW4yTC-_dBNLSHNI/");
 
         List<string> questionList = new List<string>
@@ -178,7 +177,8 @@ namespace CommandModule
                     $"video game (Albion doesn't count)",
                     $"book",
                     $"boardgame",
-                    $"TV show"
+                    $"TV show",
+                    $"Sports team"
                 };
         Random rnd = new Random();
         int r = rnd.Next(questionList.Count);
@@ -506,7 +506,7 @@ namespace CommandModule
       }
       else
       {
-        await FollowupAsync("Looks like your not fully registered to the guild. Please contact a recruiter or officer to fix the issue.", null, false, true);
+        await RespondAsync("Looks like your not fully registered to the guild. Please contact a recruiter or officer to fix the issue.", null, false, true);
       }
     }
 
@@ -1736,7 +1736,24 @@ namespace CommandModule
     [SlashCommand("view-alliance-stats", "Check out alliance stats")]
     public async Task GetAllianceStats()
     {
+      PlayerDataLookUps albionData = new PlayerDataLookUps();
 
+      List<int> BattleIDs = new List<int>();
+      //BattleIDs.Add(966563738); //adding BattleBoard ID's to list
+      BattleIDs.Add(966557264);
+
+      List<PlayerDataHandler.Rootobject> eventData = new List<PlayerDataHandler.Rootobject>();
+
+      foreach (int Battle in BattleIDs)
+      {
+        eventData.Add(await albionData.GetAlbionEventInfo(Battle));
+      }
+
+      //Filter All Kills and deaths in events
+      foreach (var Event in eventData) 
+      {
+        Console.WriteLine(Event.EventId);
+      }
 
     }
 
