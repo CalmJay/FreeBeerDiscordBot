@@ -19,7 +19,7 @@ namespace AlbionOnlineDataParser
         public static void InitializeAlbionDataProjectCurrentPrices()
         {
             ApiAlbionDataProjectCurrentPrices = new HttpClient();
-            ApiAlbionDataProjectCurrentPrices.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/prices/");
+            ApiAlbionDataProjectCurrentPrices.BaseAddress = new Uri("https://west.albion-online-data.com/api/v2/stats/prices/");
             ApiAlbionDataProjectCurrentPrices.DefaultRequestHeaders.Accept.Clear();
             ApiAlbionDataProjectCurrentPrices.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }
@@ -28,7 +28,7 @@ namespace AlbionOnlineDataParser
         {
             //https://www.albion-online-data.com/api/v2/stats/history/T8_HEAD_PLATE_SET2?time-scale=24&locations=Martlock&qualities=2
             ApiAlbionDataProjectDailyPrices = new HttpClient();
-            ApiAlbionDataProjectDailyPrices.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/history/");
+            ApiAlbionDataProjectDailyPrices.BaseAddress = new Uri("https://west.albion-online-data.com/api/v2/stats/history/");
             ApiAlbionDataProjectDailyPrices.DefaultRequestHeaders.Accept.Clear();
             ApiAlbionDataProjectDailyPrices.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
@@ -36,7 +36,7 @@ namespace AlbionOnlineDataParser
         public static void InitializeAlbionData24DayAveragePrices()
         {
             ApiAlbionDataProjectMonthlyPrices = new HttpClient();
-            ApiAlbionDataProjectMonthlyPrices.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/stats/history/");
+            ApiAlbionDataProjectMonthlyPrices.BaseAddress = new Uri("https://west.albion-online-data.com/api/v2/stats/history/");
             ApiAlbionDataProjectMonthlyPrices.DefaultRequestHeaders.Accept.Clear();
             ApiAlbionDataProjectMonthlyPrices.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }

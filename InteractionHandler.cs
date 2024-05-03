@@ -48,7 +48,8 @@ namespace InteractionHandlerService
       _client.UserLeft += UserLeftGuildExecuted;
       _client.ButtonExecuted += ButtonExecuted;
       _client.ModalSubmitted += ModalSubmittedExecuted;
-      
+      _client.SelectMenuExecuted += MenuHandler;
+
 
 
       // Process the command execution results 
@@ -114,15 +115,15 @@ namespace InteractionHandlerService
 
         List<string> insultList = new List<string>
         {
-          $"<@{SocketGuildUser.Id}> Welcome to Free Beer ya shmuck.",
-          $"Sorry <@{SocketGuildUser.Id}>, if your here for the free beer we're fresh out.",
-          $"Hi <@{SocketGuildUser.Id}>! If your looking to spy on us, please submit an app in <#880611767393345548> You have 48 hours or you getting kicked",
-          //$"<@{SocketGuildUser.Id}> Dominoes pizza, you spank it, we bank it.",
-          //$"<@{SocketGuildUser.Id}> Welcome to Free Beer!",
-          $"Hello <@{SocketGuildUser.Id}>. But just in case your here to talk shit. :middle_finger:",
-          $"<@{ SocketGuildUser.Id}>. What's up homie? You have 48 hours to apply or ya getting kicked. Please see <#880611767393345548>",
-          $"<@{SocketGuildUser.Id}>. Welcome. Do you ever feel like a plastic bag?",
-          $"<@{ SocketGuildUser.Id}>. Hi <@{SocketGuildUser.Id}>! Welcome to free beer, in an attempt to keep rats out of our channel, you have 48 hours to apply. Please see <#880611767393345548>"
+          $"<@{SocketGuildUser.Id}> Welcome to Free Beer.",
+          //$"Sorry <@{SocketGuildUser.Id}>, if your here for the free beer we're fresh out.",
+          //$"Hi <@{SocketGuildUser.Id}>! If your looking to spy on us, please submit an app in <#880611577236164628> You have 48 hours or you getting kicked",
+          ////$"<@{SocketGuildUser.Id}> Dominoes pizza, you spank it, we bank it.",
+          ////$"<@{SocketGuildUser.Id}> Welcome to Free Beer!",
+          //$"Hello <@{SocketGuildUser.Id}>. But just in case your here to talk shit. :middle_finger:",
+          //$"<@{ SocketGuildUser.Id}>. What's up homie? You have 48 hours to apply or ya getting kicked. Please see <#880611577236164628>",
+          //$"<@{SocketGuildUser.Id}>. Welcome. Do you ever feel like a plastic bag?",
+          //$"<@{ SocketGuildUser.Id}>. Hi <@{SocketGuildUser.Id}>! Welcome to free beer, in an attempt to keep rats out of our channel, you have 48 hours to apply. Please see <#880611577236164628>"
         };
 
         int r = rnd.Next(insultList.Count);
@@ -153,7 +154,8 @@ namespace InteractionHandlerService
 
         List<string> GoodByeList = new List<string>
         {
-          $"<@{SocketUser.Id}> / {SocketUser.Username} has left probably because they're sick of us",
+          $"<@{SocketUser.Id}> / {SocketUser.Username} has left the server",
+          //$"<@{SocketUser.Id}> / {SocketUser.Username} has left probably because they're sick of us",
           //$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/ok-bye-ok-bye-bye-ok-girl-bye-gif-18696870",
           //$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/peace-out-later-bye-gif-14086405",
           //$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/bye-slide-baby-later-peace-out-gif-19322436",
@@ -165,8 +167,9 @@ namespace InteractionHandlerService
           //$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/rip-gif-19364920",
           //$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/rip-rest-in-peace-rip-bozo-pour-one-out-homie-gif-22783396",
           //$"<@{SocketUser.Id}> / {SocketUser.Username} has left. https://tenor.com/view/bye-tata-ok-by-gif-gif-18973858",
-          $"<@{SocketUser.Id}> / {SocketUser.Username} rage quitted the server",
-          $"<@{SocketUser.Id}> / {SocketUser.Username} left to avoid getting shit from us in that last fight.",
+          //$"<@{SocketUser.Id}> / {SocketUser.Username} rage quitted the server",
+          //$"<@{SocketUser.Id}> / {SocketUser.Username} left to avoid getting shit from us in that last fight.",
+
         };
 
         if (probability.NextDouble() < 0.3)
@@ -185,7 +188,10 @@ namespace InteractionHandlerService
         await lobbyChannel.SendMessageAsync($"Has left the server <@{SocketUser.GlobalName}>");
       }
     }
-
+    private Task MenuHandler(SocketMessageComponent arg)
+    {
+      return Task.CompletedTask;
+    }
     private Task ModalSubmittedExecuted(SocketModal a_Modal)
     {
       return Task.CompletedTask;

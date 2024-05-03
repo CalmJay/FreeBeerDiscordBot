@@ -1034,6 +1034,7 @@ namespace PlayerData
     {
       string playerData = null;
       PlayerDataHandler.Rootobject eventData = null;
+
       using (HttpResponseMessage response = await AlbionOnlineDataParser.AlbionOnlineDataParser.ApiClient.GetAsync($"events/{a_iEventID}"))
       {
         if (response.IsSuccessStatusCode)
