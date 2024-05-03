@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DiscordBot.Enums;
-
+using Discord.Rest;
 
 namespace DiscordBot.LootSplitModule
 {
@@ -149,14 +149,15 @@ namespace DiscordBot.LootSplitModule
         embed.AddField("Guild Split Fee:", 0);
       }
 
-      if (a_LootSplitType == LootSplitType.OffSeason)
-      {
-        embed.AddField("Member Count in split", $"{a_MemberNames.Count} + 1 @Guild Split");
-      }
-      else
-      {
-        embed.AddField("Member Count in split", a_MemberNames.Count);
-      }
+      //if (a_LootSplitType == LootSplitType.OffSeason)
+      //{
+      //  embed.AddField("Member Count in split", $"{a_MemberNames.Count} + 1 @Guild Split");
+      //}
+      //else
+      //{
+      //  embed.AddField("Member Count in split", a_MemberNames.Count);
+      //}
+      embed.AddField("Member Count in split", a_MemberNames.Count);
       embed.AddField("Event Type:", a_eventType.ToString(), true);
       embed.AddField("Split Type:", a_LootSplitType.ToString(), true);
 
@@ -188,13 +189,13 @@ namespace DiscordBot.LootSplitModule
       var addMember = new ButtonBuilder()
       {
         Label = "Add member",
-        CustomId = "add-member",
+        CustomId = $"add-member{Context.Interaction.Id}",
         Style = ButtonStyle.Secondary
       };
       var removeMember = new ButtonBuilder()
       {
         Label = "Remove member",
-        CustomId = "remove-member",
+        CustomId = $"remove-member{Context.Interaction.Id}",
         Style = ButtonStyle.Secondary
       };
       var comp = new ComponentBuilder();
@@ -221,8 +222,10 @@ namespace DiscordBot.LootSplitModule
           {
             x.Embed = Embed.Build();
             x.Components = Componets.Build();
+            
           });
-          //await Context.Interaction.FollowupAsync("Members updated");
+          //Console.WriteLine($"Modify Message ID: {Context.Interaction.Id}");
+          //await Context.Interaction.FollowupAsync("debug: embed udpated");
         }
 
       }
@@ -232,74 +235,30 @@ namespace DiscordBot.LootSplitModule
       }
     }
 
-    public int CalculateSplit(int a_iLootSplitTotal, int a_iSplitMemberCount, LootSplitType a_LootSplitType)
-    {
-      switch (a_LootSplitType)
-      {
-        case LootSplitType.Personal:
-        case LootSplitType.Other:
-          return a_iLootSplitTotal / a_iSplitMemberCount;
-
-        case LootSplitType.Guild:
-          GuildSplitFee = (int)Math.Round(a_iLootSplitTotal * .20);
-
-          var lootAmountPerMember = (int)Math.Round((a_iLootSplitTotal * .8) / a_iSplitMemberCount);
-
-          return lootAmountPerMember;
-
-        case LootSplitType.OffSeason:
-          GuildSplitFee = a_iLootSplitTotal / (a_iSplitMemberCount + 1);
-
-          return a_iLootSplitTotal / (a_iSplitMemberCount + 1);
-      }
-
-      return 0;
-    }
     public async Task LootSplitInitialPrompt(SocketInteractionContext a_Context, List<string> a_MembersList, string a_sCallerName, LootSplitType a_eLootSplitType, EventTypeEnum a_eEventType, int? a_iNonDamagedLootTotal, int? a_iDamagedLootTotal, int? SilverBagsTotalstring)
     {
 
       try
       {
         NonDamagedLootTotal = (int)((a_iNonDamagedLootTotal != null) ? a_iNonDamagedLootTotal : 0);
-        LootAmountPerMembernonDamged = (int)Math.Round(NonDamagedLootTotal * .8);
-
         DamagedLootTotal = (int)(a_iDamagedLootTotal != null ? a_iDamagedLootTotal : 0);
-        LootAmountPerMemberDamaged = (int)Math.Round(DamagedLootTotal * .75);
-
         SilverBagsTotal = (int)((SilverBagsTotalstring != null) ? SilverBagsTotalstring : 0); ;
-        //RawGrandTotal = a_iNonDamagedLootTotal +a_iDamagedLootTotal +SilverBagsTotalstring)
+        
         switch (a_eLootSplitType)
         {
           case LootSplitType.Personal:
           case LootSplitType.Other:
-            int LootTotals = 0;
-            if (a_iNonDamagedLootTotal != null)
-            {
-              LootTotals += (int)a_iNonDamagedLootTotal;
-
-            }
-            if (a_iDamagedLootTotal != null)
-            {
-              LootTotals += (int)a_iDamagedLootTotal;
-
-            }
             GuildSplitFee = 0;
-            TotalLootSplitPerMember = (LootTotals + SilverBagsTotal) / a_MembersList.Count;
+            TotalLootSplitPerMember = (NonDamagedLootTotal + DamagedLootTotal + SilverBagsTotal) / a_MembersList.Count;
             break;
 
           case LootSplitType.Guild:
-            GuildSplitFee = (int)Math.Round(NonDamagedLootTotal * .20) + (int)Math.Round(DamagedLootTotal * .25);
-            TotalLootSplitPerMember = (LootAmountPerMembernonDamged + LootAmountPerMemberDamaged) / a_MembersList.Count;
-            break;
           case LootSplitType.OffSeason:
-            TotalLootSplitPerMember = (LootAmountPerMembernonDamged + LootAmountPerMemberDamaged + SilverBagsTotal) / (a_MembersList.Count + 1);
-            GuildSplitFee = 0;
-
+            GuildSplitFee = (int)Math.Round(NonDamagedLootTotal * .25) + (int)Math.Round(DamagedLootTotal * .30) + (int)Math.Round(SilverBagsTotal * .25);
+            TotalLootSplitPerMember = ((NonDamagedLootTotal + DamagedLootTotal + SilverBagsTotal) - GuildSplitFee )/ a_MembersList.Count;
             break;
         }
         await ConfirmationEmbed(a_Context, a_MembersList, a_eLootSplitType, a_sCallerName, a_eEventType);
-
-
       }
       catch (Exception ex)
       {
@@ -309,117 +268,117 @@ namespace DiscordBot.LootSplitModule
     }
 
 
-    public async Task BuildModalHandler(SocketInteractionContext context, Boolean bobbyBoole, List<string> membersList, List<string> imagesMembers)
-    {
+    //public async Task BuildModalHandler(SocketInteractionContext context, Boolean bobbyBoole, List<string> membersList, List<string> imagesMembers)
+    //{
 
-      //add silver bags text input
-      var mb = new ModalBuilder()
-      .WithTitle("Add member to split")
-      .WithCustomId("split_info");
-      mb.AddTextInput("Please enter additional members not captured", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc. (case sensitive)", required: true, value: null);
+    //  //add silver bags text input
+    //  var mb = new ModalBuilder()
+    //  .WithTitle("Add member to split")
+    //  .WithCustomId("split_info");
+    //  mb.AddTextInput("Please enter additional members not captured", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc. (case sensitive)", required: true, value: null);
 
-      try
-      {
-        //send modal
+    //  try
+    //  {
+    //    //send modal
 
-        await context.Interaction.RespondWithModalAsync(mb.Build());
+    //    await context.Interaction.RespondWithModalAsync(mb.Build());
 
-        context.Client.ModalSubmitted += async modal =>
-        {
-          List<SocketMessageComponentData> components = modal.Data.Components.ToList();
+    //    context.Client.ModalSubmitted += async modal =>
+    //    {
+    //      List<SocketMessageComponentData> components = modal.Data.Components.ToList();
 
-          string lootTotal = components.FirstOrDefault(x => x.CustomId == "loot_total").Value;
+    //      string lootTotal = components.FirstOrDefault(x => x.CustomId == "loot_total").Value;
 
-          await modal.DeferAsync();
+    //      await modal.DeferAsync();
 
-          string membersStr = components.First(x => x.CustomId == "add_members").Value;
-          List<string> membersSplit = membersStr.Split(',').ToList();
+    //      string membersStr = components.First(x => x.CustomId == "add_members").Value;
+    //      List<string> membersSplit = membersStr.Split(',').ToList();
 
-          //clean list of strings with space at the end
-          for (int i = 1; i < membersSplit.Count; i++)
-          {
-            //cleanup strings after list separation
-            if (i > 0)
-            {
-              membersSplit[i] = membersSplit[i].Remove(0, 1);
-            }
-            else
-            {
-              continue;
-            }
-          }
+    //      //clean list of strings with space at the end
+    //      for (int i = 1; i < membersSplit.Count; i++)
+    //      {
+    //        //cleanup strings after list separation
+    //        if (i > 0)
+    //        {
+    //          membersSplit[i] = membersSplit[i].Remove(0, 1);
+    //        }
+    //        else
+    //        {
+    //          continue;
+    //        }
+    //      }
 
-          foreach (string member in membersSplit)
-          {
-            if (membersList.Contains(member))
-            {
-              if (!(imagesMembers.Contains(member)))
-              {
-                imagesMembers.Add(member);
-              }
-              else
-              {
-                continue;
-              }
-            }
-            else
-            {
-              await context.Channel.SendMessageAsync("***User " + member + " not found.***");
-            }
-          }
+    //      foreach (string member in membersSplit)
+    //      {
+    //        if (membersList.Contains(member))
+    //        {
+    //          if (!(imagesMembers.Contains(member)))
+    //          {
+    //            imagesMembers.Add(member);
+    //          }
+    //          else
+    //          {
+    //            continue;
+    //          }
+    //        }
+    //        else
+    //        {
+    //          await context.Channel.SendMessageAsync("***User " + member + " not found.***");
+    //        }
+    //      }
 
-          //New resulting List of members complete, begin embed builder two
-          //convert lootTotal to ulong, if an alpha char is present, send error
-          try
-          {
-            ulong lootTotalInt = (ulong)Int64.Parse(lootTotal);
+    //      //New resulting List of members complete, begin embed builder two
+    //      //convert lootTotal to ulong, if an alpha char is present, send error
+    //      try
+    //      {
+    //        ulong lootTotalInt = (ulong)Int64.Parse(lootTotal);
 
-            //selection for which kind of split?
-            //is this the correct split amount?
-            decimal lootAmountPerMember = ((decimal)((lootTotalInt * .9) / imagesMembers.Count));
+    //        //selection for which kind of split?
+    //        //is this the correct split amount?
+    //        decimal lootAmountPerMember = ((decimal)((lootTotalInt * .9) / imagesMembers.Count));
 
-            lootAmountPer = lootAmountPerMember;
+    //        lootAmountPer = lootAmountPerMember;
 
-            var embed = new EmbedBuilder()
-                    .WithTitle($"Loot split report generated by {context.User.Username}")
-                    .WithColor(Discord.Color.Orange)
-                    .AddField("Member Count", imagesMembers.Count)
-                    .AddField(x =>
-                    {
-                      //loop results and add members
-                  x.Name = "Members recorded";
-                  for (int i = 0; i < (imagesMembers.Count - 1); i++)
-                  {
-                    x.Value += imagesMembers[i] + ", ";
-                  }
-                  x.Value += imagesMembers[imagesMembers.Count - 1];
-                  x.IsInline = false;
-                })
-                    .AddField("Loot Split Total", lootTotalInt)
-                    .AddField("Loot Split Per", lootAmountPerMember);
-            //.AddField("Chest Location(s)", chestLoc);
+    //        var embed = new EmbedBuilder()
+    //                .WithTitle($"Loot split report generated by {context.User.Username}")
+    //                .WithColor(Discord.Color.Orange)
+    //                .AddField("Member Count", imagesMembers.Count)
+    //                .AddField(x =>
+    //                {
+    //                  //loop results and add members
+    //              x.Name = "Members recorded";
+    //              for (int i = 0; i < (imagesMembers.Count - 1); i++)
+    //              {
+    //                x.Value += imagesMembers[i] + ", ";
+    //              }
+    //              x.Value += imagesMembers[imagesMembers.Count - 1];
+    //              x.IsInline = false;
+    //            })
+    //                .AddField("Loot Split Total", lootTotalInt)
+    //                .AddField("Loot Split Per", lootAmountPerMember);
+    //        //.AddField("Chest Location(s)", chestLoc);
 
-            //send the embedded report
-            await context.Channel.SendMessageAsync("--Loot Split Report--", false, embed.Build());
+    //        //send the embedded report
+    //        await context.Channel.SendMessageAsync("--Loot Split Report--", false, embed.Build());
 
-            await PostLootSplit(context);
+    //        await PostLootSplit(context);
 
-            await context.Channel.SendMessageAsync("***please post relevant chest loot images below " +
-                        "for evaluation. Once regear team verifies/denies I’ll send you a message with the outcome.*** ");
-          }
-          catch (Exception ex)
-          {
-            throw;
-          }
-          ////call LootSplitModule to verify/deny
-          //await PostLootSplit(context);
-        };
-      }
-      catch (Exception ex)
-      {
-        throw;
-      }
-    }
+    //        await context.Channel.SendMessageAsync("***please post relevant chest loot images below " +
+    //                    "for evaluation. Once regear team verifies/denies I’ll send you a message with the outcome.*** ");
+    //      }
+    //      catch (Exception ex)
+    //      {
+    //        throw;
+    //      }
+    //      ////call LootSplitModule to verify/deny
+    //      //await PostLootSplit(context);
+    //    };
+    //  }
+    //  catch (Exception ex)
+    //  {
+    //    throw;
+    //  }
+    //}
     public async Task PostLootSplit(SocketInteractionContext context)
     {
       var channel = context.Client.GetChannel(context.Channel.Id) as IMessageChannel;
@@ -477,7 +436,7 @@ namespace DiscordBot.LootSplitModule
 
         var mb = new ModalBuilder()
         .WithTitle("Add/remove member")
-        .WithCustomId("missing_members");
+        .WithCustomId($"missing_members{Context.Interaction.Id}");
         mb.AddTextInput("Add or remove members for the split", "add_members", placeholder: "e.g. Nezcoupe, Ragejay, etc. (case sensitive)", required: false, value: null);
 
         try
@@ -489,8 +448,8 @@ namespace DiscordBot.LootSplitModule
           {
             List<SocketMessageComponentData> components = modal.Data.Components.ToList();
             string sMissingMembers = components.FirstOrDefault().Value;
-            await modal.DeferAsync();// BUTTONS ONLY WORK IN ONE GO. ERROR IS HERE
-
+            //await modal.DeferAsync();// BUTTONS ONLY WORK IN ONE GO. ERROR IS HERE
+            await Task.FromResult(missingMembersList);
             if (sMissingMembers != "")
             {
               missingMembersList = components.FirstOrDefault().Value.Split(',').ToList();
@@ -512,7 +471,8 @@ namespace DiscordBot.LootSplitModule
                     if (!membersList.Contains(member))
                     {
                       membersList.Add(member);
-                      await modal.FollowupAsync("Member added");
+                      await modal.RespondAsync("Member added");
+                      break;
                     }
                     //else
                     //{
@@ -528,7 +488,8 @@ namespace DiscordBot.LootSplitModule
                     {
 
                       membersList.Remove(member);
-                      await modal.FollowupAsync("Member removed");
+                      await modal.RespondAsync("Member removed");
+                      break;
                     }
                     //else
                     //{

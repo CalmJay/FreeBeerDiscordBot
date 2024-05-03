@@ -1,0 +1,8 @@
+{
+  "lootsplitsettings": {
+    "name": "Loot Split Settings",
+    "guildfee": 30,
+    "damagedfee": 30,
+    "nondamagedfee": 25
+  }
+}  

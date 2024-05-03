@@ -131,17 +131,15 @@ namespace CommandModule
 
       var user = guildUserName.Guild.GetUser(guildUserName.Id);
 
-      if (ingameName != null)
+      if (user.Nickname == null)
       {
-
-        if (sUserNickname.ToLower() != ingameName.ToLower())
+        try
         {
-          try
-          {
-            await guildUserName.ModifyAsync(x => x.Nickname = ingameName);
-          }
-          catch (Exception ex) { }
-
+          await user.ModifyAsync(x => x.Nickname = ingameName);
+        }
+        catch (Exception ex) 
+        {
+          await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} nickname couldn't be updated", null));
         }
       }
 
@@ -165,8 +163,7 @@ namespace CommandModule
 
         var embed = new EmbedBuilder()
        .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
-       .WithDescription("We're glad to have you. Please read/watch the following below.")
-       .AddField($"Onboarding Video", "https://www.youtube.com/watch?v=dmUomrP-6RA")
+       .WithDescription("We're glad to have you. Please read the following below.")
        .AddField($"Rule book", "https://docs.google.com/document/d/1Vmw-D62zHBpQf8PvR8WLKAqBVncNW4yTC-_dBNLSHNI/");
 
         List<string> questionList = new List<string>
@@ -180,7 +177,8 @@ namespace CommandModule
                     $"video game (Albion doesn't count)",
                     $"book",
                     $"boardgame",
-                    $"TV show"
+                    $"TV show",
+                    $"Sports team"
                 };
         Random rnd = new Random();
         int r = rnd.Next(questionList.Count);
@@ -295,7 +293,7 @@ namespace CommandModule
       var testuser = Context.User.Id;
       string? sPlayerData = null;
       var sPlayerAlbionId = new PlayerDataLookUps().GetPlayerInfo(Context, null);
-      string? sUserNickname = ((Context.Interaction.User as SocketGuildUser).DisplayName != null) ? (Context.Interaction.User as SocketGuildUser).DisplayName : Context.Interaction.User.Username;
+      string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? (Context.User as SocketGuildUser).DisplayName : (Context.User as SocketGuildUser).Nickname;
 
       await _logger.Log(new LogMessage(LogSeverity.Info, "Recent-Deaths ", $"User: {Context.User.Username} has used command, Command: Recent-Deaths", null));
 
@@ -393,7 +391,7 @@ namespace CommandModule
         case PricingOptions.MonthlyAverage:
           combinedInfo = $"{ItemCode}?qualities={(int)ItemQuality}&locations={SelectedMarkets}";
           MonthlyAverageMarketData = new MarketDataFetching().GetMarketPriceMonthlyAverage(combinedInfo);
-          var test = new AverageItemPrice().location;
+
           await RespondAsync($"The cheapest {PriceOption} of your {ItemQuality} item found in {MonthlyAverageMarketData.Result.FirstOrDefault().location.ToString()} cost: " + MonthlyAverageMarketData.Result.FirstOrDefault().data.FirstOrDefault().avg_price.ToString("N0"), null, false, true);
           break;
 
@@ -425,17 +423,18 @@ namespace CommandModule
     public async Task GetCurrentPaychexAmount()
     {
       await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
-      string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : (Context.User as SocketGuildUser).Username;
-
+      string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : (Context.User as SocketGuildUser).Nickname;
       var component = new ComponentBuilder();
       var paychexbutton = new ButtonBuilder();
-      await DeferAsync(true);
-      if (GoogleSheetsDataWriter.GetRegisteredUser(sUserNickname))
+      DataBaseService dataBaseService = new DataBaseService();
+      
+      if(await dataBaseService.CheckPlayerIsExist(sUserNickname))
       {
+        await DeferAsync(true);
         List<string> paychexRunningTotal = GoogleSheetsDataWriter.GetRunningPaychexTotal(sUserNickname);
         Dictionary<string, string> paychexTotals = GoogleSheetsDataWriter.GetPaychexTotals(sUserNickname);
 
-        string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname);
+        string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname) ?? "0";
         string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
         string PaychexDate = "";
         List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
@@ -443,11 +442,12 @@ namespace CommandModule
 
         embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
 
-        string biweeklyLastSundayDate = $"{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
-        if (!paychexSheets.Any(s => s.Contains(biweeklyLastSundayDate)))
-        {
-          embed.AddField("Last weeks estimated paychex:", $"${paychexRunningTotal[0]:n0}");
-        }
+        //string biweeklyLastSundayDate = $"{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).ToShortMonthName()}-{GoogleSheetHelperMethods.StartOfWeek(DateTime.Today.AddDays(-7), DayOfWeek.Sunday).Day}";
+
+        //if (!paychexSheets.Any(s => s.Contains(biweeklyLastSundayDate)))
+        //{
+        //  embed.AddField("Last weeks estimated paychex:", $"${paychexRunningTotal[0]:n0}");
+        //}
 
         embed.AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}");
         embed.AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}");
@@ -506,7 +506,7 @@ namespace CommandModule
       }
       else
       {
-        await FollowupAsync("Looks like your not fully registered to the guild. Please contact a recruiter or officer to fix the issue.", null, false, true);
+        await RespondAsync("Looks like your not fully registered to the guild. Please contact a recruiter or officer to fix the issue.", null, false, true);
       }
     }
 
@@ -683,13 +683,16 @@ namespace CommandModule
         await RespondAsync($"Requirement failed. Your time to submit this regear is past 72 hours. Regear denied. ", null, false, true);
         bRegearAllowed = false;
       }
-      else if (sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null || !guildUser.Roles.Any(r => r.Id == OfficerRoleID || r.Id == ManagementRoleID))
+      else if ((!guildUser.Roles.Any(r => r.Id == OfficerRoleID)))
       {
-        IMessageChannel RecruitersModChannel = Context.Client.GetChannel(1024308022840918026) as IMessageChannel;//using bot workshop channel
-        await RecruitersModChannel.SendMessageAsync($"{sUserNickname} may have not been registed. Please verify their registration ");
-        await RespondAsync($"Regear submission failed. Please update your discord server nickname to EXACTLY match your in-game name. ", null, false, true);
+        if(sUserNickname.ToLower() != PlayerEventData.Victim.Name.ToLower() || (Context.User as SocketGuildUser).Nickname == null)
+        {
+          IMessageChannel RecruitersModChannel = Context.Client.GetChannel(1024308022840918026) as IMessageChannel;//using bot workshop channel
+          await RecruitersModChannel.SendMessageAsync($"{sUserNickname} may have not been registed. Please verify their registration ");
+          await RespondAsync($"Regear submission failed. Please update your discord server nickname to EXACTLY match your in-game name. ", null, false, true);
 
-        bRegearAllowed = false;
+          bRegearAllowed = false;
+        }
       }
       else if (mentor != null && RegearModule.ISUserMentor(mentor) && guildUser.Roles.Any(r => r.Id == BronzeTierRegearID))
       {
@@ -1145,21 +1148,23 @@ namespace CommandModule
       await _logger.Log(new LogMessage(LogSeverity.Info, "Split-Loot Command", $"User: {Context.User.Username} initiated a split-loot", null));
     }
 
-    [ComponentInteraction("add-member")]
+    [ComponentInteraction("add-member*")]
     async Task AddMembersToLootSplit()
     {
       ;
       LootSplitModule lootSplitMod = new LootSplitModule();
       await lootSplitMod.AddRemoveNamesFromList(Context, Options.Add);
       await _logger.Log(new LogMessage(LogSeverity.Info, "Add member", $"User: {Context.User.Username} added member from split", null));
+      //await Context.Interaction.FollowupAsync("Member(s) added");
     }
 
-    [ComponentInteraction("remove-member")]
+    [ComponentInteraction("remove-member*")]
     async Task RemoveMembersFromSplit()
     {
       LootSplitModule lootSplitMod = new LootSplitModule();
       await lootSplitMod.AddRemoveNamesFromList(Context, Options.Remove);
       await _logger.Log(new LogMessage(LogSeverity.Info, "Remove member", $"User: {Context.User.Username} removed member from split", null));
+      //await Context.Interaction.FollowupAsync("Member(s) removed");
     }
 
     [ComponentInteraction("approve-split")]
@@ -1333,9 +1338,6 @@ namespace CommandModule
       {
         await RespondAsync("Something went wrong.", ephemeral: true);
       }
-
-
-
     }
 
     [ComponentInteraction("getapplicantrole")]
@@ -1344,8 +1346,6 @@ namespace CommandModule
       //ADD ANTI SPAM MEASURES HERE
       //MAKE THE EMBED APPLICATIONS A FOLLOWING
 
-      
-
       var socketUser = (SocketGuildUser)Context.User;
       IComponentInteraction ButtonInteraction = Context.Interaction as IComponentInteraction;
 
@@ -1353,11 +1353,11 @@ namespace CommandModule
 
       if (HelperMethods.IsUserFreeBeerMember(socketUser))
       {
-        await RespondAsync("You're already a member of Free Beer.", ephemeral: true);
+        await RespondAsync("You're already a member of Free Beer or your currently have an application open.", ephemeral: true);
       }
-      else if (!HelperMethods.IsUserFreeBeerMember(socketUser))
+      else if (!HelperMethods.IsUserFreeBeerMember(socketUser) || socketUser.Roles.Any(r => r.Id == 1015016450265727057))
       {
-        await DeferAsync();
+        await DeferAsync(true);
         if (socketUser.Nickname != null)
         {
           PlayerLookupInfo? playerInfo = new PlayerLookupInfo();
@@ -1383,47 +1383,46 @@ namespace CommandModule
                 {
                   await threadChannel.AddUserAsync(user).ConfigureAwait(false);
                   await threadChannel.AddUserAsync(Context.User as IGuildUser).ConfigureAwait(false);
+
+                  var embed = new EmbedBuilder();
+
+                  embed.WithTitle($"{socketUser.Nickname}");
+                  embed.AddField("PVE Total Fame:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Total:n0}", true);
+                  embed.AddField("Fame for Killing Players", $"{detailedplayerinfo.KillFame:n0}", true);
+                  embed.AddField("Fame for Killing Mobs:", $"{detailedplayerinfo.DeathFame:n0}", true);
+                  embed.AddField("Fame for Gathering:", $"{detailedplayerinfo.LifetimeStatistics.Gathering.All.Total:n0}", true);
+                  embed.AddField("Fame for Crafting:", $"{detailedplayerinfo.LifetimeStatistics.Crafting.Total:n0}", true);
+                  embed.AddField("Fishing Fame:", $"{detailedplayerinfo.LifetimeStatistics.FishingFame:n0}", true);
+                  embed.AddField("Infamy: Corrupted Dungeons", $"{detailedplayerinfo.LifetimeStatistics.PvE.CorruptedDungeon:n0}", true);
+                  embed.AddField("Infamy: Hellgates:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Hellgate:n0}", true);
+                  embed.AddField("Mists:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Mists:n0}");
+                  embed.AddField("Outlands:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Outlands:n0}");
+                  embed.AddField("Avalon:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Avalon:n0}");
+
+                  var approveButton = new ButtonBuilder()
+                  {
+                    Label = "Accept",
+                    CustomId = "acceptapplicant",
+                    Style = ButtonStyle.Success
+                  };
+                  var denyButton = new ButtonBuilder()
+                  {
+                    Label = "Deny",
+                    CustomId = "denyApplicant",
+                    Style = ButtonStyle.Danger
+                  };
+
+                  var component = new ComponentBuilder();
+                  component.WithButton(approveButton);
+                  component.WithButton(denyButton);
+
+                  await threadChannel.SendMessageAsync($"Here's some in-game info I found for {socketUser.Nickname}", embed: embed.Build(), components: component.Build());
+                  await FollowupAsync("Application created", ephemeral: true);
                 }
                 else
                 {
-                  await RespondAsync();
+                  Console.WriteLine("USER NOT FOUND DURING GET USER LOOKUP. Possibly bad ID");
                 }
-
-                var embed = new EmbedBuilder();
-
-                embed.WithTitle($"{socketUser.Nickname}");
-                embed.AddField("PVE Total Fame:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Total:n0}", true);
-                embed.AddField("Fame for Killing Players", $"{detailedplayerinfo.KillFame:n0}", true);
-                embed.AddField("Fame for Killing Mobs:", $"{detailedplayerinfo.DeathFame:n0}", true);
-                embed.AddField("Fame for Gathering:", $"{detailedplayerinfo.LifetimeStatistics.Gathering.All.Total:n0}", true);
-                embed.AddField("Fame for Crafting:", $"{detailedplayerinfo.LifetimeStatistics.Crafting.Total:n0}", true);
-                embed.AddField("Fishing Fame:", $"{detailedplayerinfo.LifetimeStatistics.FishingFame:n0}", true);
-                embed.AddField("Infamy: Corrupted Dungeons", $"{detailedplayerinfo.LifetimeStatistics.PvE.CorruptedDungeon:n0}", true);
-                embed.AddField("Infamy: Hellgates:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Hellgate:n0}", true);
-                embed.AddField("Mists:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Mists:n0}");
-                embed.AddField("Outlands:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Outlands:n0}");
-                embed.AddField("Avalon:", $"{detailedplayerinfo.LifetimeStatistics.PvE.Avalon:n0}");
-
-                var approveButton = new ButtonBuilder()
-                {
-                  Label = "Accept",
-                  CustomId = "acceptapplicant",
-                  Style = ButtonStyle.Success
-                };
-                var denyButton = new ButtonBuilder()
-                {
-                  Label = "Deny",
-                  CustomId = "denyApplicant",
-                  Style = ButtonStyle.Danger
-                };
-
-                var component = new ComponentBuilder();
-                component.WithButton(approveButton);
-                component.WithButton(denyButton);
-
-                await threadChannel.SendMessageAsync($"Here's some in-game info I found for {socketUser.Nickname}", embed: embed.Build(), components: component.Build());
-                await FollowupAsync("Info fetch complete");
-                
               }
               else
               {
@@ -1737,7 +1736,24 @@ namespace CommandModule
     [SlashCommand("view-alliance-stats", "Check out alliance stats")]
     public async Task GetAllianceStats()
     {
+      PlayerDataLookUps albionData = new PlayerDataLookUps();
 
+      List<int> BattleIDs = new List<int>();
+      //BattleIDs.Add(966563738); //adding BattleBoard ID's to list
+      BattleIDs.Add(966557264);
+
+      List<PlayerDataHandler.Rootobject> eventData = new List<PlayerDataHandler.Rootobject>();
+
+      foreach (int Battle in BattleIDs)
+      {
+        eventData.Add(await albionData.GetAlbionEventInfo(Battle));
+      }
+
+      //Filter All Kills and deaths in events
+      foreach (var Event in eventData) 
+      {
+        Console.WriteLine(Event.EventId);
+      }
 
     }
 

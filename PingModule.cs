@@ -15,6 +15,14 @@ using static System.Net.Mime.MediaTypeNames;
 using System.Configuration;
 using DiscordBot.LootSplitModule;
 using System.Net.Mail;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Newtonsoft.Json;
+using DiscordBot.Models;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
+using System.Text.Json.Nodes;
+using System.ComponentModel;
+using Discord.Rest;
 
 namespace DNet_V3_Tutorial
 {
@@ -34,7 +42,6 @@ namespace DNet_V3_Tutorial
     public int iHealerMinmumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMinmumIP"));
     public int iSupportMinimumIP = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SupportMinimumIP"));
     public int iTemporaryPeakRegearAdjustment = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TemporaryPeakRegearAdjustment"));
-    public int iTestSetting = int.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TestSetting"));
 
     public static ulong TankMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("TankMentorID"));
     public static ulong HealerMentorID = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HealerMentorID"));
@@ -45,130 +52,133 @@ namespace DNet_V3_Tutorial
     private ulong roleIdMember = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("member"));
     private ulong roleIdOfficer = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("officer"));
     private ulong roleIdVeteran = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
+
+    private EmbedBuilder Embed { get; set; }
+    private ComponentBuilder Componets { get; set; }
+
     public PingModule(ConsoleLogger logger)
     {
       _logger = logger;
     }
 
-
-
-    //// Simple slash command to bring up a message with a button to press
-    //[SlashCommand("button", "message with button")]
-    //public async Task BotConfiguationMenu()
-    //{
-    //    var components = new ComponentBuilder();
-    //    var button = new ButtonBuilder()
-    //    {
-    //        Label = "Button",
-    //        CustomId = "button1",
-    //        Style = ButtonStyle.Primary
-    //    };
-
-    //    // Messages take component lists. Either buttons or select menus. The button can not be directly added to the message. It must be added to the ComponentBuilder.
-    //    // The ComponentBuilder is then given to the message components property.
-    //    components.WithButton(button);
-
-    //    await RespondAsync("This message has a button!", components: components.Build());
-
-    //}
-
-    // This is the handler for the button created above. It is triggered by nmatching the customID of the button.
-    [ComponentInteraction("button1")]
-    public async Task ButtonHandler()
-    {
-      // try setting a breakpoint here to see what kind of data is supplied in a ComponentInteraction.
-      var c = Context;
-      await RespondAsync($"You pressed a button!");
-    }
-
-
-
     // Simple slash command to bring up a message with a select menu
     [SlashCommand("configation", "Adjust bot settings")]
     public async Task MenuInput()
     {
+      //TODO: FIX THE SPELLING OF THE COMMAND
 
-      var components = new ComponentBuilder();
-      var button = new ButtonBuilder()
-      {
-        Label = "Button",
-        CustomId = "button1",
-        Style = ButtonStyle.Primary
-      };
+      CreateConfiguationModal();
 
-      components.WithButton(button);
-
-      //var mb = new ModalBuilder()
-      //    .WithTitle("Fav Food")
-      //    .WithCustomId("food_menu");
-
-      //.AddTextInput("What??", "food_name", placeholder: "Pizza")
-      //.AddTextInput("Why??", "food_reason", TextInputStyle.Paragraph,"Kus it's so tasty");
-
-
-      //var embedFieldBuilter = new EmbedFieldBuilder()
-      //    .WithName($"Regear Settings")
-      //    .WithIsInline(false)
-      //    .WithValue("Tank /n" +
-      //    "healer /n" +
-      //    "support /n" +
-      //    "dps");
-
-
-      //var embed = new EmbedBuilder()
-      //.WithTitle("Free Beer Bot Menu")
-      //.WithDescription("These are all the settings that control some of the main functions of the bot and regears")
-      //.AddField("Main Menu", "description")
-      //.AddField(embedFieldBuilter)
-      //.AddField(embedFieldBuilter)
-      //.AddField($">>> `Healer Regear Minimum IP` {iHealerMinmumIP}", "test", false)
-      //.AddField(">>> `DPS Regear Minimum IP`", iDPSMinimumIP)
-      //.AddField(">>> `Support Regear Minimum IP`", iSupportMinimumIP)
-      //.AddField(">>> `Gold Tier Regear Cap`", goldTierRegearCap)
-      //.AddField(">>> `Silver Tier Regear Cap`", silverTierRegearCap)
-      //.AddField(">>> `Bronze Tier Regear Cap`", bronzeTierRegearCap)
-      //.AddField(">>> `Shit Tier Regear Cap`", shitTierRegearCap)
-      //.AddField(">>> `Mount cap`", mountCap)
-      //.AddField("bold test", "**boldtest**")
-      //.WithFooter("The Footer");
-
-      //var components = new ComponentBuilder();
-      //// A SelectMenuBuilder is created
-      //var select = new SelectMenuBuilder()
-      //{
-      //    CustomId = "menu1",
-      //    Placeholder = "Select something"
-      //};
-
-      //// Options are added to the select menu. The option values can be generated on execution of the command. You can then use the value in the Handler for the select menu
-      //// to determine what to do next. An example would be including the ID of the user who made the selection in the value.
-      //select.AddOption("abc", "abc_value");
-      //select.AddOption("def", "def_value");
-      //select.AddOption("ghi", "ghi_value");
-
-      //components.WithSelectMenu(select);
-
-      //await RespondAsync("This message has a menu!", components: components.Build(), embed: embed);
-
-      //await Context.Interaction.RespondWithModalAsync(mb.Build());
-
-      await RespondAsync($"Setting currently is: {iTestSetting}");
-
-      Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-      config.AppSettings.Settings.Add("TestSetting", "15");
-      config.Save(ConfigurationSaveMode.Minimal);
-
-      await FollowupAsync($"Setting changed to: {iTestSetting}");
+      await RespondAsync(ephemeral: true , embed: Embed.Build(), components: Componets.Build());
     }
 
-    // SelectMenu interaction handler. This receives an array of the selections made.
-    [ComponentInteraction("menu1")]
-    public async Task MenuHandler(string[] selections)
+    private void CreateConfiguationModal()
     {
-      // For the sake of demonstration, we only want the first value selected.
-      await RespondAsync($"You selected {selections.First()}");
+      Settings configuationSettings = ReadFromJson();
+
+      var SettingsEmbed = new EmbedBuilder()
+      .WithTitle($":beers: Free Beer Bot Configuation :beers:")
+      .WithDescription($"**Loot Split Settings** \n" +
+        $"`Guild Fee` {configuationSettings.lootsplitsettings.guildfee}% \n" +
+        $"`Damaged Fee` {configuationSettings.lootsplitsettings.damagedfee}% \n" +
+        $"`Non-Damaged Fee` {configuationSettings.lootsplitsettings.nondamagedfee}% \n");
+
+      var menuBuilder = new SelectMenuBuilder()
+       .WithPlaceholder("Select a setting to change")
+       .WithCustomId("menu1")
+       .AddOption("Guild Fee", "guildfee", "Guild fee for processing loot")
+       .AddOption("Damaged Fee", "damagedfee", "Fee if the loot is damaged")
+       .AddOption("Non-Damaged Fee", "nondamagedfee", "Fee if the loot is not damaged");
+
+      var builder = new ComponentBuilder()
+          .WithSelectMenu(menuBuilder);
+
+      Embed = SettingsEmbed;
+      Componets = builder;
     }
 
+    [ComponentInteraction("menu1")]
+    public async Task MenuHandler(string[] selection)
+    {
+      int UpdatedSettingValue = 0;
+      var mb = new ModalBuilder()
+        .WithTitle("Update setting")
+        .WithCustomId($"{selection}_config");
+      mb.AddTextInput($"Set {selection.FirstOrDefault()}", "update_fees", placeholder: "Set 1 - 100", required: true, value: null);
+
+      try
+      {
+        //send modal
+        await Context.Interaction.RespondWithModalAsync(mb.Build());
+
+        Context.Client.ModalSubmitted += async modal =>
+        {
+          List<SocketMessageComponentData> components = modal.Data.Components.ToList();
+          UpdatedSettingValue = Int32.Parse(components.FirstOrDefault().Value);
+          await WriteToJsonAsync(selection.FirstOrDefault(), UpdatedSettingValue.ToString());
+
+          await modal.DeferAsync();
+
+          CreateConfiguationModal();
+          await Context.Interaction.ModifyOriginalResponseAsync((x) =>
+          {
+            x.Embed = Embed.Build();
+            x.Components = Componets.Build();
+          });
+
+          //await modal.FollowupAsync("settings updated", ephemeral: true);
+
+        };
+
+
+        //await FollowupAsync("Settings updated", ephemeral: true);
+        //await FollowupAsync($"You updated the setting to {UpdatedSettingValue}", ephemeral: true); //Updates modal correctly but fails to close the modal
+      }
+      catch (Exception ex) { }
+    }
+
+    private static async Task WriteToJsonAsync(string key, string value)
+    {
+      var sAppPath = Environment.CurrentDirectory;
+
+      var json = File.ReadAllText($"{sAppPath}\\customsettings.json");
+      JsonNode BotConfiguationSettings = JsonNode.Parse(json);
+
+
+      BotConfiguationSettings["lootsplitsettings"]![key] = value;
+      var options = new JsonSerializerOptions { WriteIndented = true };
+
+      File.WriteAllText($"{sAppPath}\\customsettings.json", BotConfiguationSettings.ToString());
+    }
+
+    private static Settings ReadFromJson()
+    {
+      var sAppPath = Environment.CurrentDirectory;
+//#if DEBUG
+//      sAppPath = "C:\\Repos\\FreeBeerBot\\bin\\Debug\\net8.0\\customsettings.json";
+//#endif
+      Settings items = new Settings();
+      using (StreamReader r = new StreamReader($"{sAppPath}\\customsettings.json"))
+      {
+        string jsonString = r.ReadToEnd();
+        items = JsonConvert.DeserializeObject<Settings>(jsonString);
+      }
+
+      return items;
+    }
+    public class Settings
+    {
+      public LootSplitSettings lootsplitsettings { get; set; }
+    }
+
+    public class LootSplitSettings
+    {
+      public string name { get; set; }
+      public int guildfee { get; set; }
+      public int damagedfee { get; set; }
+      public int nondamagedfee { get; set; }
+
+    }
 
     [SlashCommand("view-commands", "See list of commands")]
     public async Task DisplayCommands()
