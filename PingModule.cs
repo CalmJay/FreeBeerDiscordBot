@@ -23,6 +23,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using System.Text.Json.Nodes;
 using System.ComponentModel;
 using Discord.Rest;
+using DiscordBot;
 
 namespace DNet_V3_Tutorial
 {
@@ -53,8 +54,22 @@ namespace DNet_V3_Tutorial
     private ulong roleIdOfficer = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("officer"));
     private ulong roleIdVeteran = ulong.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("veteran"));
 
-    private EmbedBuilder Embed { get; set; }
-    private ComponentBuilder Componets { get; set; }
+    public static EmbedBuilder Embed { get; set; }
+    public static ComponentBuilder Componets { get; set; }
+
+    //public class Settings
+    //{
+    //  public LootSplitSettings lootsplitsettings { get; set; }
+    //}
+
+    //public class LootSplitSettings
+    //{
+    //  public string name { get; set; }
+    //  public int guildfee { get; set; }
+    //  public int damagedfee { get; set; }
+    //  public int nondamagedfee { get; set; }
+
+    //}
 
     public PingModule(ConsoleLogger logger)
     {
@@ -66,29 +81,33 @@ namespace DNet_V3_Tutorial
     public async Task MenuInput()
     {
       //TODO: FIX THE SPELLING OF THE COMMAND
-
-      CreateConfiguationModal();
+      await _logger.Log(new LogMessage(LogSeverity.Info, "Configuation Menu", $"User: {Context.User.Username} has opened config menu, Command: configation", null));
+      CreateConfiguationEmbed();
 
       await RespondAsync(ephemeral: true , embed: Embed.Build(), components: Componets.Build());
     }
 
-    private void CreateConfiguationModal()
+    public static void CreateConfiguationEmbed()
     {
-      Settings configuationSettings = ReadFromJson();
+      var configuationSettings = HelperMethods.ReadCustomSettingsFromJson();
 
       var SettingsEmbed = new EmbedBuilder()
-      .WithTitle($":beers: Free Beer Bot Configuation :beers:")
-      .WithDescription($"**Loot Split Settings** \n" +
-        $"`Guild Fee` {configuationSettings.lootsplitsettings.guildfee}% \n" +
+      .WithTitle($":beers: Free Beer Bot Configuration :beers:")
+      .WithDescription(
+        $"**Loot Split Settings** \n" +
+        $"`Guild Fee (Not used atm)` {configuationSettings.lootsplitsettings.guildfee}% \n" +
         $"`Damaged Fee` {configuationSettings.lootsplitsettings.damagedfee}% \n" +
-        $"`Non-Damaged Fee` {configuationSettings.lootsplitsettings.nondamagedfee}% \n");
+        $"`Non-Damaged Fee` {configuationSettings.lootsplitsettings.nondamagedfee}% \n" +
+        $"`Include Silver bags` {configuationSettings.lootsplitsettings.includesilverbags} \n" +
+        $"**Intro Message Settings** \n");
 
       var menuBuilder = new SelectMenuBuilder()
        .WithPlaceholder("Select a setting to change")
        .WithCustomId("menu1")
        .AddOption("Guild Fee", "guildfee", "Guild fee for processing loot")
        .AddOption("Damaged Fee", "damagedfee", "Fee if the loot is damaged")
-       .AddOption("Non-Damaged Fee", "nondamagedfee", "Fee if the loot is not damaged");
+       .AddOption("Non-Damaged Fee", "nondamagedfee", "Fee if the loot is not damaged")
+       .AddOption("Include Silver bags?", "includesilverbags", "Add silver bags into loot split?");
 
       var builder = new ComponentBuilder()
           .WithSelectMenu(menuBuilder);
@@ -100,84 +119,24 @@ namespace DNet_V3_Tutorial
     [ComponentInteraction("menu1")]
     public async Task MenuHandler(string[] selection)
     {
-      int UpdatedSettingValue = 0;
-      var mb = new ModalBuilder()
+      var modal = new ModalBuilder()
         .WithTitle("Update setting")
-        .WithCustomId($"{selection}_config");
-      mb.AddTextInput($"Set {selection.FirstOrDefault()}", "update_fees", placeholder: "Set 1 - 100", required: true, value: null);
+        .WithCustomId($"update_config_settings");
+      if(selection.FirstOrDefault() == "includesilverbags")
+      {
+        modal.AddTextInput($"Set {selection.FirstOrDefault()}", selection.FirstOrDefault(), placeholder: "Set true or false", required: true, value: null);
+      }
+      else
+      {
+        modal.AddTextInput($"Set {selection.FirstOrDefault()}", selection.FirstOrDefault(), placeholder: "Set 1 - 100", required: true, value: null);
+      }
+      
 
       try
       {
-        //send modal
-        await Context.Interaction.RespondWithModalAsync(mb.Build());
-
-        Context.Client.ModalSubmitted += async modal =>
-        {
-          List<SocketMessageComponentData> components = modal.Data.Components.ToList();
-          UpdatedSettingValue = Int32.Parse(components.FirstOrDefault().Value);
-          await WriteToJsonAsync(selection.FirstOrDefault(), UpdatedSettingValue.ToString());
-
-          await modal.DeferAsync();
-
-          CreateConfiguationModal();
-          await Context.Interaction.ModifyOriginalResponseAsync((x) =>
-          {
-            x.Embed = Embed.Build();
-            x.Components = Componets.Build();
-          });
-
-          //await modal.FollowupAsync("settings updated", ephemeral: true);
-
-        };
-
-
-        //await FollowupAsync("Settings updated", ephemeral: true);
-        //await FollowupAsync($"You updated the setting to {UpdatedSettingValue}", ephemeral: true); //Updates modal correctly but fails to close the modal
+        await Context.Interaction.RespondWithModalAsync(modal.Build());
       }
       catch (Exception ex) { }
-    }
-
-    private static async Task WriteToJsonAsync(string key, string value)
-    {
-      var sAppPath = Environment.CurrentDirectory;
-
-      var json = File.ReadAllText($"{sAppPath}\\customsettings.json");
-      JsonNode BotConfiguationSettings = JsonNode.Parse(json);
-
-
-      BotConfiguationSettings["lootsplitsettings"]![key] = value;
-      var options = new JsonSerializerOptions { WriteIndented = true };
-
-      File.WriteAllText($"{sAppPath}\\customsettings.json", BotConfiguationSettings.ToString());
-    }
-
-    private static Settings ReadFromJson()
-    {
-      var sAppPath = Environment.CurrentDirectory;
-//#if DEBUG
-//      sAppPath = "C:\\Repos\\FreeBeerBot\\bin\\Debug\\net8.0\\customsettings.json";
-//#endif
-      Settings items = new Settings();
-      using (StreamReader r = new StreamReader($"{sAppPath}\\customsettings.json"))
-      {
-        string jsonString = r.ReadToEnd();
-        items = JsonConvert.DeserializeObject<Settings>(jsonString);
-      }
-
-      return items;
-    }
-    public class Settings
-    {
-      public LootSplitSettings lootsplitsettings { get; set; }
-    }
-
-    public class LootSplitSettings
-    {
-      public string name { get; set; }
-      public int guildfee { get; set; }
-      public int damagedfee { get; set; }
-      public int nondamagedfee { get; set; }
-
     }
 
     [SlashCommand("view-commands", "See list of commands")]

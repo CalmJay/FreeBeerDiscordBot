@@ -23,6 +23,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace GoogleSheetsData
 {
@@ -66,14 +67,14 @@ namespace GoogleSheetsData
 
         // Define request parameters.
 
-        String range = "Free Beer blackList!A2:G";
+        string range = "Free Beer blackList!A2:G";
         SpreadsheetsResource.ValuesResource.GetRequest request =
             service.Spreadsheets.Values.Get(GuildSpreadsheetId, range);
 
         // Prints the names and majors of students in a sample spreadsheet:
         // https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
         ValueRange response = request.Execute();
-        IList<IList<Object>> values = response.Values;
+        IList<IList<object>> values = response.Values;
         if (values == null || values.Count == 0)
         {
           Console.WriteLine("No data found.");
@@ -166,57 +167,63 @@ namespace GoogleSheetsData
       }
 
     }
-
-    public static async Task WriteToRegearSheet(SocketInteractionContext a_command, PlayerDataHandler.Rootobject? a_playerData, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType)
+    public static async Task WriteToRegearSheet(SocketInteractionContext a_command, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType, List<string> a_MemberList = null, PlayerDataHandler.Rootobject? a_playerData = null)
     {
-      await sheetWriterSemaphore.WaitAsync();
+      var serviceValues = GetSheetsService().Spreadsheets.Values;
+      int numberOfActiveRows = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
 
-      try 
+      int iStartRowLocation = numberOfActiveRows + 2; //+1 for the headers and +1 for the new row
+      int iEndColumnLocation = 0;
+
+      var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
+      var msgRef = new MessageReference(messages.First().Id);
+      string transactionType = "No Selection";
+      var valueRange = new ValueRange();
+
+      valueRange.Values = [];
+
+      switch (a_eMoneyType)
       {
-        string? sUserNickname = ((a_command.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((a_command.User as SocketGuildUser).DisplayName) : a_command.User.Username;
-        var serviceValues = GetSheetsService().Spreadsheets.Values;
+        case MoneyTypes.ReGear:
+          transactionType = "Re-Gear";
+          break;
+        case MoneyTypes.LootSplit:
+          transactionType = "Loot Split";
+          break;
+        case MoneyTypes.OCBreak:
+          transactionType = "OC Break";
+          break;
+      }
 
-        var numberOfRow = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
-
-        var col1 = numberOfRow + 1;
-        var col2 = numberOfRow + 1;
-
-        var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
-        var msgRef = new MessageReference(messages.First().Id);
-
-        ReadRange = $"Current Season Dumps!B{col1 + 1}";
-        WriteRange = $"Current Season Dumps!B{col1 + 1}:J{col2 + 1}";
-
-        ValueRange rowValues = null;
-
-        switch (a_eMoneyType)
+      if(a_MemberList != null)
+      {
+        foreach (string playerName in a_MemberList)
         {
-          case MoneyTypes.ReGear:
-            rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Re-Gear", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() } } };
-            break;
-          case MoneyTypes.LootSplit:
-            rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "Loot Split", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
-            break;
-          case MoneyTypes.OCBreak:
-            rowValues = new ValueRange { Values = new List<IList<object>> { new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), "OC Break", a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() } } };
-            break;
-
+          valueRange.Values.Add(new List<object> { "@" + playerName, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), transactionType, a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() });
         }
-
-        var update = serviceValues.Update(rowValues, RegearSheetID, WriteRange);
-
-        update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
-        await update.ExecuteAsync();
       }
-      finally
+      else if (a_playerData != null)
       {
-        sheetWriterSemaphore.Release();
+        valueRange.Values.Add(new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), transactionType, a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() });
       }
+      else
+      {
+        throw new Exception("NO USER DATA FOUND TO WRITE TO GOOGLE SHEETS");
+      }
+      
+      iEndColumnLocation = valueRange.Values.Count + numberOfActiveRows + 1;
+      WriteRange = $"Current Season Dumps!R{iStartRowLocation}C2:R{iEndColumnLocation}C10";
+
+      //append data to spreadsheet
+      var appendRequest = serviceValues.Update(valueRange, RegearSheetID, WriteRange);
+      appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+      var appendResponse = appendRequest.Execute();
+
     }
 
     public static async Task RegisterUserToDataRoster(string a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
     {
-      var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+      var serviceValues = GetSheetsService().Spreadsheets.Values;
 
       var numberOfRow = serviceValues.Get(GuildSpreadsheetId, "Guild Roster!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
       var col1 = numberOfRow + 1;
@@ -234,7 +241,7 @@ namespace GoogleSheetsData
 
     public static async Task RegisterUserToRegearSheets(SocketGuildUser a_SocketGuildUser, string? a_sIngameName, string? a_sReason, string? a_sFine, string? a_sNotes)
     {
-      var serviceValues = GoogleSheetsDataWriter.GetSheetsService().Spreadsheets.Values;
+      var serviceValues = GetSheetsService().Spreadsheets.Values;
       string? sUserNickname = (a_SocketGuildUser.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(a_SocketGuildUser.DisplayName) : a_SocketGuildUser.Username;
 
       var payOutsNumberOfRow = serviceValues.Get(RegearSheetID, "Payouts!B2:B").Execute().Values.Count;

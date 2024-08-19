@@ -127,7 +127,7 @@ namespace CommandModule
 
       var freeBeerMainChannel = Context.Client.GetChannel(739949855195267174) as IMessageChannel;
       var newMemberRole = guildUserName.Guild.GetRole(NewRecruitRoleID);
-      var freeRegearRole = guildUserName.Guild.GetRole(1052241667329118349);//free regear role id
+      var freeRegearRole = guildUserName.Guild.GetRole(FreeTierRegearID);//free regear role id
 
       var user = guildUserName.Guild.GetUser(guildUserName.Id);
 
@@ -154,7 +154,7 @@ namespace CommandModule
         });
 
         await user.AddRoleAsync(newMemberRole);
-        await user.AddRoleAsync(freeRegearRole);
+        //await user.AddRoleAsync(freeRegearRole);
 
         await _logger.Log(new LogMessage(LogSeverity.Info, "Register Member", $"User: {Context.User.Username} has registered {playerInfo.Name}, Command: register", null));
 
@@ -162,9 +162,9 @@ namespace CommandModule
         await GoogleSheetsDataWriter.RegisterUserToRegearSheets(guildUserName, ingameName, null, null, null);
 
         var embed = new EmbedBuilder()
-       .WithTitle($":beers: WELCOME TO FREE BEER :beers:")
+       .WithTitle($":beers: WELCOME TO FREE BEER :beers:") 
        .WithDescription("We're glad to have you. Please read the following below.")
-       .AddField($"Rule book", "https://docs.google.com/document/d/1Vmw-D62zHBpQf8PvR8WLKAqBVncNW4yTC-_dBNLSHNI/");
+       .AddField($"Rules", "<#1261875306575298620>");
 
         List<string> questionList = new List<string>
                 {
@@ -435,10 +435,11 @@ namespace CommandModule
         Dictionary<string, string> paychexTotals = GoogleSheetsDataWriter.GetPaychexTotals(sUserNickname);
 
         string miniMarketCreditsTotal = GoogleSheetsDataWriter.GetMiniMarketCredits(sUserNickname) ?? "0";
-        string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname);
+        //string regearStatus = GoogleSheetsDataWriter.GetRegearStatus(sUserNickname); DISABLED
         string PaychexDate = "";
-        List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
+        //List<string> paychexSheets = GoogleSheetsDataWriter.GetPaychexSheets();
         var embed = new EmbedBuilder();
+        int iGrandTotalPaychex = 0;
 
         embed.WithTitle($":moneybag: Your Free Beer Paychex Info :moneybag: ");
 
@@ -451,7 +452,7 @@ namespace CommandModule
 
         embed.AddField("Current week running total:", $"${paychexRunningTotal[1]:n0}");
         embed.AddField("Mini-mart Credits balance:", $"{miniMarketCreditsTotal}");
-        embed.AddField("Regear Status:", $"{regearStatus}");
+        //embed.AddField("Regear Status:", $"{regearStatus}"); DISABLED
 
         if (paychexRunningTotal.Count > 0)
         {
@@ -471,6 +472,8 @@ namespace CommandModule
               paychexbutton.IsDisabled = false;
               paychexbutton.Label = $"Transfer {PaychexDate.Split("(")[0]}";
               paychexbutton.CustomId = $"paychex:{PaychexDate.Split("(")[0].Trim()}:{sUserNickname}";
+
+              iGrandTotalPaychex += Convert.ToInt32(entries.Value.Replace(",", ""));
             }
             else if (entries.Key.Contains("(CLAIMED)"))
             {
@@ -496,6 +499,12 @@ namespace CommandModule
             }
             component.WithButton(paychexbutton);
           }
+
+          if(iGrandTotalPaychex > 0)
+          {
+            embed.AddField("Total Paychex total owed to you:", $"${iGrandTotalPaychex:n0}");
+          }
+
           await FollowupAsync(null, null, false, true, null, null, component.Build(), embed.Build());
 
         }
@@ -610,12 +619,14 @@ namespace CommandModule
           }
         }
       }
-
       //await FollowupAsync($"{i} Free Beer members have been logged");
-
-
     }
 
+    [SlashCommand("view-player-paychex", "View someones paychex info")]
+    public async Task ViewMembersPaychex(SocketGuildUser GuildUser)
+    {
+
+    }
 
     [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
     public async Task MiniMartTransactions(SocketGuildUser GuildUser, int Amount, MiniMarketType TransactionType)
@@ -852,7 +863,7 @@ namespace CommandModule
       {
         PlayerDataLookUps eventData = new PlayerDataLookUps();
         PlayerEventData = await eventData.GetAlbionEventInfo(iKillId);
-        await GoogleSheetsDataWriter.WriteToRegearSheet(Context, PlayerEventData, iRefundAmount, sCallername, sEventType, MoneyTypes.ReGear);
+        await GoogleSheetsDataWriter.WriteToRegearSheet(Context, iRefundAmount, sCallername, sEventType, MoneyTypes.ReGear, null, PlayerEventData);
         await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
 
         IReadOnlyCollection<Discord.Rest.RestGuildUser> regearPoster = await Context.Guild.SearchUsersAsync(sVictimName);
@@ -977,7 +988,7 @@ namespace CommandModule
 
       if (guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID))
       {
-        await GoogleSheetsDataWriter.WriteToRegearSheet(Context, tempPlayerEventData, refundAmount, callername, eventType, MoneyTypes.OCBreak);
+        await GoogleSheetsDataWriter.WriteToRegearSheet(Context, refundAmount, callername, eventType, MoneyTypes.OCBreak, null, tempPlayerEventData);
         await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
 
         try
@@ -1172,14 +1183,15 @@ namespace CommandModule
     {
       LootSplitModule lootSplitMod = new LootSplitModule();
       RegearModule regearModule = new RegearModule();
+      List<string> PlayersIncludedInSplit = new List<string>();
 
       var guildUser = (SocketGuildUser)Context.User;
-
       var interaction = Context.Interaction as IComponentInteraction;
-
       var partyLeader = interaction.Message.Embeds.FirstOrDefault().Fields[10].Value;
       var eventType = interaction.Message.Embeds.FirstOrDefault().Fields[7].Value;
       List<string> membersSplit = interaction.Message.Embeds.FirstOrDefault().Fields[9].Value.Replace(" ", "").Split(',').ToList();
+
+      
 
       //check perms to push buttons
       if (guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID || r.Name == "admin"))
@@ -1190,8 +1202,8 @@ namespace CommandModule
 
         try
         {
-          foreach (string playerName in membersSplit)
-          {
+          //foreach (string playerName in membersSplit)
+          //{
             //conditional to add members to .Player table if not in there already
             //if (dataBaseService.GetPlayerInfoByName(playerName) == null)
             //{
@@ -1225,15 +1237,15 @@ namespace CommandModule
             //    Reason = reasonLootSplit,
             //    QueueId = tempStr
             //});
-            //Sheets write for each playerName - Needs Review
-            PlayerDataHandler.Rootobject playerInfo = new PlayerDataHandler.Rootobject();
-            PlayerDataHandler.Victim victimInfo = new PlayerDataHandler.Victim();
-            victimInfo.Name = playerName;
-            playerInfo.Victim = victimInfo;
+          //}
 
+          //PlayerDataHandler.Rootobject playerInfo = new PlayerDataHandler.Rootobject();
+          //PlayerDataHandler.Victim victimInfo = new PlayerDataHandler.Victim();
+          //victimInfo.Name = playerName;
+          //playerInfo.Victim = victimInfo;
 
-            await GoogleSheetsDataWriter.WriteToRegearSheet(Context, playerInfo, Convert.ToInt32(PayoutPerPlayer), partyLeader, eventType, MoneyTypes.LootSplit);
-          }
+          await GoogleSheetsDataWriter.WriteToRegearSheet(Context, Convert.ToInt32(PayoutPerPlayer), partyLeader, eventType, MoneyTypes.LootSplit, membersSplit);
+
           await FollowupAsync(($"This loot split has finished processing! {interaction.Message.Embeds.FirstOrDefault().Fields[4].Value} has been added to everyone's paychex. This thread can be deleted."));
           await Context.Channel.DeleteMessageAsync(interaction.Message.Id);
           await DeleteOriginalResponseAsync();
@@ -1241,7 +1253,7 @@ namespace CommandModule
         }
         catch
         {
-          await FollowupAsync("Oops I fucked up. Send me the IT guy");
+          await FollowupAsync("Oops I messed up. Send me the IT guy");
         }
         await _logger.Log(new LogMessage(LogSeverity.Info, "Loot Split Approved", $"User: {Context.User.Username}, Approved Loot split ", null));
       }
