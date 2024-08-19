@@ -14,6 +14,8 @@ using System.Linq;
 using static System.Net.WebRequestMethods;
 using Aspose.Imaging.AsyncTask;
 using Aspose.Imaging.ProgressManagement;
+using DiscordBot;
+using DNet_V3_Tutorial;
 
 namespace InteractionHandlerService
 {
@@ -194,6 +196,20 @@ namespace InteractionHandlerService
     }
     private Task ModalSubmittedExecuted(SocketModal a_Modal)
     {
+      if(a_Modal.Data.CustomId == "update_config_settings")
+      {
+        List<SocketMessageComponentData> components = a_Modal.Data.Components.ToList();
+        string UpdatedSettingValue = components.FirstOrDefault().Value;
+        HelperMethods.WriteToJson(components.FirstOrDefault().CustomId, UpdatedSettingValue.ToString());
+
+        a_Modal.UpdateAsync(x =>
+        {
+          PingModule.CreateConfiguationEmbed();
+
+          x.Embed = PingModule.Embed.Build();
+          x.Components = PingModule.Componets.Build();
+        });
+      }
       return Task.CompletedTask;
     }
 
