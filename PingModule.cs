@@ -93,11 +93,13 @@ namespace DNet_V3_Tutorial
 
       var SettingsEmbed = new EmbedBuilder()
       .WithTitle($":beers: Free Beer Bot Configuration :beers:")
-      .WithDescription($"**Loot Split Settings** \n" +
+      .WithDescription(
+        $"**Loot Split Settings** \n" +
         $"`Guild Fee (Not used atm)` {configuationSettings.lootsplitsettings.guildfee}% \n" +
         $"`Damaged Fee` {configuationSettings.lootsplitsettings.damagedfee}% \n" +
         $"`Non-Damaged Fee` {configuationSettings.lootsplitsettings.nondamagedfee}% \n" +
-        $"`Include Silver bags` {configuationSettings.lootsplitsettings.includesilverbags} \n");
+        $"`Include Silver bags` {configuationSettings.lootsplitsettings.includesilverbags} \n" +
+        $"**Intro Message Settings** \n");
 
       var menuBuilder = new SelectMenuBuilder()
        .WithPlaceholder("Select a setting to change")
