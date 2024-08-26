@@ -40,6 +40,7 @@ namespace GoogleSheetsData
 
     static string ApplicationName = "Google Sheets API .NET Quickstart";
     public bool enableGoogleApi = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("enableGoogleAPI"));
+    static SemaphoreSlim sheetWriterSemaphore = new SemaphoreSlim(1,1);
 
 
     public void ConnectToGoogleAPI()
@@ -168,55 +169,64 @@ namespace GoogleSheetsData
     }
     public static async Task WriteToRegearSheet(SocketInteractionContext a_command, int a_iTotalSilverRefund, string a_sCallerName, string a_sEventType, MoneyTypes a_eMoneyType, List<string> a_MemberList = null, PlayerDataHandler.Rootobject? a_playerData = null)
     {
-      var serviceValues = GetSheetsService().Spreadsheets.Values;
-      int numberOfActiveRows = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
+      await sheetWriterSemaphore.WaitAsync();
 
-      int iStartRowLocation = numberOfActiveRows + 2; //+1 for the headers and +1 for the new row
-      int iEndColumnLocation = 0;
-
-      var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
-      var msgRef = new MessageReference(messages.First().Id);
-      string transactionType = "No Selection";
-      var valueRange = new ValueRange();
-
-      valueRange.Values = [];
-
-      switch (a_eMoneyType)
+      try 
       {
-        case MoneyTypes.ReGear:
-          transactionType = "Re-Gear";
-          break;
-        case MoneyTypes.LootSplit:
-          transactionType = "Loot Split";
-          break;
-        case MoneyTypes.OCBreak:
-          transactionType = "OC Break";
-          break;
-      }
+        var serviceValues = GetSheetsService().Spreadsheets.Values;
+        int numberOfActiveRows = serviceValues.Get(RegearSheetID, "Current Season Dumps!B2:B").Execute().Values.Count; // This finds the nearest last row int he spreadsheet. This saves on hitting the rate limit when hitting google API.
 
-      if(a_MemberList != null)
-      {
-        foreach (string playerName in a_MemberList)
+        int iStartRowLocation = numberOfActiveRows + 2; //+1 for the headers and +1 for the new row
+        int iEndColumnLocation = 0;
+
+        var messages = await a_command.Channel.GetMessagesAsync(1).FlattenAsync();
+        var msgRef = new MessageReference(messages.First().Id);
+        string transactionType = "No Selection";
+        var valueRange = new ValueRange();
+
+        valueRange.Values = [];
+
+        switch (a_eMoneyType)
         {
-          valueRange.Values.Add(new List<object> { "@" + playerName, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), transactionType, a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() });
+          case MoneyTypes.ReGear:
+            transactionType = "Re-Gear";
+            break;
+          case MoneyTypes.LootSplit:
+            transactionType = "Loot Split";
+            break;
+          case MoneyTypes.OCBreak:
+            transactionType = "OC Break";
+            break;
         }
-      }
-      else if (a_playerData != null)
-      {
-        valueRange.Values.Add(new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), transactionType, a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() });
-      }
-      else
-      {
-        throw new Exception("NO USER DATA FOUND TO WRITE TO GOOGLE SHEETS");
-      }
-      
-      iEndColumnLocation = valueRange.Values.Count + numberOfActiveRows + 1;
-      WriteRange = $"Current Season Dumps!R{iStartRowLocation}C2:R{iEndColumnLocation}C10";
 
-      //append data to spreadsheet
-      var appendRequest = serviceValues.Update(valueRange, RegearSheetID, WriteRange);
-      appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
-      var appendResponse = appendRequest.Execute();
+        if(a_MemberList != null)
+        {
+          foreach (string playerName in a_MemberList)
+          {
+            valueRange.Values.Add(new List<object> { "@" + playerName, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), transactionType, a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), "N/A", a_command.User.ToString() });
+          }
+        }
+        else if (a_playerData != null)
+        {
+          valueRange.Values.Add(new List<object> { "@" + a_playerData.Victim.Name, a_iTotalSilverRefund, DateTime.UtcNow.Date.ToString("M/d/yyyy"), transactionType, a_sEventType, a_sCallerName, msgRef.MessageId.ToString(), a_playerData.EventId, a_command.User.ToString() });
+        }
+        else
+        {
+          throw new Exception("NO USER DATA FOUND TO WRITE TO GOOGLE SHEETS");
+        }
+        
+        iEndColumnLocation = valueRange.Values.Count + numberOfActiveRows + 1;
+        WriteRange = $"Current Season Dumps!R{iStartRowLocation}C2:R{iEndColumnLocation}C10";
+
+        //append data to spreadsheet
+        var appendRequest = serviceValues.Update(valueRange, RegearSheetID, WriteRange);
+        appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+        var appendResponse = appendRequest.Execute();
+      }
+      finally 
+      {
+        sheetWriterSemaphore.Release();
+      }
 
     }
 
