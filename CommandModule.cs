@@ -625,7 +625,23 @@ namespace CommandModule
     [SlashCommand("view-player-paychex", "View someones paychex info")]
     public async Task ViewMembersPaychex(SocketGuildUser GuildUser)
     {
+      await DeferAsync();
 
+      Dictionary<string, string> paychexTotals = GoogleSheetsDataWriter.GetPaychexTotals(GuildUser.Nickname);
+      int iGrandTotalPaychex = 0;
+
+      if (paychexTotals.Count > 0)
+      {
+        foreach (var entries in paychexTotals)
+        {
+          if (entries.Key.Contains("NOT CLAIMED"))
+          {
+            iGrandTotalPaychex += Convert.ToInt32(entries.Value.Replace(",", ""));
+          }
+        }
+      }
+
+      await FollowupAsync($"{GuildUser.Nickname} total is {iGrandTotalPaychex}");
     }
 
     [SlashCommand("mm-transaction", "Submit transaction to Mini-mart")]
