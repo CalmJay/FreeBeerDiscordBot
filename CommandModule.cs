@@ -420,10 +420,16 @@ namespace CommandModule
     }
 
     [SlashCommand("view-paychex", "Views your current paychex amount")]
-    public async Task GetCurrentPaychexAmount()
+    public async Task GetCurrentPaychexAmount(SocketGuildUser otherPlayer = null)
     {
+      if (otherPlayer != null && !guildUser.Roles.Any(r => r.Id == ManagementRoleID || r.Id == OfficerRoleID || r.Id == VeteranRoleID)) 
+      {
+        await RespondAsync("Stop being nosy and trying to check other people's paychex.", null, false, true);
+      }
+
+      var lookupPlayer = otherPlayer ?? (Context.User as SocketGuildUser);
       await _logger.Log(new LogMessage(LogSeverity.Info, "View-Paychex", $"User: {Context.User.Username}, Command: view-paychex", null));
-      string? sUserNickname = ((Context.User as SocketGuildUser).DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName((Context.User as SocketGuildUser).DisplayName) : (Context.User as SocketGuildUser).Nickname;
+      string? sUserNickname = (lookupPlayer.DisplayName != null) ? new PlayerDataLookUps().CleanUpShotCallerName(lookupPlayer.DisplayName) : lookupPlayer.Nickname;
       var component = new ComponentBuilder();
       var paychexbutton = new ButtonBuilder();
       DataBaseService dataBaseService = new DataBaseService();
